@@ -36,31 +36,25 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/ls1intum/theia/operator:latest
+    image: ghcr.io/ls1intum/theia/operator:pr-70
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
-    storageClassName: csi-rbd-sc
+    storageClassName: longhorn
     resources:
       requests:
         ephemeral-storage: "128Mi"
       limits:
         ephemeral-storage: "256Mi"
 
-  # service:
-  #   image: ghcr.io/ls1intum/theia/service:latest
+  service:
+    image: ghcr.io/ls1intum/theia/service:pr-70
 
   preloading:
     images:
-      - ghcr.io/ls1intum/theia/landing-page:latest
-      - ghcr.io/ls1intum/theia/java-17:latest
-      - ghcr.io/ls1intum/theia/c:latest
-      - ghcr.io/ls1intum/theia/javascript:latest
-      - ghcr.io/ls1intum/theia/ocaml:latest
-      - ghcr.io/ls1intum/theia/rust:latest
-      - ghcr.io/ls1intum/theia/python:latest
-      - ghcr.io/ls1intum/theia/theia-no-ls:pr-46
-      - ghcr.io/ls1intum/theia/langserver-java:pr-46
+      - ghcr.io/ls1intum/theia/landing-page:pr-70
+      - ghcr.io/ls1intum/theia/theia-no-ls:pr-80
+      - ghcr.io/ls1intum/theia/langserver-java:pr-80
 
   imagePullPolicy: Always
 
@@ -80,40 +74,28 @@ theia-cloud:
     # 2. (Optional) If you removed the 'hardcoded png' logic in the template, 
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
-    appDefinition: "java-17-latest"
+    appDefinition: "java-ls-test"
     ephemeralStorage: true
     additionalApps:
-      java-17-latest:
-        label: Java 17
-      c-latest:
-        label: C
-      javascript-latest:
-        label: Javascript
-      ocaml-latest:
-        label: Ocaml
-      python-latest:
-        label: Python
-      rust-latest:
-        label: Rust
       java-ls-test:
-        label: Java LS Test
+        label: Java
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
-    infoText: "This is a testing environment for Theia Cloud. Select your programming language and start coding in seconds!"
+    infoText: "Test environment for Theia with external language server architecture (PR #70 & #80). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
-        url: "https://aet.cit.tum.de/"
+        text: "Rickroll Youtube"
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         version: "Test3-v1.0.0"
       bugReport:
-        text: "Report a bug 🐛"
-        url: "https://github.com/ls1intum/theia-cloud/issues"
+        text: "Rickroll Youtube"
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
       featureRequest:
-        text: "Request a feature ✨"
-        url: "https://github.com/ls1intum/theia-cloud/issues"
+        text: "Rickroll Youtube"
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
       about:
-        text: "About"
-        url: "https://aet.cit.tum.de/"
+        text: "Rickroll Youtube"
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
   keycloak:
     enable: true
@@ -131,9 +113,9 @@ theia-appdefinitions:
   apps:
     - name: java-ls-test
       image: ghcr.io/ls1intum/theia/theia-no-ls
-      imageTag: pr-46
+      imageTag: pr-80
       options:
-        langserver-image: ghcr.io/ls1intum/theia/langserver-java:pr-46
+        langserver-image: ghcr.io/ls1intum/theia/langserver-java:pr-80
 
 monitoring:
   targetNamespaces:
