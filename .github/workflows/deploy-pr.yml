@@ -24,7 +24,11 @@ on:
           - test2
           - test3
       theia_cloud_tag:
-        description: 'Theia Cloud components tag (operator, service, landing-page)'
+        description: 'Theia Cloud components tag (operator, service)'
+        required: false
+        default: 'latest'
+      landing_page_tag:
+        description: 'EduTheia landing page tag'
         required: false
         default: 'latest'
       ide_images_tag:
@@ -47,6 +51,7 @@ jobs:
     with:
       environment: test1
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
+      landing_page_tag: ${{ inputs.landing_page_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
       helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
     secrets: inherit
@@ -61,6 +66,7 @@ jobs:
     with:
       environment: test2
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
+      landing_page_tag: ${{ inputs.landing_page_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
       helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
     secrets: inherit
@@ -75,6 +81,7 @@ jobs:
     with:
       environment: test3
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
+      landing_page_tag: ${{ inputs.landing_page_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
       helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
     secrets: inherit
