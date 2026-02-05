@@ -14,11 +14,17 @@ hosts:
   allWildcardInstances: ["*.webview."]
 
 ingress:
+  enabled: false
   #instanceName: "theia-cloud-ws-ingress"
   clusterIssuer: letsencrypt-prod
   certManagerAnnotations: true
   instances:
     allWildcardSecretNames: { "*.webview.": static-theia-cert }
+
+gateway:
+  enabled: true
+  className: envoy
+  name: theia-cloud-gateway
 
 monitor:
   enable: true

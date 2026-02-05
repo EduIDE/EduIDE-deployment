@@ -112,18 +112,18 @@ Configuration files for each environment are located in the [deployments/](deplo
 
 ### Prerequisites
 
-- Kubernetes cluster with ingress-nginx controller
+- Kubernetes cluster with Envoy Gateway (Gateway API) installed
+- cert-manager ClusterIssuer configured for DNS-01 (required for wildcard certificates)
 - Helm 3.x installed
 - kubectl configured for your cluster
 - GitHub repository with appropriate secrets configured
 
 ### Basic Installation
 
-1. **Prepare your cluster** (enable snippet annotations for ingress-nginx):
+1. **Prepare your cluster** (install Envoy Gateway and Gateway API CRDs):
    ```bash
-   kubectl -n ingress-nginx patch cm ingress-nginx-controller \
-     --patch '{"data":{"allow-snippet-annotations":"true","annotations-risk-level":"Critical"}}'
-   kubectl -n ingress-nginx delete pod -l app.kubernetes.io/name=ingress-nginx
+   # Install Envoy Gateway and Gateway API CRDs according to your cluster provider.
+   # Ensure the GatewayClass name matches `theia-cloud.gateway.className` (default: "envoy").
    ```
 
 2. **Install Theia Cloud base charts**:
