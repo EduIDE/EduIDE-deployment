@@ -1,0 +1,47 @@
+replicaCount: 1
+
+image:
+  repository: verdaccio/verdaccio
+  tag: "5"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 4873
+
+storage:
+  enabled: true
+  size: 50Gi
+  storageClass: csi-rbd-sc
+  # User ID and Group ID for Verdaccio process
+  # CRITICAL: Storage directory must be owned by these IDs
+  uid: 10001
+  gid: 65533
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+config:
+  uplinks:
+    npmjs:
+      url: https://registry.npmjs.org/
+      cache: true
+      timeout: 30s
+      maxage: 30d
+  
+  server:
+    keepAliveTimeout: 60
+  
+  middlewares:
+    audit:
+      enabled: true
+  
+  log:
+    type: stdout
+    format: pretty
+    level: info

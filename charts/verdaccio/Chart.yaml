@@ -1,0 +1,6 @@
+apiVersion: v2
+name: verdaccio
+description: Private npm registry cache for Theia builds
+type: application
+version: 1.0.0
+appVersion: "5.33.0"
