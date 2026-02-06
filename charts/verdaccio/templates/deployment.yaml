@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "verdaccio.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: verdaccio
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: verdaccio
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: verdaccio
+    spec:
+      initContainers:
+      - name: fix-permissions
+        image: busybox:latest
+        command:
+        - sh
+        - -c
+        - |
+          chown -R {{ .Values.storage.uid }}:{{ .Values.storage.gid }} /verdaccio/storage
+          chmod -R 755 /verdaccio/storage
+        volumeMounts:
+        - name: storage
+          mountPath: /verdaccio/storage
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: verdaccio
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: VERDACCIO_PORT
+          value: "4873"
+        ports:
+        - name: http
+          containerPort: 4873
+        livenessProbe:
+          httpGet:
+            path: /-/ping
+            port: 4873
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /-/ping
+            port: 4873
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        volumeMounts:
+        - name: config
+          mountPath: /verdaccio/conf
+          readOnly: true
+        - name: storage
+          mountPath: /verdaccio/storage
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "verdaccio.fullname" . }}-config
+      - name: storage
+        {{- if .Values.storage.enabled }}
+        persistentVolumeClaim:
+          claimName: {{ include "verdaccio.fullname" . }}-storage
+        {{- else }}
+        emptyDir: {}
+        {{- end }}
