@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "verdaccio.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+    storage: /verdaccio/storage
+
+    listen: 0.0.0.0:4873
+
+    uplinks:
+      {{- range $name, $uplink := .Values.config.uplinks }}
+      {{ $name }}:
+        url: {{ $uplink.url }}
+        cache: {{ $uplink.cache }}
+        timeout: {{ $uplink.timeout }}
+        maxage: {{ $uplink.maxage }}
+      {{- end }}
+
+    packages:
+      '@*/*':
+        access: $all
+        publish: $authenticated
+        proxy: npmjs
+      '**':
+        access: $all
+        publish: $authenticated
+        proxy: npmjs
+
+    server:
+      keepAliveTimeout: {{ .Values.config.server.keepAliveTimeout }}
+
+    middlewares:
+      {{- if .Values.config.middlewares.audit.enabled }}
+      audit:
+        enabled: true
+      {{- end }}
+
+    log:
+      type: {{ .Values.config.log.type }}
+      format: {{ .Values.config.log.format }}
+      level: {{ .Values.config.log.level }}
