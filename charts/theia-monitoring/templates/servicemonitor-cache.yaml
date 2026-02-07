@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: theia-shared-cache
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      component: cache-server
+  namespaceSelector:
+    matchNames:
+      {{- range .Values.sharedCacheNamespaces }}
+      - {{ . }}
+      {{- end }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
