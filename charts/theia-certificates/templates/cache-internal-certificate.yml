@@ -5,11 +5,11 @@ metadata:
 spec:
   secretName: cache-internal-cert-secret
   issuerRef:
-    name: theia-cloud-selfsigned-issuer
+    name: theia-internal-ca-issuer
     kind: ClusterIssuer
   commonName: "theia-shared-cache"
   dnsNames:
-    - theia-shared-cache
-    - theia-shared-cache.theia-cloud.svc.cluster.local
+    - theia-cloud-combined-cache
+    - theia-cloud-combined-cache.theia-cloud.svc.cluster.local
   privateKey:
     rotationPolicy: Never

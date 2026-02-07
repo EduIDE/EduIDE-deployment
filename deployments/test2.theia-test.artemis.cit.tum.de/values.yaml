@@ -42,6 +42,10 @@ theia-shared-cache:
       limits:
         memory: "2Gi"
         cpu: "1000m"
+  
+  tls:
+    enabled: true
+    secretName: cache-internal-cert-secret
 
 
 theia-cloud:
@@ -76,7 +80,7 @@ theia-cloud:
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
     enableCaching: true
-    cacheUrl: "http://theia-cloud-combined-cache:8080/cache/"
+    cacheUrl: "https://theia-cloud-combined-cache:8080/cache/"
 
   # service:
   #   image: ghcr.io/ls1intum/theia/service:latest
