@@ -120,7 +120,8 @@ jobs:
             --set resources.requests.cpu=50m \
             --set resources.requests.memory=128Mi \
             --set resources.limits.memory=256Mi \
-            --wait --timeout 180s
+            --burst-limit 100 \
+            --wait --timeout 60s
 
       # Step 6: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
