@@ -18,5 +18,5 @@ dependencies:
     repository: "file://../theia-appdefinitions"
 
   - name: theia-shared-cache
-    version: 0.2.2
-    repository: "https://ls1intum.github.io/theia-shared-cache/"
+    version: "0.2.3-pr.24"
+    repository: "oci://ghcr.io/ls1intum/charts"
