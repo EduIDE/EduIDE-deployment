@@ -107,23 +107,7 @@ jobs:
           # This is installed once per cluster, not per environment
           helm upgrade theia-monitoring ./charts/theia-monitoring --install
 
-      # Step 5: Install trust-manager for internal TLS certificate distribution
-      # trust-manager distributes the internal CA as ConfigMaps (PEM + JKS) to session namespaces
-      - name: Install trust-manager
-        env:
-          KUBECONFIG: ${{ github.workspace }}/kubeconfig
-        run: |
-          helm repo add jetstack https://charts.jetstack.io --force-update
-          helm upgrade --install trust-manager jetstack/trust-manager \
-            --namespace cert-manager \
-            --set app.trust.namespace="" \
-            --set resources.requests.cpu=50m \
-            --set resources.requests.memory=128Mi \
-            --set resources.limits.memory=256Mi \
-            --burst-limit 100 \
-            --wait --timeout 60s
-
-      # Step 6: Install the main Theia Cloud application with environment-specific configuration
+      # Step 5: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
       - name: Install Theia Cloud in namespace ${{ vars.NAMESPACE }}
         env:
