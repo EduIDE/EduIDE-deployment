@@ -695,7 +695,7 @@ data:
               "editorMode": "code",
               "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"POD\", container!=\"\", job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\".*reposilite.*\"}[1m])) by (pod)",
               "instant": false,
-              "legendFormat": "{{ \"{{\" }}pod{{ \"}}\" }}",
+              "legendFormat": "{{ "{{" }}pod{{ "}}" }}",
               "range": true,
               "refId": "A"
             }
@@ -759,7 +759,7 @@ data:
               "editorMode": "code",
               "expr": "container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\".*reposilite.*\", container!=\"POD\", container!=\"\"}",
               "instant": false,
-              "legendFormat": "{{ \"{{\" }}pod{{ \"}}\" }}",
+              "legendFormat": "{{ "{{" }}pod{{ "}}" }}",
               "range": true,
               "refId": "A"
             }
