@@ -61,7 +61,7 @@ jobs:
     name: Install Theia Cloud Helm Chart
     permissions:
       contents: read
-    runs-on: arc-runner-set-stateless
+    runs-on: ubuntu-latest
     # Link to GitHub Environment for secrets and protection rules
     environment: ${{ inputs.environment }}
 
