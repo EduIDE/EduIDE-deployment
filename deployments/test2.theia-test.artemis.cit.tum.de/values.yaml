@@ -33,6 +33,7 @@ theia-cloud:
     enabled: true
     className: envoy
     name: theia-cloud-gateway
+    serviceRouteRequestTimeout: "60s"
 
   monitor:
     enable: true
