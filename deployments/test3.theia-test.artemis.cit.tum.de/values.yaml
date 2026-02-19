@@ -93,23 +93,23 @@ theia-cloud:
         label: Python
       rust-latest:
         label: Rust
-    infoTitle: "🚀 Welcome to Test3 IDE Environment - Where we move fast and break things - mostly breaks things.. 🤠🤠"
-    infoText: "This is a testing environment for Theia Cloud. Should be fun to use, but don't expect too much."
-    loadingText: "Ich lade grade, geb mir mal ne Sekunde"
+    infoTitle: "🚀 Welcome to Test3 IDE Environment"
+    infoText: "This is a testing environment for Theia Cloud. Select your programming language and start coding in seconds!"
+    loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
-        text: "Rollen"
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        text: "Built by TUM LS1 Team 👨‍💻"
+        url: "https://aet.cit.tum.de/"
         version: "Test3-v1.0.0"
       bugReport:
-        text: "Rollen"
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        text: "Report a bug 🐛"
+        url: "https://github.com/ls1intum/theia-cloud/issues"
       featureRequest:
-        text: "Rollen"
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        text: "Request a feature ✨"
+        url: "https://github.com/ls1intum/theia-cloud/issues"
       about:
-        text: "Rollen"
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        text: "About"
+        url: "https://aet.cit.tum.de/"
 
   keycloak:
     enable: true
