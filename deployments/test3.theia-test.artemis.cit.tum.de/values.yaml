@@ -98,18 +98,18 @@ theia-cloud:
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
-        url: "https://aet.cit.tum.de/"
+        text: "Rollen"
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
         version: "Test3-v1.0.0"
       bugReport:
-        text: "Report a bug 🐛"
-        url: "https://github.com/ls1intum/theia-cloud/issues"
+        text: "Rollen"
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
       featureRequest:
-        text: "Request a feature ✨"
-        url: "https://github.com/ls1intum/theia-cloud/issues"
+        text: "Rollen"
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
       about:
-        text: "About"
-        url: "https://aet.cit.tum.de/"
+        text: "Rollen"
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
   keycloak:
     enable: true
