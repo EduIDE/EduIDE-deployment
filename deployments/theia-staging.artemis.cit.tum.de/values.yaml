@@ -47,7 +47,7 @@ theia-cloud:
 
   preloading:
     images:
-      - ghcr.io/ls1intum/theia/landing-page:latest
+      - ghcr.io/ls1intum/edutheia-landing-page:latest
       - ghcr.io/ls1intum/theia/java-17:latest
       - ghcr.io/ls1intum/theia/c:latest
       - ghcr.io/ls1intum/theia/javascript:latest
@@ -63,7 +63,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/ls1intum/theia/landing-page
+    image: ghcr.io/ls1intum/edutheia-landing-page
     logoFileExtension: "png"
     # We can define a default blueprint
     appDefinition: "java-17-latest"
