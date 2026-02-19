@@ -22,12 +22,12 @@ theia-cloud:
     configuration: *hostsConfig
     allWildcardInstances: ["*.webview."]
 
-  ingress:
-    #instanceName: "theia-cloud-ws-ingress"
-    clusterIssuer: letsencrypt-prod
-    certManagerAnnotations: false
-    instances:
-      allWildcardSecretNames: { "*.webview.": static-theia-cert }
+  gateway:
+    enabled: true
+    className: envoy
+    name: theia-cloud-gateway
+    instancesWildcardSecretNames: { "*.webview.": static-theia-cert }
+    serviceRouteRequestTimeout: "60s"
 
   monitor:
     enable: true
