@@ -67,7 +67,7 @@ theia-cloud:
     install: false
 
   landingPage:
-    # We use the try now page as landing page since the default does not support multiple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
+    # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
     image: ghcr.io/ls1intum/edutheia-landing-page
     # We can define a default blueprint
     
@@ -98,18 +98,18 @@ theia-cloud:
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
-        text: "Rollen"
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        text: "Built by TUM LS1 Team 👨‍💻"
+        url: "https://aet.cit.tum.de/"
         version: "Test3-v1.0.0"
       bugReport:
-        text: "Rollen"
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        text: "Report a bug 🐛"
+        url: "https://github.com/ls1intum/theia-cloud/issues"
       featureRequest:
-        text: "Rollen"
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        text: "Request a feature ✨"
+        url: "https://github.com/ls1intum/theia-cloud/issues"
       about:
-        text: "Rollen"
-        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        text: "About"
+        url: "https://aet.cit.tum.de/"
 
   keycloak:
     enable: true
