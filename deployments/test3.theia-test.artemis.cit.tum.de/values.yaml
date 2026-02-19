@@ -67,7 +67,7 @@ theia-cloud:
     install: false
 
   landingPage:
-    # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
+    # We use the try now page as landing page since the default does not support multiple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
     image: ghcr.io/ls1intum/edutheia-landing-page
     # We can define a default blueprint
     
