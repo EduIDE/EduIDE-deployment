@@ -40,7 +40,7 @@ theia-cloud:
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
-    storageClassName: csi-rbd-sc
+    storageClassName: longhorn
     resources:
       requests:
         ephemeral-storage: "128Mi"
@@ -54,12 +54,7 @@ theia-cloud:
     images:
       - ghcr.io/ls1intum/theia/landing-page:latest
       - ghcr.io/ls1intum/theia/java-17:latest
-      - ghcr.io/ls1intum/theia/c:latest
-      - ghcr.io/ls1intum/theia/javascript:latest
-      - ghcr.io/ls1intum/theia/ocaml:latest
       - ghcr.io/ls1intum/theia/rust:latest
-      - ghcr.io/ls1intum/theia/python:latest
-      - ghcr.io/ls1intum/theia/theia-no-ls:pr-98
       - ghcr.io/ls1intum/theia/langserver-java:pr-98
       - ghcr.io/ls1intum/theia/java-17-no-ls:pr-98
       - ghcr.io/ls1intum/theia/langserver-rust:pr-98
