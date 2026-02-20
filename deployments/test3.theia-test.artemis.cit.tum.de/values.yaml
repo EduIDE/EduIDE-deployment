@@ -36,7 +36,7 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/ls1intum/theia/operator:latest
+    image: ghcr.io/ls1intum/theia/operator:pr-70
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
@@ -47,8 +47,8 @@ theia-cloud:
       limits:
         ephemeral-storage: "256Mi"
 
-  # service:
-  #   image: ghcr.io/ls1intum/theia/service:latest
+  service:
+    image: ghcr.io/ls1intum/theia/service:pr-70
 
   preloading:
     images:

@@ -166,25 +166,34 @@ jobs:
           THEIA_CLOUD_TAG="${{ inputs.theia_cloud_tag }}"
           IDE_IMAGES_TAG="${{ inputs.ide_images_tag }}"
 
-          # Install/upgrade the Helm chart with all configuration
-          # --install: Create if it doesn't exist, upgrade if it does
-          # --create-namespace: Create the namespace if it doesn't exist
-          # Image tags controlled by two variables: THEIA_CLOUD_TAG and IDE_IMAGES_TAG
-          helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined \
+          # Build the base Helm command
+          HELM_CMD="helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined \
             --namespace ${{ vars.NAMESPACE }} \
             --create-namespace \
             -f ${{ vars.HELM_VALUES_PATH }}/values.yaml \
-            --set theia-certificates.wildcardCertificate="$(cat wildcard.crt)" \
-            --set theia-certificates.wildcardKey="$(cat wildcard.key)" \
-            --set theia-cloud.keycloak.cookieSecret="${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}" \
-            --set theia-cloud.landingPage.image="ghcr.io/ls1intum/theia/landing-page:${THEIA_CLOUD_TAG}" \
-            --set theia-cloud.operator.image="ghcr.io/ls1intum/theia/operator:${THEIA_CLOUD_TAG}" \
-            --set theia-cloud.service.image="ghcr.io/ls1intum/theia/service:${THEIA_CLOUD_TAG}" \
-            --set "theia-cloud.preloading.images[0]=ghcr.io/ls1intum/theia/landing-page:${THEIA_CLOUD_TAG}" \
-            --set "theia-cloud.preloading.images[1]=ghcr.io/ls1intum/theia/java-17:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[2]=ghcr.io/ls1intum/theia/c:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[3]=ghcr.io/ls1intum/theia/javascript:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[4]=ghcr.io/ls1intum/theia/ocaml:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[5]=ghcr.io/ls1intum/theia/rust:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[6]=ghcr.io/ls1intum/theia/python:${IDE_IMAGES_TAG}" \
-            --set theia-appdefinitions.defaultImageTag="${IDE_IMAGES_TAG}"
+            --set theia-certificates.wildcardCertificate=\"\$(cat wildcard.crt)\" \
+            --set theia-certificates.wildcardKey=\"\$(cat wildcard.key)\" \
+            --set theia-cloud.keycloak.cookieSecret=\"${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}\""
+
+          # Only override image tags if not using values file
+          if [ "$THEIA_CLOUD_TAG" != "use-values-file" ]; then
+            HELM_CMD="$HELM_CMD \
+              --set theia-cloud.landingPage.image=\"ghcr.io/ls1intum/theia/landing-page:${THEIA_CLOUD_TAG}\" \
+              --set theia-cloud.operator.image=\"ghcr.io/ls1intum/theia/operator:${THEIA_CLOUD_TAG}\" \
+              --set theia-cloud.service.image=\"ghcr.io/ls1intum/theia/service:${THEIA_CLOUD_TAG}\" \
+              --set \"theia-cloud.preloading.images[0]=ghcr.io/ls1intum/theia/landing-page:${THEIA_CLOUD_TAG}\""
+          fi
+
+          if [ "$IDE_IMAGES_TAG" != "use-values-file" ]; then
+            HELM_CMD="$HELM_CMD \
+              --set \"theia-cloud.preloading.images[1]=ghcr.io/ls1intum/theia/java-17:${IDE_IMAGES_TAG}\" \
+              --set \"theia-cloud.preloading.images[2]=ghcr.io/ls1intum/theia/c:${IDE_IMAGES_TAG}\" \
+              --set \"theia-cloud.preloading.images[3]=ghcr.io/ls1intum/theia/javascript:${IDE_IMAGES_TAG}\" \
+              --set \"theia-cloud.preloading.images[4]=ghcr.io/ls1intum/theia/ocaml:${IDE_IMAGES_TAG}\" \
+              --set \"theia-cloud.preloading.images[5]=ghcr.io/ls1intum/theia/rust:${IDE_IMAGES_TAG}\" \
+              --set \"theia-cloud.preloading.images[6]=ghcr.io/ls1intum/theia/python:${IDE_IMAGES_TAG}\" \
+              --set theia-appdefinitions.defaultImageTag=\"${IDE_IMAGES_TAG}\""
+          fi
+
+          # Execute the Helm command
+          eval $HELM_CMD
