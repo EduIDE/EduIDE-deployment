@@ -59,6 +59,8 @@ theia-cloud:
       - ghcr.io/ls1intum/theia/ocaml:latest
       - ghcr.io/ls1intum/theia/rust:latest
       - ghcr.io/ls1intum/theia/python:latest
+      - ghcr.io/ls1intum/theia/theia-no-ls:pr-80
+      - ghcr.io/ls1intum/theia/langserver-java:pr-80
 
   imagePullPolicy: Always
 
@@ -93,6 +95,8 @@ theia-cloud:
         label: Python
       rust-latest:
         label: Rust
+      java-ls-test:
+        label: Java LS Test
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
     infoText: "This is a testing environment for Theia Cloud. Select your programming language and start coding in seconds!"
     loadingText: "⚡ Setting up your development workspace..."
@@ -123,6 +127,13 @@ theia-cloud:
     # -- The client-id. Only has to be specified when enable: true
     clientId: "theia-test"
 
+theia-appdefinitions:
+  apps:
+    - name: java-ls-test
+      image: ghcr.io/ls1intum/theia/theia-no-ls
+      imageTag: pr-80
+      options:
+        langserver-image: ghcr.io/ls1intum/theia/langserver-java:pr-80
 
 monitoring:
   targetNamespaces:
