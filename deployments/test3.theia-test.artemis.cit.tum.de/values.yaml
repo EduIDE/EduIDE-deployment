@@ -99,15 +99,9 @@ theia-cloud:
       rust-latest:
         label: Rust
       java-17-no-ls:
-        label: Java 17 (No LS)
+        label: Java 17 No LS
       rust-no-ls:
-        label: Rust (No LS)
-      java-ls-test:
-        label: Java External LS
-      java-focused-ls-test:
-        label: Java Focused External LS
-      rust-ls-test:
-        label: Rust External LS
+        label: Rust No LS
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
     infoText: "Test environment for Theia with external language server architecture (PR #98). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
@@ -144,23 +138,9 @@ theia-appdefinitions:
       image: ghcr.io/ls1intum/theia/java-17-no-ls
       imageTag: pr-98
       minInstances: 1
+      options:
+        langserver-image: ghcr.io/ls1intum/theia/langserver-java:pr-98
     - name: rust-no-ls
-      image: ghcr.io/ls1intum/theia/rust-no-ls
-      imageTag: pr-98
-      minInstances: 1
-    - name: java-ls-test
-      image: ghcr.io/ls1intum/theia/theia-no-ls
-      imageTag: pr-98
-      minInstances: 1
-      options:
-        langserver-image: ghcr.io/ls1intum/theia/langserver-java:pr-98
-    - name: java-focused-ls-test
-      image: ghcr.io/ls1intum/theia/java-17-no-ls
-      imageTag: pr-98
-      minInstances: 1
-      options:
-        langserver-image: ghcr.io/ls1intum/theia/langserver-java:pr-98
-    - name: rust-ls-test
       image: ghcr.io/ls1intum/theia/rust-no-ls
       imageTag: pr-98
       minInstances: 1
