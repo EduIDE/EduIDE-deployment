@@ -98,6 +98,10 @@ theia-cloud:
         label: Python
       rust-latest:
         label: Rust
+      java-17-no-ls:
+        label: Java 17 (No LS)
+      rust-no-ls:
+        label: Rust (No LS)
       java-ls-test:
         label: Java External LS
       java-focused-ls-test:
@@ -136,6 +140,14 @@ theia-cloud:
 
 theia-appdefinitions:
   apps:
+    - name: java-17-no-ls
+      image: ghcr.io/ls1intum/theia/java-17-no-ls
+      imageTag: pr-98
+      minInstances: 1
+    - name: rust-no-ls
+      image: ghcr.io/ls1intum/theia/rust-no-ls
+      imageTag: pr-98
+      minInstances: 1
     - name: java-ls-test
       image: ghcr.io/ls1intum/theia/theia-no-ls
       imageTag: pr-98
