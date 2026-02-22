@@ -113,7 +113,7 @@ Configuration files for each environment are located in the [deployments/](deplo
 ### Prerequisites
 
 - Kubernetes cluster with Envoy Gateway (Gateway API) installed
-- cert-manager ClusterIssuer configured for DNS-01 (required for wildcard certificates)
+- cert-manager installed and a ClusterIssuer available for certificate issuance
 - Helm 3.x installed
 - kubectl configured for your cluster
 - GitHub repository with appropriate secrets configured
