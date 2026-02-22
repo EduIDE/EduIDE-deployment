@@ -5,5 +5,19 @@ hosts:
     landing: theia
     instance: instance.theia
 
+issuerRef:
+  name: letsencrypt-prod
+  kind: ClusterIssuer
+  group: cert-manager.io
+
+issuer:
+  create: false
+  name: letsencrypt-gateway-http01
+  acme:
+    email: ""
+    server: https://acme-v02.api.letsencrypt.org/directory
+    privateKeySecretName: letsencrypt-gateway-http01-account-key
+    solvers: []
+
 wildcardCertificate: # The base64 encoded wildcard certificate
 wildcardKey: # The base64 encoded wildcard key

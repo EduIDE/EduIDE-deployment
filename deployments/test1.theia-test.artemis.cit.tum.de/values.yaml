@@ -9,6 +9,24 @@ hosts:
 theia-certificates:
   hosts:
     configuration: *hostsConfig
+  issuerRef:
+    name: letsencrypt-gateway-http01
+    kind: Issuer
+    group: cert-manager.io
+  issuer:
+    create: true
+    name: letsencrypt-gateway-http01
+    acme:
+      email: ls1.itg@in.tum.de
+      privateKeySecretName: letsencrypt-gateway-http01-account-key
+      solvers:
+        - http01:
+            gatewayHTTPRoute:
+              parentRefs:
+                - group: gateway.networking.k8s.io
+                  kind: Gateway
+                  name: theia-cloud-gateway
+                  sectionName: http
 
 theia-cloud:
   app:
@@ -26,6 +44,7 @@ theia-cloud:
     enabled: true
     className: envoy
     name: theia-cloud-gateway
+    httpEnabled: true
     instancesWildcardSecretNames: { "*.webview.": static-theia-cert }
     serviceRouteRequestTimeout: "60s"
 

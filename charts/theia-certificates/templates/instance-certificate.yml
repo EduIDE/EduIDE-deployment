@@ -5,8 +5,9 @@ metadata:
 spec:
   secretName: ws-cert-secret
   issuerRef:
-    name: letsencrypt-prod
-    kind: ClusterIssuer
+    name: {{ .Values.issuerRef.name }}
+    kind: {{ .Values.issuerRef.kind }}
+    group: {{ .Values.issuerRef.group }}
   commonName: "{{ .Values.hosts.configuration.instance }}.{{ .Values.hosts.configuration.baseHost }}"
   dnsNames:
     - "{{ .Values.hosts.configuration.instance }}.{{ .Values.hosts.configuration.baseHost }}"
