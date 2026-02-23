@@ -29,6 +29,10 @@
 # Required Environment Variables (configured per GitHub Environment):
 #   - NAMESPACE: Target Kubernetes namespace
 #   - HELM_VALUES_PATH: Path to environment-specific Helm values directory
+# Optional workflow inputs:
+#   - deploy_shared_gateway: Deploy shared gateway in this job
+#   - shared_gateway_values_file: Values file path for shared gateway chart
+#   - shared_gateway_namespace: Namespace for shared gateway release (default: gateway-system)
 # ==============================================================================
 
 name: Deploy Theia Cloud
@@ -55,6 +59,21 @@ on:
         required: false
         type: string
         default: ""
+      deploy_shared_gateway:
+        description: "Whether to deploy the shared gateway release"
+        required: false
+        type: boolean
+        default: false
+      shared_gateway_values_file:
+        description: "Values file path for the shared gateway chart"
+        required: false
+        type: string
+        default: ""
+      shared_gateway_namespace:
+        description: "Namespace to install shared gateway release"
+        required: false
+        type: string
+        default: "gateway-system"
 
 jobs:
   helm-install:
@@ -151,7 +170,22 @@ jobs:
           # This is installed once per cluster, not per environment
           helm upgrade theia-monitoring ./charts/theia-monitoring --install -n default
 
-      # Step 5: Install the main Theia Cloud application with environment-specific configuration
+      # Step 5: Install shared Gateway (optional, cluster-level)
+      - name: Install Shared Gateway (optional)
+        if: inputs.deploy_shared_gateway && inputs.shared_gateway_values_file != ''
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+          SHARED_GATEWAY_VALUES_FILE: ${{ inputs.shared_gateway_values_file }}
+          SHARED_GATEWAY_NAMESPACE: ${{ inputs.shared_gateway_namespace }}
+        run: |
+          SHARED_GATEWAY_NAMESPACE="${SHARED_GATEWAY_NAMESPACE:-gateway-system}"
+
+          helm upgrade --install theia-shared-gateway ./charts/theia-shared-gateway \
+            --namespace "$SHARED_GATEWAY_NAMESPACE" \
+            --create-namespace \
+            -f "$SHARED_GATEWAY_VALUES_FILE"
+
+      # Step 6: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
       - name: Install Theia Cloud in namespace ${{ vars.NAMESPACE }}
         env:

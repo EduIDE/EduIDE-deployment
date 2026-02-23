@@ -24,8 +24,12 @@ theia-cloud:
 
   gateway:
     enabled: true
+    create: true
+    routes:
+      enabled: true
     className: envoy
     name: theia-cloud-gateway
+    parentRefs: []
     instancesWildcardSecretNames: { "*.webview.": static-theia-cert }
     serviceRouteRequestTimeout: "60s"
 
