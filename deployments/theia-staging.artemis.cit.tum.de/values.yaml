@@ -48,12 +48,12 @@ theia-cloud:
   preloading:
     images:
       - ghcr.io/ls1intum/theia/landing-page:latest
-      - ghcr.io/ls1intum/theia/java-17:latest
-      - ghcr.io/ls1intum/theia/c:latest
-      - ghcr.io/ls1intum/theia/javascript:latest
-      - ghcr.io/ls1intum/theia/ocaml:latest
-      - ghcr.io/ls1intum/theia/rust:latest
-      - ghcr.io/ls1intum/theia/python:latest
+      - ghcr.io/ls1intum/theia/java-17:pr-97
+      - ghcr.io/ls1intum/theia/c:pr-97
+      - ghcr.io/ls1intum/theia/javascript:pr-97
+      - ghcr.io/ls1intum/theia/ocaml:pr-97
+      - ghcr.io/ls1intum/theia/rust:pr-97
+      - ghcr.io/ls1intum/theia/python:pr-97
 
   imagePullPolicy: Always
 
@@ -117,3 +117,4 @@ monitoring:
     - theia-staging
   sessionNamespaces:
     - theia-staging
+defaultImageTag: pr-97
