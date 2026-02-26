@@ -159,7 +159,6 @@ dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d -- '\n' | tr -- '+
 - **Namespace isolation**: Each environment uses its own Kubernetes namespace, but test/staging environments typically share the same cluster
 - **Shared gateway values path**: For dedicated clusters (e.g. production), use a cluster-specific shared gateway values file, e.g. `deployments/shared-gateway-prod/values.yaml`
 - **Shared gateway workflow inputs**: Configure `deploy_shared_gateway`, `shared_gateway_values_file`, and `shared_gateway_namespace` in the caller workflows.
-- **Shared cluster ownership**: Set `deploy_shared_gateway=true` in only one caller workflow per cluster to avoid concurrent upgrades of the same shared gateway release.
 
 ## Step 4: Update Workflow Configuration
 
