@@ -148,7 +148,28 @@ Add to userinfo: ON
 
 Click **Save**
 
-### 2.5 Verify Client Scope Assignment
+### 2.5 Configure Admin Group for Scaling Operations
+
+Theia Cloud scaling endpoints are admin-only and require that the authenticated user is in the Keycloak group configured as:
+
+- Helm value: `theia-cloud.keycloak.adminGroup`
+- Service property: `theia.cloud.auth.admin.group`
+
+In this repository, the default is:
+
+```yaml
+theia-cloud:
+  keycloak:
+    adminGroup: "/theia-cloud/admin"
+```
+
+Users must have that exact group in their JWT `groups` claim to use:
+
+- `GET /service/admin/appdefinition/{appId}`
+- `GET /service/admin/appdefinition/{appDefinitionName}/{appId}`
+- `PATCH /service/admin/appdefinition/{appDefinitionName}`
+
+### 2.6 Verify Client Scope Assignment
 
 1. Go back to **Clients > [your-client] > Client scopes**
 2. Verify that `theia-cloud-dedicated` appears under **Assigned client scopes**
