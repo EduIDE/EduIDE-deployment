@@ -4,6 +4,7 @@
 {{- if $existingApp }}
   {{- $existingSpec = get $existingApp "spec" | default dict }}
 {{- end }}
+# min/max from values are only bootstrap defaults. Existing AppDefinition scaling values are preserved across future deployments.
 {{- $minInstances := .minInstances | default 0 }}
 {{- if hasKey $existingSpec "minInstances" }}
   {{- $minInstances = get $existingSpec "minInstances" }}

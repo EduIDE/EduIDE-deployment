@@ -3,6 +3,9 @@
 # Can be overridden via parent chart or --set
 defaultImageTag: latest
 
+# Scaling values in this file are bootstrap defaults for AppDefinitions.
+# After first creation, future Helm deployments preserve live min/max values
+# from existing AppDefinition resources and do not overwrite them.
 apps:
   - name: java-17-latest
     image: ghcr.io/ls1intum/theia/java-17
