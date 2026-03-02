@@ -40,6 +40,7 @@ jobs:
   # Job 1: Deploy to Test1 environment
   # Runs automatically on all PR events OR when manually selected
   # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test1:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test1')
     name: Deploy to Test1
