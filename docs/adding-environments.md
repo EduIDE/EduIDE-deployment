@@ -77,6 +77,9 @@ theia-cloud:
         namespace: gateway-system
 ```
 
+Also update the shared Gateway listeners in `deployments/shared-gateway/values.yaml` (or `deployments/shared-gateway-prod/values.yaml` for production clusters).  
+For each new environment, add listener hostnames for landing, service, instances, and `*.webview.instance...`; otherwise Gateway API routes will not attach for that hostname.
+
 #### Update `theia-base-helm-values.yml`
 
 Usually only requires updating the issuer email if needed:
@@ -184,11 +187,17 @@ workflow_dispatch:
 
 ```yaml
 deploy-test2:
-  if: github.event_name == 'workflow_dispatch' && inputs.environment == 'test2'
+  if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test2')
   name: Deploy to Test2
   uses: ./.github/workflows/deploy-theia.yml
   with:
     environment: test2
+    theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
+    ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+    helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+    deploy_shared_gateway: true
+    shared_gateway_values_file: deployments/shared-gateway/values.yaml
+    shared_gateway_namespace: gateway-system
   secrets: inherit
 ```
 
