@@ -55,10 +55,10 @@ theia-cloud:
       - ghcr.io/ls1intum/theia/landing-page:latest
       - ghcr.io/ls1intum/theia/java-17:latest
       - ghcr.io/ls1intum/theia/rust:latest
-      - ghcr.io/ls1intum/theia/java-17-no-ls:pr-98
-      - ghcr.io/ls1intum/theia/rust-no-ls:pr-98
-      - ghcr.io/ls1intum/theia/langserver-java:pr-98
-      - ghcr.io/ls1intum/theia/langserver-rust:pr-98
+      - ghcr.io/ls1intum/theia/java-17-no-ls:latest
+      - ghcr.io/ls1intum/theia/rust-no-ls:latest
+      - ghcr.io/ls1intum/theia/langserver-java:latest
+      - ghcr.io/ls1intum/theia/langserver-rust:latest
 
   imagePullPolicy: Always
 
@@ -131,16 +131,16 @@ theia-appdefinitions:
   apps:
     - name: java-17-no-ls
       image: ghcr.io/ls1intum/theia/java-17-no-ls
-      imageTag: pr-98
+      imageTag: latest
       minInstances: 1
       options:
-        langserver-image: ghcr.io/ls1intum/theia/langserver-java:pr-98
+        langserver-image: ghcr.io/ls1intum/theia/langserver-java:latest
     - name: rust-no-ls
       image: ghcr.io/ls1intum/theia/rust-no-ls
-      imageTag: pr-98
+      imageTag: latest
       minInstances: 1
       options:
-        langserver-image: ghcr.io/ls1intum/theia/langserver-rust:pr-98
+        langserver-image: ghcr.io/ls1intum/theia/langserver-rust:latest
 
 monitoring:
   targetNamespaces:
