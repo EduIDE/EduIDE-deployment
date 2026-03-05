@@ -16,6 +16,10 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Job 1: Deploy to Test1 environment
+  # Runs automatically on all PR events OR when manually selected
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test1:
     if: github.event_name == 'pull_request'
     name: Deploy to Test1
@@ -25,8 +29,15 @@ jobs:
       theia_cloud_tag: 'latest'
       ide_images_tag: 'latest'
       helm_chart_branch: ''
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit
 
+  # Job 2: Deploy to Test2 environment
+  # Runs automatically on all PR events OR when manually selected
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test2:
     if: github.event_name == 'pull_request'
     name: Deploy to Test2
@@ -36,8 +47,15 @@ jobs:
       theia_cloud_tag: 'latest'
       ide_images_tag: 'latest'
       helm_chart_branch: ''
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit
 
+  # Job 3: Deploy to Test3 environment
+  # Runs automatically on all PR events OR when manually selected
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test3:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Deploy to Test3
@@ -47,4 +65,7 @@ jobs:
       theia_cloud_tag: 'use-values-file'
       ide_images_tag: 'use-values-file'
       helm_chart_branch: ''
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit
