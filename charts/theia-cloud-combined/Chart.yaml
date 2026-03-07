@@ -23,4 +23,4 @@ dependencies:
 
   - name: theia-shared-cache
     version: "0.3.1"
-    repository: "oci://ghcr.io/ls1intum/charts"
+    repository: "oci://ghcr.io/eduide/charts"
