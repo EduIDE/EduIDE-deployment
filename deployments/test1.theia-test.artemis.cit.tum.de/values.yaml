@@ -5,7 +5,6 @@ hosts:
     service: service.test1
     landing: test1
     instance: instance.test1
-    cache: cache.test1
 
 theia-certificates:
   hosts:

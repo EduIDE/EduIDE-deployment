@@ -373,7 +373,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "CPU usage of the cache server and MinIO containers",
+          "description": "CPU usage of the cache server and Redis containers",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "palette-classic" },
@@ -424,7 +424,7 @@ data:
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "editorMode": "code",
-              "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"POD\", container!=\"\", job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\".*cache.*|.*minio.*\"}[1m])) by (pod)",
+              "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"POD\", container!=\"\", job=\"kubelet\", metrics_path=\"/metrics/cadvisor\", namespace=\"$namespace\", pod=~\".*cache.*|.*redis.*\"}[1m])) by (pod)",
               "instant": false,
               "legendFormat": "{{ "{{" }}pod{{ "}}" }}",
               "range": true,
@@ -436,7 +436,7 @@ data:
         },
         {
           "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "description": "Memory usage of the cache server and MinIO containers",
+          "description": "Memory usage of the cache server and Redis containers",
           "fieldConfig": {
             "defaults": {
               "color": { "mode": "palette-classic" },
@@ -488,7 +488,7 @@ data:
             {
               "datasource": { "type": "prometheus", "uid": "prometheus" },
               "editorMode": "code",
-              "expr": "container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\".*cache.*|.*minio.*\", container!=\"POD\", container!=\"\"}",
+              "expr": "container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\".*cache.*|.*redis.*\", container!=\"POD\", container!=\"\"}",
               "instant": false,
               "legendFormat": "{{ "{{" }}pod{{ "}}" }}",
               "range": true,

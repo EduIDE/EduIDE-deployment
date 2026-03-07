@@ -4,7 +4,6 @@ hosts:
     service: service.theia
     landing: theia
     instance: instance.theia
-    cache: cache.theia
 
 wildcardCertificate: # The base64 encoded wildcard certificate
 wildcardKey: # The base64 encoded wildcard key

@@ -5,7 +5,6 @@ hosts:
     service: service.test2
     landing: test2
     instance: instance.test2
-    cache: cache.test2
 
 theia-certificates:
   hosts:
@@ -22,10 +21,6 @@ theia-shared-cache:
   auth:
     enabled: false
 
-  storage:
-    size: 50Gi
-    storageClass: "csi-rbd-sc"
-    
   resources:
     cacheServer:
       requests:
@@ -35,14 +30,14 @@ theia-shared-cache:
         memory: "1Gi"
         cpu: "500m"
 
-    minio:
+    redis:
       requests:
-        memory: "512Mi"
-        cpu: "250m"
+        memory: "128Mi"
+        cpu: "100m"
       limits:
         memory: "2Gi"
         cpu: "1000m"
-  
+
   tls:
     enabled: true
     secretName: cache-internal-cert-secret

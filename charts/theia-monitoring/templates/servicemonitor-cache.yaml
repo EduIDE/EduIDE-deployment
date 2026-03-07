@@ -6,7 +6,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      component: cache-server
+      app.kubernetes.io/component: cache-server
   namespaceSelector:
     matchNames:
       {{- range .Values.sharedCacheNamespaces }}

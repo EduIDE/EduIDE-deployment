@@ -5,7 +5,6 @@ hosts:
     service: service.theia-staging
     landing: theia-staging
     instance: instance.theia-staging
-    cache: cache.theia-staging
 
 theia-certificates:
   hosts:
