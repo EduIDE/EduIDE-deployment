@@ -1,0 +1,21 @@
+gateway:
+  name: theia-shared-gateway
+  namespace: gateway-system
+  className: envoy
+  labels: {}
+  annotations: {}
+
+  # Optional static addresses (if supported by your Gateway controller).
+  # addresses:
+  #   - 131.159.88.21
+  addresses: []
+
+  allowedRoutes:
+    namespaces:
+      from: All
+
+  # Each listener needs:
+  # - name
+  # - hostname
+  # - tlsSecretName
+  listeners: []

@@ -28,6 +28,7 @@ This repository serves as the infrastructure-as-code for deploying and managing 
 │
 ├── charts/                 # Custom Helm charts
 │   ├── theia-cloud-combined/    # Combined chart with all components
+│   ├── theia-shared-gateway/    # Shared Gateway API entrypoint
 │   ├── theia-appdefinitions/    # Custom IDE environments (images/configs)
 │   ├── theia-certificates/      # SSL certificate management
 │   └── theia-metrics/           # Prometheus/Grafana dashboards
@@ -112,18 +113,18 @@ Configuration files for each environment are located in the [deployments/](deplo
 
 ### Prerequisites
 
-- Kubernetes cluster with ingress-nginx controller
+- Kubernetes cluster with Envoy Gateway (Gateway API) installed
+- cert-manager installed and a ClusterIssuer available for certificate issuance
 - Helm 3.x installed
 - kubectl configured for your cluster
 - GitHub repository with appropriate secrets configured
 
 ### Basic Installation
 
-1. **Prepare your cluster** (enable snippet annotations for ingress-nginx):
+1. **Prepare your cluster** (install Envoy Gateway and Gateway API CRDs):
    ```bash
-   kubectl -n ingress-nginx patch cm ingress-nginx-controller \
-     --patch '{"data":{"allow-snippet-annotations":"true","annotations-risk-level":"Critical"}}'
-   kubectl -n ingress-nginx delete pod -l app.kubernetes.io/name=ingress-nginx
+   # Install Envoy Gateway and Gateway API CRDs according to your cluster provider.
+   # Ensure the GatewayClass name matches `theia-cloud.gateway.className` (default: "envoy").
    ```
 
 2. **Install Theia Cloud base charts**:
@@ -138,12 +139,27 @@ Configuration files for each environment are located in the [deployments/](deplo
      -f deployments/your-environment/theia-crds-helm-values.yml
    ```
 
-3. **Install the combined Theia Cloud chart**:
+3. **Install the shared Gateway chart (once per cluster)**:
+   ```bash
+   helm upgrade --install theia-shared-gateway ./charts/theia-shared-gateway \
+     --namespace gateway-system --create-namespace \
+     -f deployments/shared-gateway/values.yaml
+   ```
+   For the dedicated production cluster, use:
+   `deployments/shared-gateway-prod/values.yaml`.
+
+4. **Install the combined Theia Cloud chart**:
    ```bash
    helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined \
      --namespace your-namespace --create-namespace \
      -f deployments/your-environment/values.yaml
    ```
+
+When using GitHub Actions, shared-gateway settings are passed as hardcoded inputs
+by the caller workflows (`deploy-pr.yml`, `deploy-staging.yml`, `deploy-production.yml`):
+- `deploy_shared_gateway` (`true`/`false`)
+- `shared_gateway_values_file` (e.g. `deployments/shared-gateway/values.yaml`)
+- `shared_gateway_namespace` (optional, defaults to `gateway-system`)
 
 ### Using GitHub Actions for Deployment
 

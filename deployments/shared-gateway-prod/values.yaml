@@ -1,0 +1,22 @@
+gateway:
+  name: theia-shared-gateway
+  namespace: gateway-system
+  className: envoy
+
+  allowedRoutes:
+    namespaces:
+      from: All
+
+  listeners:
+    - name: prod-landing
+      hostname: theia.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: prod-service
+      hostname: service.theia.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: prod-instances
+      hostname: instance.theia.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: prod-webview
+      hostname: "*.webview.instance.theia.artemis.cit.tum.de"
+      tlsSecretName: static-theia-cert

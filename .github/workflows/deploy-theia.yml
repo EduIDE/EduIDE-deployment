@@ -29,6 +29,10 @@
 # Required Environment Variables (configured per GitHub Environment):
 #   - NAMESPACE: Target Kubernetes namespace
 #   - HELM_VALUES_PATH: Path to environment-specific Helm values directory
+# Optional workflow inputs:
+#   - deploy_shared_gateway: Deploy shared gateway in this job
+#   - shared_gateway_values_file: Values file path for shared gateway chart
+#   - shared_gateway_namespace: Namespace for shared gateway release (default: gateway-system)
 # ==============================================================================
 
 name: Deploy Theia Cloud
@@ -50,13 +54,33 @@ on:
         required: false
         type: string
         default: "latest"
+      helm_chart_branch:
+        description: "Branch of theia-cloud-helm to use (leave empty for main/published)"
+        required: false
+        type: string
+        default: ""
+      deploy_shared_gateway:
+        description: "Whether to deploy the shared gateway release"
+        required: false
+        type: boolean
+        default: false
+      shared_gateway_values_file:
+        description: "Values file path for the shared gateway chart"
+        required: false
+        type: string
+        default: ""
+      shared_gateway_namespace:
+        description: "Namespace to install shared gateway release"
+        required: false
+        type: string
+        default: "gateway-system"
 
 jobs:
   helm-install:
     name: Install Theia Cloud Helm Chart
     permissions:
       contents: read
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set-stateless
     # Link to GitHub Environment for secrets and protection rules
     environment: ${{ inputs.environment }}
 
@@ -71,6 +95,12 @@ jobs:
         with:
           version: v3.14.0
 
+      # Step 2.5: Install kubectl (not pre-installed on self-hosted runners)
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
       # Step 3: Configure kubectl to connect to the target Kubernetes cluster
       # The KUBECONFIG secret contains the cluster connection configuration
       - name: Setup Kubeconfig
@@ -83,6 +113,39 @@ jobs:
           # Verify connection to cluster
           kubectl config get-contexts
           kubectl get nodes
+
+      # Step 3.5: Checkout upstream Helm chart branch if specified
+      - name: Checkout Upstream Helm Branch
+        if: inputs.helm_chart_branch != ''
+        uses: actions/checkout@v4
+        with:
+          repository: ls1intum/theia-cloud-helm
+          ref: ${{ inputs.helm_chart_branch }}
+          path: upstream-helm
+
+      # Step 3.6: Patch Chart.yaml to use local upstream chart
+      - name: Patch Chart.yaml
+        if: inputs.helm_chart_branch != ''
+        run: |
+          echo "Patching Chart.yaml to use local upstream chart from branch: ${{ inputs.helm_chart_branch }}"
+          
+          # Remove Chart.lock to force fresh dependency resolution
+          rm -f ./charts/theia-cloud-combined/Chart.lock
+          
+          # Get the version from the local upstream chart
+          UPSTREAM_VERSION=$(grep '^version:' ./upstream-helm/charts/theia-cloud/Chart.yaml | head -1 | awk '{print $2}')
+          echo "Detected upstream chart version: $UPSTREAM_VERSION"
+          
+          # Patch the repository URL to use local file path
+          sed -i 's|repository: "https://ls1intum.github.io/theia-cloud-helm"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
+          sed -i 's|repository: "https://eclipse-theia.github.io/theia-cloud-helm/"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
+          sed -i 's|repository: "https://eclipse-theia.github.io/theia-cloud-helm"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
+          
+          # Patch the version to match the local chart's version exactly
+          sed -i "/name: theia-cloud/{n;s/version: .*/version: $UPSTREAM_VERSION/}" ./charts/theia-cloud-combined/Chart.yaml
+          
+          echo "Patched Chart.yaml content:"
+          cat ./charts/theia-cloud-combined/Chart.yaml
 
       # Step 4: Install Theia Cloud base components, CRDs, and cluster-wide monitoring
       # These are prerequisites from the upstream Theia Cloud Helm repository
@@ -98,16 +161,31 @@ jobs:
           helm dependency update ./charts/theia-cloud-combined
 
           # Install base components (operator base, metrics, etc.)
-          helm upgrade theia-cloud-base theia-cloud-repo/theia-cloud-base --install -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
+          helm upgrade theia-cloud-base theia-cloud-repo/theia-cloud-base --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
 
           # Install Custom Resource Definitions (CRDs) for Theia Cloud
-          helm upgrade theia-cloud-crds theia-cloud-repo/theia-cloud-crds --install -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
+          helm upgrade theia-cloud-crds theia-cloud-repo/theia-cloud-crds --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
 
           # Install cluster-wide monitoring (PodMonitors + Grafana Dashboards)
           # This is installed once per cluster, not per environment
-          helm upgrade theia-monitoring ./charts/theia-monitoring --install
+          helm upgrade theia-monitoring ./charts/theia-monitoring --install -n default
 
-      # Step 5: Install the main Theia Cloud application with environment-specific configuration
+      # Step 5: Install shared Gateway (optional, cluster-level)
+      - name: Install Shared Gateway (optional)
+        if: inputs.deploy_shared_gateway && inputs.shared_gateway_values_file != ''
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+          SHARED_GATEWAY_VALUES_FILE: ${{ inputs.shared_gateway_values_file }}
+          SHARED_GATEWAY_NAMESPACE: ${{ inputs.shared_gateway_namespace }}
+        run: |
+          SHARED_GATEWAY_NAMESPACE="${SHARED_GATEWAY_NAMESPACE:-gateway-system}"
+
+          helm upgrade --install theia-shared-gateway ./charts/theia-shared-gateway \
+            --namespace "$SHARED_GATEWAY_NAMESPACE" \
+            --create-namespace \
+            -f "$SHARED_GATEWAY_VALUES_FILE"
+
+      # Step 6: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
       - name: Install Theia Cloud in namespace ${{ vars.NAMESPACE }}
         env:

@@ -1,0 +1,65 @@
+gateway:
+  name: theia-shared-gateway
+  namespace: gateway-system
+  className: envoy
+
+  allowedRoutes:
+    namespaces:
+      from: All
+
+  listeners:
+    # test1
+    - name: test1-landing
+      hostname: test1.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test1-service
+      hostname: service.test1.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test1-instances
+      hostname: instance.test1.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test1-webview
+      hostname: "*.webview.instance.test1.theia-test.artemis.cit.tum.de"
+      tlsSecretName: static-theia-cert
+
+    # test2
+    - name: test2-landing
+      hostname: test2.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test2-service
+      hostname: service.test2.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test2-instances
+      hostname: instance.test2.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test2-webview
+      hostname: "*.webview.instance.test2.theia-test.artemis.cit.tum.de"
+      tlsSecretName: static-theia-cert
+
+    # test3
+    - name: test3-landing
+      hostname: test3.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test3-service
+      hostname: service.test3.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test3-instances
+      hostname: instance.test3.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test3-webview
+      hostname: "*.webview.instance.test3.theia-test.artemis.cit.tum.de"
+      tlsSecretName: static-theia-cert
+
+    # theia-staging
+    - name: staging-landing
+      hostname: theia-staging.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: staging-service
+      hostname: service.theia-staging.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: staging-instances
+      hostname: instance.theia-staging.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: staging-webview
+      hostname: "*.webview.instance.theia-staging.artemis.cit.tum.de"
+      tlsSecretName: static-theia-cert

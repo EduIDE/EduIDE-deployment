@@ -32,12 +32,17 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     name: Auto-deploy to Staging
-    # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings
+    # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+    # Shared gateway inputs are hardcoded for the shared staging/test cluster.
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: theia-staging
+      deploy_shared_gateway: true
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit

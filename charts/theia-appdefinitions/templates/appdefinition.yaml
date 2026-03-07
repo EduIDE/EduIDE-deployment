@@ -4,12 +4,14 @@ apiVersion: theia.cloud/v1beta10
 kind: AppDefinition
 metadata:
   name: {{ .name }}
+  annotations:
+    helm.sh/revision: {{ $.Release.Revision | quote }}
 spec:
   name: {{ .name }}
   image: {{ .image | default "ghcr.io/ls1intum/theia/default" }}:{{ .imageTag | default $.Values.defaultImageTag | default "latest" }}
   uid: {{ .uid | default 101 }}
   port: {{ .port | default 3000 }}
-  ingressname: {{ .ingressname | default "theia-cloud-demo-ws-ingress" }}
+  ingressname: {{ .ingressname | default "theia-cloud-demo-ws-route" }}
   ingressHostnamePrefixes: 
     {{- if .ingressHostnamePrefixes }}
     {{- range .ingressHostnamePrefixes }}
@@ -18,7 +20,7 @@ spec:
     {{- else }}
     - "*.webview."
     {{- end }}
-  minInstances: {{ .minInstances | default 3 }}
+  minInstances: {{ .minInstances | default 0 }}
   maxInstances: {{ .maxInstances | default 10 }}
   requestsMemory: {{ .requestsMemory | default "1000M" }}
   requestsCpu: {{ .requestsCpu | default "100m" }}
@@ -27,10 +29,15 @@ spec:
   imagePullPolicy: {{ .imagePullPolicy | default "IfNotPresent" }}
   downlinkLimit: {{ .downlinkLimit | default 30000 }}
   uplinkLimit: {{ .uplinkLimit | default 30000 }}
-  mountPath: {{ .mountPath | default "/home/project/persisted" }}
+  mountPath: {{ .mountPath | default "/home/project" }}
+  timeout: {{ .timeout | default 1440 }}
   monitor:
     port: {{ (.monitor).port | default 3000 }}
     activityTracker:
-      timeoutAfter: {{ ((.monitor).activityTracker).timeoutAfter | default 20 }}
-      notifyAfter: {{ ((.monitor).activityTracker).notifyAfter | default 15 }}
+      timeoutAfter: {{ ((.monitor).activityTracker).timeoutAfter | default 60 }}
+      notifyAfter: {{ ((.monitor).activityTracker).notifyAfter | default 55 }}
+  {{- if .options }}
+  options:
+    {{- toYaml .options | nindent 4 }}
+  {{- end }}
 {{- end }}

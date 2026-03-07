@@ -9,9 +9,12 @@ apps:
     # imageTag: latest  # Optional: override defaultImageTag for this app
     requestsMemory: 2000M
     requestsCpu: 500m
-    limitsMemory: 2400M
-    minInstances: 1
+    limitsMemory: 3000M
+    minInstances: 3
     maxInstances: 1000
+    options:
+      dataBridgeEnabled: "true"
+      dataBridgePort: "16281"
 
   - name: c-latest
     image: ghcr.io/ls1intum/theia/c
@@ -19,8 +22,11 @@ apps:
     requestsMemory: 100M
     requestsCpu: 200m
     limitsMemory: 2400M
-    minInstances: 1
+    minInstances: 0
     maxInstances: 1000
+    options:
+      dataBridgeEnabled: "true"
+      dataBridgePort: "16281"
 
   - name: javascript-latest
     image: ghcr.io/ls1intum/theia/javascript
@@ -28,8 +34,11 @@ apps:
     requestsMemory: 100M
     requestsCpu: 200m
     limitsMemory: 2400M
-    minInstances: 1
+    minInstances: 0
     maxInstances: 1000
+    options:
+      dataBridgeEnabled: "true"
+      dataBridgePort: "16281"
 
   - name: ocaml-latest
     image: ghcr.io/ls1intum/theia/ocaml
@@ -37,8 +46,11 @@ apps:
     requestsMemory: 100M
     requestsCpu: 200m
     limitsMemory: 2400M
-    minInstances: 1
+    minInstances: 0
     maxInstances: 1000
+    options:
+      dataBridgeEnabled: "true"
+      dataBridgePort: "16281"
 
   - name: python-latest
     image: ghcr.io/ls1intum/theia/python
@@ -46,8 +58,11 @@ apps:
     requestsMemory: 100M
     requestsCpu: 200m
     limitsMemory: 2400M
-    minInstances: 1
+    minInstances: 0
     maxInstances: 1000
+    options:
+      dataBridgeEnabled: "true"
+      dataBridgePort: "16281"
 
   - name: rust-latest
     image: ghcr.io/ls1intum/theia/rust
@@ -55,5 +70,8 @@ apps:
     requestsMemory: 100M
     requestsCpu: 200m
     limitsMemory: 2400M
-    minInstances: 1
+    minInstances: 0
     maxInstances: 1000
+    options:
+      dataBridgeEnabled: "true"
+      dataBridgePort: "16281"

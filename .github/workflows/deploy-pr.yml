@@ -31,11 +31,16 @@ on:
         description: 'IDE images tag (appdefinitions and preloading)'
         required: false
         default: 'latest'
+      helm_chart_branch:
+        description: 'Branch of theia-cloud-helm to use (leave empty for default)'
+        required: false
+        default: ''
 
 jobs:
   # Job 1: Deploy to Test1 environment
   # Runs automatically on all PR events OR when manually selected
-  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test1:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test1')
     name: Deploy to Test1
@@ -44,11 +49,16 @@ jobs:
       environment: test1
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit
 
   # Job 2: Deploy to Test2 environment
   # Runs automatically on all PR events OR when manually selected
-  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test2:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test2')
     name: Deploy to Test2
@@ -57,11 +67,16 @@ jobs:
       environment: test2
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit
 
   # Job 3: Deploy to Test3 environment
   # Runs automatically on all PR events OR when manually selected
-  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test3:
     if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test3')
     name: Deploy to Test3
@@ -70,4 +85,8 @@ jobs:
       environment: test3
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit
