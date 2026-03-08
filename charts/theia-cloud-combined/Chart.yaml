@@ -19,12 +19,8 @@ dependencies:
 
   - name: theia-workspace-garbage-collector
     version: 0.1.0
-<<<<<<< Updated upstream
-    repository: "https://ls1intum.github.io/theia-workspace-garbage-collector/"
-=======
     repository: "oci://ghcr.io/eduide/charts"
 
   - name: theia-shared-cache
     version: "0.3.1"
     repository: "oci://ghcr.io/eduide/charts"
->>>>>>> Stashed changes
