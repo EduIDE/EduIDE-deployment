@@ -49,6 +49,9 @@ theia-cloud:
 
   # service:
   #   image: ghcr.io/ls1intum/theia/service:latest
+  #   adminApiTokenSecret:
+  #     name: service-admin-api-token
+  #     key: ADMIN_API_TOKEN
 
   preloading:
     images:

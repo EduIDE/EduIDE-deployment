@@ -34,6 +34,9 @@ operator:
   storageClassName: csi-rbd-sc
 
 service:
+  adminApiTokenSecret:
+    name: service-admin-api-token
+    key: ADMIN_API_TOKEN
   image: theiacloud/theia-cloud-service:1.1.0-next
 
 preloading:
