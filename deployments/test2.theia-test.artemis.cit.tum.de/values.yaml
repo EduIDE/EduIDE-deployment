@@ -81,8 +81,11 @@ theia-cloud:
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
-    enableCaching: true
-    cacheUrl: "https://theia-cloud-combined-cache:8080/cache/"
+    enableBuildCaching: true
+    buildCacheUrl: "https://theia-cloud-combined-cache-server:8080/cache/"
+    enableBuildCachePush: true
+    enableDependencyCaching: true
+    dependencyCacheUrl: "http://theia-cloud-combined-reposilite:8080"
 
   # service:
   #   image: ghcr.io/ls1intum/theia/service:latest
