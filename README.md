@@ -156,7 +156,7 @@ Configuration files for each environment are located in the [deployments/](deplo
    ```
 
 Normal deployments consume released OCI charts from `ghcr.io/eduide/charts`.
-The `theia-cloud` dependency version in [charts/theia-cloud-combined/Chart.yaml](/Users/lukaskratzel/Uni/bachelor/theia-deployment/charts/theia-cloud-combined/Chart.yaml) controls the main application chart, while `theia-cloud-base` and `theia-cloud-crds` are pinned separately in the workflow at `1.2.0-next.0`.
+The `theia-cloud` dependency version in `charts/theia-cloud-combined/Chart.yaml` controls the main application chart, while `theia-cloud-base` and `theia-cloud-crds` are pinned separately in the workflow at `1.2.0-next.0` and `1.4.0-next.0`.
 For PR previews, you can set `helm_chart_tag` to a value like `pr-123` to pull preview OCI charts published from `theia-cloud-helm` pull requests as versions such as `<chart-version>.pr-123`.
 
 When using GitHub Actions, shared-gateway settings are passed as hardcoded inputs
