@@ -196,7 +196,9 @@ jobs:
           helm upgrade --install theia-shared-gateway ./charts/theia-shared-gateway \
             --namespace "$SHARED_GATEWAY_NAMESPACE" \
             --create-namespace \
-            -f "$SHARED_GATEWAY_VALUES_FILE"
+            -f "$SHARED_GATEWAY_VALUES_FILE" \
+            --set wildcardTLSSecret.certificate="${{ secrets.THEIA_WILDCARD_CERTIFICATE_CERT }}" \
+            --set wildcardTLSSecret.key="${{ secrets.THEIA_WILDCARD_CERTIFICATE_KEY }}"
 
       # Step 6: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
@@ -227,7 +229,7 @@ jobs:
             --set theia-cloud.landingPage.image="ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}" \
             --set theia-cloud.operator.image="ghcr.io/eduide/eduide-cloud/operator:${THEIA_CLOUD_TAG}" \
             --set theia-cloud.service.image="ghcr.io/eduide/eduide-cloud/service:${THEIA_CLOUD_TAG}" \
-            --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduid-cloud/landing-page:${THEIA_CLOUD_TAG}" \
+            --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}" \
             --set "theia-cloud.preloading.images[1]=ghcr.io/eduide/eduide/java-17:${IDE_IMAGES_TAG}" \
             --set "theia-cloud.preloading.images[2]=ghcr.io/eduide/eduide/c:${IDE_IMAGES_TAG}" \
             --set "theia-cloud.preloading.images[3]=ghcr.io/eduide/eduide/javascript:${IDE_IMAGES_TAG}" \
