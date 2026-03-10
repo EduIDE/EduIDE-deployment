@@ -31,8 +31,8 @@ on:
         description: 'IDE images tag (appdefinitions and preloading)'
         required: false
         default: 'latest'
-      helm_chart_branch:
-        description: 'Branch of theia-cloud-helm to use (leave empty for default)'
+      helm_chart_tag:
+        description: 'Preview OCI tag from theia-cloud-helm to use (for example pr-123)'
         required: false
         default: ''
 
@@ -49,7 +49,7 @@ jobs:
       environment: test1
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
-      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
@@ -67,7 +67,7 @@ jobs:
       environment: test2
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
-      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
@@ -85,7 +85,7 @@ jobs:
       environment: test3
       theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
       ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
-      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system

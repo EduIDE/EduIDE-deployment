@@ -194,7 +194,7 @@ deploy-test2:
     environment: test2
     theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
     ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
-    helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+    helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
     deploy_shared_gateway: true
     shared_gateway_values_file: deployments/shared-gateway/values.yaml
     shared_gateway_namespace: gateway-system
