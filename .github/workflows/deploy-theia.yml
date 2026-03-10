@@ -30,6 +30,10 @@
 # Required Environment Variables (configured per GitHub Environment):
 #   - NAMESPACE: Target Kubernetes namespace
 #   - HELM_VALUES_PATH: Path to environment-specific Helm values directory
+# Optional workflow inputs:
+#   - deploy_shared_gateway: Deploy shared gateway in this job
+#   - shared_gateway_values_file: Values file path for shared gateway chart
+#   - shared_gateway_namespace: Namespace for shared gateway release (default: gateway-system)
 # ==============================================================================
 
 name: Deploy Theia Cloud
@@ -51,17 +55,33 @@ on:
         required: false
         type: string
         default: "latest"
-      helm_chart_branch:
-        description: "Branch of theia-cloud-helm to use (leave empty for main/published)"
+      helm_chart_tag:
+        description: "Published OCI preview tag to use for upstream helm charts (e.g. pr-123)"
         required: false
         type: string
         default: ""
+      deploy_shared_gateway:
+        description: "Whether to deploy the shared gateway release"
+        required: false
+        type: boolean
+        default: false
+      shared_gateway_values_file:
+        description: "Values file path for the shared gateway chart"
+        required: false
+        type: string
+        default: ""
+      shared_gateway_namespace:
+        description: "Namespace to install shared gateway release"
+        required: false
+        type: string
+        default: "gateway-system"
 
 jobs:
   helm-install:
     name: Install Theia Cloud Helm Chart
     permissions:
       contents: read
+      packages: read
     runs-on: ubuntu-latest
     # Link to GitHub Environment for secrets and protection rules
     environment: ${{ inputs.environment }}
@@ -96,38 +116,36 @@ jobs:
           kubectl config get-contexts
           kubectl get nodes
 
-      # Step 3.5: Checkout upstream Helm chart branch if specified
-      - name: Checkout Upstream Helm Branch
-        if: inputs.helm_chart_branch != ''
-        uses: actions/checkout@v4
-        with:
-          repository: ls1intum/theia-cloud-helm
-          ref: ${{ inputs.helm_chart_branch }}
-          path: upstream-helm
-
-      # Step 3.6: Patch Chart.yaml to use local upstream chart
-      - name: Patch Chart.yaml
-        if: inputs.helm_chart_branch != ''
+      - name: Patch Chart.yaml for OCI preview tag
+        if: inputs.helm_chart_tag != ''
         run: |
-          echo "Patching Chart.yaml to use local upstream chart from branch: ${{ inputs.helm_chart_branch }}"
-          
-          # Remove Chart.lock to force fresh dependency resolution
-          rm -f ./charts/theia-cloud-combined/Chart.lock
-          
-          # Get the version from the local upstream chart
-          UPSTREAM_VERSION=$(grep '^version:' ./upstream-helm/charts/theia-cloud/Chart.yaml | head -1 | awk '{print $2}')
-          echo "Detected upstream chart version: $UPSTREAM_VERSION"
-          
-          # Patch the repository URL to use local file path
-          sed -i 's|repository: "https://ls1intum.github.io/theia-cloud-helm"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
-          sed -i 's|repository: "https://eclipse-theia.github.io/theia-cloud-helm/"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
-          sed -i 's|repository: "https://eclipse-theia.github.io/theia-cloud-helm"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
-          
-          # Patch the version to match the local chart's version exactly
-          sed -i "/name: theia-cloud/{n;s/version: .*/version: $UPSTREAM_VERSION/}" ./charts/theia-cloud-combined/Chart.yaml
-          
-          echo "Patched Chart.yaml content:"
+          set -euo pipefail
+
+          get_theia_cloud_version() {
+            awk '
+              $1 == "-" && $2 == "name:" && $3 == "theia-cloud" { in_dep=1; next }
+              in_dep && $1 == "version:" { print $2; exit }
+            ' ./charts/theia-cloud-combined/Chart.yaml
+          }
+
+          normalize_preview_version() {
+            local base="$1"
+            local tag="$2"
+            printf '%s.%s' "$base" "$tag"
+          }
+
+          THEIA_CLOUD_VERSION="$(get_theia_cloud_version)"
+          PREVIEW_VERSION="$(normalize_preview_version "$THEIA_CLOUD_VERSION" "${{ inputs.helm_chart_tag }}")"
+          sed -i "/name: theia-cloud/{n;s|version: .*|version: ${PREVIEW_VERSION}|;}" ./charts/theia-cloud-combined/Chart.yaml
+
+          echo "Using OCI preview version: ${PREVIEW_VERSION}"
           cat ./charts/theia-cloud-combined/Chart.yaml
+
+      - name: Login to GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GHCR_TOKEN" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       # Step 4: Install Theia Cloud base components, CRDs, and cluster-wide monitoring
       # These are prerequisites from the upstream Theia Cloud Helm repository
@@ -135,24 +153,67 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
         run: |
-          # Add upstream Theia Cloud Helm repository
-          helm repo add theia-cloud-repo https://eclipse-theia.github.io/theia-cloud-helm/
-          helm repo update
-
           # Update dependencies for our custom chart
           helm dependency update ./charts/theia-cloud-combined
+      - name: Install Theia Cloud base and CRDs
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          set -euo pipefail
+
+          THEIA_CLOUD_BASE_VERSION="1.4.0-next.0"
+          THEIA_CLOUD_CRDS_VERSION="1.2.0-next.0"
+
+          if [ -n "${{ inputs.helm_chart_tag }}" ]; then
+            normalize_preview_version() {
+              local base="$1"
+              local tag="$2"
+              printf '%s.%s' "$base" "$tag"
+            }
+
+            THEIA_CLOUD_BASE_VERSION="$(normalize_preview_version "$THEIA_CLOUD_BASE_VERSION" "${{ inputs.helm_chart_tag }}")"
+            THEIA_CLOUD_CRDS_VERSION="$(normalize_preview_version "$THEIA_CLOUD_CRDS_VERSION" "${{ inputs.helm_chart_tag }}")"
+          fi
+          THEIA_CLOUD_BASE_CHART=oci://ghcr.io/eduide/charts/theia-cloud-base
+          THEIA_CLOUD_CRDS_CHART=oci://ghcr.io/eduide/charts/theia-cloud-crds
 
           # Install base components (operator base, metrics, etc.)
-          helm upgrade theia-cloud-base theia-cloud-repo/theia-cloud-base --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
+          helm upgrade theia-cloud-base "$THEIA_CLOUD_BASE_CHART" --version "$THEIA_CLOUD_BASE_VERSION" --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
 
           # Install Custom Resource Definitions (CRDs) for Theia Cloud
-          helm upgrade theia-cloud-crds theia-cloud-repo/theia-cloud-crds --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
+          helm upgrade theia-cloud-crds "$THEIA_CLOUD_CRDS_CHART" --version "$THEIA_CLOUD_CRDS_VERSION" --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
+
+      - name: Install cluster-wide monitoring
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
 
           # Install cluster-wide monitoring (PodMonitors + Grafana Dashboards)
           # This is installed once per cluster, not per environment
           helm upgrade theia-monitoring ./charts/theia-monitoring --install -n default
 
-      # Step 5: Install the main Theia Cloud application with environment-specific configuration
+      # Step 5: Install shared Gateway (optional, cluster-level)
+      - name: Install Shared Gateway (optional)
+        if: inputs.deploy_shared_gateway && inputs.shared_gateway_values_file != ''
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+          SHARED_GATEWAY_VALUES_FILE: ${{ inputs.shared_gateway_values_file }}
+          SHARED_GATEWAY_NAMESPACE: ${{ inputs.shared_gateway_namespace }}
+        run: |
+          set -euo pipefail
+
+          SHARED_GATEWAY_NAMESPACE="${SHARED_GATEWAY_NAMESPACE:-gateway-system}"
+          echo "${{ secrets.THEIA_WILDCARD_CERTIFICATE_CERT }}" | base64 -w 0 > shared-gateway-wildcard.crt
+          echo "${{ secrets.THEIA_WILDCARD_CERTIFICATE_KEY }}" | base64 -w 0 > shared-gateway-wildcard.key
+
+          helm upgrade --install theia-shared-gateway ./charts/theia-shared-gateway \
+            --namespace "$SHARED_GATEWAY_NAMESPACE" \
+            --create-namespace \
+            -f "$SHARED_GATEWAY_VALUES_FILE" \
+            --set wildcardTLSSecret.certificate="$(cat shared-gateway-wildcard.crt)" \
+            --set wildcardTLSSecret.key="$(cat shared-gateway-wildcard.key)"
+
+      # Step 6: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
       - name: Install Theia Cloud in namespace ${{ vars.NAMESPACE }}
         env:
@@ -180,14 +241,14 @@ jobs:
             --set theia-certificates.wildcardCertificate="$(cat wildcard.crt)" \
             --set theia-certificates.wildcardKey="$(cat wildcard.key)" \
             --set theia-cloud.keycloak.cookieSecret="${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}" \
-            --set theia-cloud.landingPage.image="ghcr.io/ls1intum/theia/landing-page:${THEIA_CLOUD_TAG}" \
-            --set theia-cloud.operator.image="ghcr.io/ls1intum/theia/operator:${THEIA_CLOUD_TAG}" \
-            --set theia-cloud.service.image="ghcr.io/ls1intum/theia/service:${THEIA_CLOUD_TAG}" \
-            --set "theia-cloud.preloading.images[0]=ghcr.io/ls1intum/theia/landing-page:${THEIA_CLOUD_TAG}" \
-            --set "theia-cloud.preloading.images[1]=ghcr.io/ls1intum/theia/java-17:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[2]=ghcr.io/ls1intum/theia/c:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[3]=ghcr.io/ls1intum/theia/javascript:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[4]=ghcr.io/ls1intum/theia/ocaml:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[5]=ghcr.io/ls1intum/theia/rust:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[6]=ghcr.io/ls1intum/theia/python:${IDE_IMAGES_TAG}" \
+            --set theia-cloud.landingPage.image="ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}" \
+            --set theia-cloud.operator.image="ghcr.io/eduide/eduide-cloud/operator:${THEIA_CLOUD_TAG}" \
+            --set theia-cloud.service.image="ghcr.io/eduide/eduide-cloud/service:${THEIA_CLOUD_TAG}" \
+            --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}" \
+            --set "theia-cloud.preloading.images[1]=ghcr.io/eduide/eduide/java-17:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[2]=ghcr.io/eduide/eduide/c:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[3]=ghcr.io/eduide/eduide/javascript:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[4]=ghcr.io/eduide/eduide/ocaml:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[5]=ghcr.io/eduide/eduide/rust:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[6]=ghcr.io/eduide/eduide/python:${IDE_IMAGES_TAG}" \
             --set theia-appdefinitions.defaultImageTag="${IDE_IMAGES_TAG}"

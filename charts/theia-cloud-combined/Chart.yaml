@@ -6,8 +6,8 @@ appVersion: 1.0.0
 
 dependencies:
   - name: theia-cloud
-    version: 1.3.0-next.4
-    repository: "https://ls1intum.github.io/theia-cloud-helm"
+    version: 1.4.0-next.0
+    repository: "oci://ghcr.io/eduide/charts"
 
   - name: theia-certificates
     version: 0.1.0
@@ -19,4 +19,8 @@ dependencies:
 
   - name: theia-workspace-garbage-collector
     version: 0.1.0
-    repository: "https://ls1intum.github.io/theia-workspace-garbage-collector/"
+    repository: "oci://ghcr.io/eduide/charts"
+
+  - name: theia-shared-cache
+    version: "0.3.1"
+    repository: "oci://ghcr.io/eduide/charts"

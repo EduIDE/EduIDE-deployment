@@ -22,10 +22,10 @@ metadata:
     helm.sh/revision: {{ $.Release.Revision | quote }}
 spec:
   name: {{ .name }}
-  image: {{ .image | default "ghcr.io/ls1intum/theia/default" }}:{{ .imageTag | default $.Values.defaultImageTag | default "latest" }}
+  image: {{ .image | default "ghcr.io/eduide/eduide/default" }}:{{ .imageTag | default $.Values.defaultImageTag | default "latest" }}
   uid: {{ .uid | default 101 }}
   port: {{ .port | default 3000 }}
-  ingressname: {{ .ingressname | default "theia-cloud-demo-ws-ingress" }}
+  ingressname: {{ .ingressname | default "theia-cloud-demo-ws-route" }}
   ingressHostnamePrefixes: 
     {{- if .ingressHostnamePrefixes }}
     {{- range .ingressHostnamePrefixes }}
