@@ -80,7 +80,7 @@ jobs:
     name: Install Theia Cloud Helm Chart
     permissions:
       contents: read
-    runs-on: arc-runner-set-stateless
+    runs-on: ubuntu-latest
     # Link to GitHub Environment for secrets and protection rules
     environment: ${{ inputs.environment }}
 
@@ -119,7 +119,7 @@ jobs:
         if: inputs.helm_chart_branch != ''
         uses: actions/checkout@v4
         with:
-          repository: ls1intum/theia-cloud-helm
+          repository: EduIDE/EduIDE-Helm
           ref: ${{ inputs.helm_chart_branch }}
           path: upstream-helm
 
@@ -137,9 +137,7 @@ jobs:
           echo "Detected upstream chart version: $UPSTREAM_VERSION"
           
           # Patch the repository URL to use local file path
-          sed -i 's|repository: "https://ls1intum.github.io/theia-cloud-helm"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
-          sed -i 's|repository: "https://eclipse-theia.github.io/theia-cloud-helm/"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
-          sed -i 's|repository: "https://eclipse-theia.github.io/theia-cloud-helm"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
+          sed -i 's|repository: "https://eduide.github.io/EduIDE-Helm"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
           
           # Patch the version to match the local chart's version exactly
           sed -i "/name: theia-cloud/{n;s/version: .*/version: $UPSTREAM_VERSION/}" ./charts/theia-cloud-combined/Chart.yaml
@@ -153,8 +151,8 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
         run: |
-          # Add upstream Theia Cloud Helm repository
-          helm repo add theia-cloud-repo https://eclipse-theia.github.io/theia-cloud-helm/
+          # Add EduIDE Theia Cloud Helm repository
+          helm repo add theia-cloud-repo https://eduide.github.io/EduIDE-Helm/
           helm repo update
 
           # Update dependencies for our custom chart
