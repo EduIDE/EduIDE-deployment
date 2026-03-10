@@ -148,25 +148,30 @@ Add to userinfo: ON
 
 Click **Save**
 
-### 2.5 Configure Admin Group for Scaling Operations
+### 2.5 Configure Admin API Token for Scaling Operations
 
-Theia Cloud scaling endpoints are admin-only and require that the authenticated user is in the Keycloak group configured as:
+Theia Cloud scaling endpoints are no longer protected through the Keycloak admin group.
+They are protected by a dedicated admin API token configured in the service as:
 
-- Helm value: `theia-cloud.keycloak.adminGroup`
-- Service property: `theia.cloud.auth.admin.group`
+- Service property: `theia.cloud.admin.api.token`
+- Container environment variable: `ADMIN_API_TOKEN`
+- Deployment secret reference: `theia-cloud.service.adminApiTokenSecret`
 
-In this repository, the default is:
+In this repository, the token is typically supplied through the deployment workflow secret:
 
-```yaml
-theia-cloud:
-  keycloak:
-    adminGroup: "/theia-cloud/admin"
+- GitHub environment secret: `THEIA_ADMIN_API_TOKEN`
+
+Requests to the scaling endpoints must send that token in the `X-Admin-Api-Token` header:
+
+```bash
+curl -H "X-Admin-Api-Token: <token>" \
+  https://service.<environment>/service/admin/appdefinition
 ```
 
-Users must have that exact group in their JWT `groups` claim to use:
+Current scaling endpoints:
 
-- `GET /service/admin/appdefinition/{appId}`
-- `GET /service/admin/appdefinition/{appDefinitionName}/{appId}`
+- `GET /service/admin/appdefinition`
+- `GET /service/admin/appdefinition/{appDefinitionName}`
 - `PATCH /service/admin/appdefinition/{appDefinitionName}`
 
 ### 2.6 Verify Client Scope Assignment
