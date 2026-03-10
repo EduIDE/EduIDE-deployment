@@ -49,7 +49,6 @@ preloading:
     - ghcr.io/eduide/eduide/ocaml:latest
     - ghcr.io/eduide/eduide/rust:latest
     - ghcr.io/eduide/eduide/python:latest
-    - quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
 
 imagePullPolicy: Always
 

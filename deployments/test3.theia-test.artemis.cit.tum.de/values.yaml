@@ -66,7 +66,6 @@ theia-cloud:
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
       - ghcr.io/eduide/eduide/python:latest
-      - quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
       - ghcr.io/eduide/eduide/theia-no-ls:pr-46
       - ghcr.io/eduide/eduide/langserver-java:pr-46
 
