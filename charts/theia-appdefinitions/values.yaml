@@ -5,7 +5,7 @@ defaultImageTag: latest
 
 apps:
   - name: java-17-latest
-    image: ghcr.io/ls1intum/theia/java-17
+    image: ghcr.io/eduide/eduide/java-17
     # imageTag: latest  # Optional: override defaultImageTag for this app
     requestsMemory: 2000M
     requestsCpu: 500m
@@ -17,7 +17,7 @@ apps:
       dataBridgePort: "16281"
 
   - name: c-latest
-    image: ghcr.io/ls1intum/theia/c
+    image: ghcr.io/eduide/eduide/c
     # imageTag: latest  # Optional: override defaultImageTag for this app
     requestsMemory: 100M
     requestsCpu: 200m
@@ -29,7 +29,7 @@ apps:
       dataBridgePort: "16281"
 
   - name: javascript-latest
-    image: ghcr.io/ls1intum/theia/javascript
+    image: ghcr.io/eduide/eduide/javascript
     # imageTag: latest  # Optional: override defaultImageTag for this app
     requestsMemory: 100M
     requestsCpu: 200m
@@ -41,7 +41,7 @@ apps:
       dataBridgePort: "16281"
 
   - name: ocaml-latest
-    image: ghcr.io/ls1intum/theia/ocaml
+    image: ghcr.io/eduide/eduide/ocaml
     # imageTag: latest  # Optional: override defaultImageTag for this app
     requestsMemory: 100M
     requestsCpu: 200m
@@ -53,7 +53,7 @@ apps:
       dataBridgePort: "16281"
 
   - name: python-latest
-    image: ghcr.io/ls1intum/theia/python
+    image: ghcr.io/eduide/eduide/python
     # imageTag: latest  # Optional: override defaultImageTag for this app
     requestsMemory: 100M
     requestsCpu: 200m
@@ -65,7 +65,7 @@ apps:
       dataBridgePort: "16281"
 
   - name: rust-latest
-    image: ghcr.io/ls1intum/theia/rust
+    image: ghcr.io/eduide/eduide/rust
     # imageTag: latest  # Optional: override defaultImageTag for this app
     requestsMemory: 100M
     requestsCpu: 200m

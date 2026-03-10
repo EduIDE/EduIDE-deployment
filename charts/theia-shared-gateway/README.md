@@ -21,7 +21,8 @@ For production cluster values, use `deployments/shared-gateway-prod/values.yaml`
 
 ## Notes
 
-- TLS secrets referenced by listeners must exist in `gateway.namespace`.
+- The shared gateway chart should own the TLS material referenced by its listeners.
+- For production, use cert-manager `Certificate` resources for concrete hosts and create the wildcard webview secret in `gateway.namespace` from the deploy-time wildcard certificate/key.
 - Tenant charts should set:
   - `theia-cloud.gateway.create=false`
   - `theia-cloud.gateway.routes.enabled=true`

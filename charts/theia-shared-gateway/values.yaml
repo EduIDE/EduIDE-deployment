@@ -19,3 +19,32 @@ gateway:
   # - hostname
   # - tlsSecretName
   listeners: []
+
+gatewayClass:
+  create: false
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  labels: {}
+  annotations: {}
+  parametersRef: {}
+
+envoyProxy:
+  create: false
+  name: theia-shared-gateway
+  namespace: envoy-gateway-system
+  labels: {}
+  annotations: {}
+  spec: {}
+
+managedCertificates:
+  enabled: false
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  certificates: []
+
+wildcardTLSSecret:
+  create: false
+  name: static-theia-cert
+  namespace: gateway-system
+  certificate: ""
+  key: ""

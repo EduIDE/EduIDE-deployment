@@ -129,13 +129,12 @@ Configuration files for each environment are located in the [deployments/](deplo
 
 2. **Install Theia Cloud base charts**:
    ```bash
-   helm repo add theia-cloud-repo https://eclipse-theia.github.io/theia-cloud-helm/
-   helm repo update
+   helm registry login ghcr.io
 
-   helm upgrade theia-cloud-base theia-cloud-repo/theia-cloud-base --install \
+   helm upgrade theia-cloud-base oci://ghcr.io/eduide/charts/theia-cloud-base --version 1.2.0-next.0 --install \
      -f deployments/your-environment/theia-base-helm-values.yml
 
-   helm upgrade theia-cloud-crds theia-cloud-repo/theia-cloud-crds --install \
+   helm upgrade theia-cloud-crds oci://ghcr.io/eduide/charts/theia-cloud-crds --version 1.2.0-next.0 --install \
      -f deployments/your-environment/theia-crds-helm-values.yml
    ```
 
@@ -150,10 +149,15 @@ Configuration files for each environment are located in the [deployments/](deplo
 
 4. **Install the combined Theia Cloud chart**:
    ```bash
+   helm registry login ghcr.io
    helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined \
      --namespace your-namespace --create-namespace \
      -f deployments/your-environment/values.yaml
    ```
+
+Normal deployments consume released OCI charts from `ghcr.io/eduide/charts`.
+The `theia-cloud` dependency version in `charts/theia-cloud-combined/Chart.yaml` controls the main application chart, while `theia-cloud-base` and `theia-cloud-crds` are pinned separately in the workflow at `1.2.0-next.0` and `1.4.0-next.0`.
+For PR previews, you can set `helm_chart_tag` to a value like `pr-123` to pull preview OCI charts published from `theia-cloud-helm` pull requests as versions such as `<chart-version>.pr-123`.
 
 When using GitHub Actions, shared-gateway settings are passed as hardcoded inputs
 by the caller workflows (`deploy-pr.yml`, `deploy-staging.yml`, `deploy-production.yml`):

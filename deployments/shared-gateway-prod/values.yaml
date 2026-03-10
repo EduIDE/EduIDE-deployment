@@ -10,13 +10,56 @@ gateway:
   listeners:
     - name: prod-landing
       hostname: theia.artemis.cit.tum.de
-      tlsSecretName: shared-theia-cert
+      tlsSecretName: landing-page-cert-secret
     - name: prod-service
       hostname: service.theia.artemis.cit.tum.de
-      tlsSecretName: shared-theia-cert
+      tlsSecretName: service-cert-secret
     - name: prod-instances
       hostname: instance.theia.artemis.cit.tum.de
-      tlsSecretName: shared-theia-cert
+      tlsSecretName: ws-cert-secret
     - name: prod-webview
       hostname: "*.webview.instance.theia.artemis.cit.tum.de"
       tlsSecretName: static-theia-cert
+
+gatewayClass:
+  create: true
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  parametersRef:
+    group: gateway.envoyproxy.io
+    kind: EnvoyProxy
+    name: theia-shared-gateway
+    namespace: envoy-gateway-system
+
+envoyProxy:
+  create: true
+  name: theia-shared-gateway
+  namespace: envoy-gateway-system
+  spec:
+    provider:
+      type: Kubernetes
+      kubernetes:
+        envoyService:
+          annotations:
+            metallb.io/address-pool: ingress
+            metallb.io/loadBalancerIPs: 131.159.88.82
+
+managedCertificates:
+  enabled: true
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  certificates:
+    - name: landing-page-cert
+      secretName: landing-page-cert-secret
+      hostname: theia.artemis.cit.tum.de
+    - name: service-cert
+      secretName: service-cert-secret
+      hostname: service.theia.artemis.cit.tum.de
+    - name: instance-cert
+      secretName: ws-cert-secret
+      hostname: instance.theia.artemis.cit.tum.de
+
+wildcardTLSSecret:
+  create: true
+  name: static-theia-cert
+  namespace: gateway-system

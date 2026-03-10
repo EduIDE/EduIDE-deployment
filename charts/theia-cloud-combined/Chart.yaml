@@ -7,7 +7,7 @@ appVersion: 1.0.0
 dependencies:
   - name: theia-cloud
     version: 1.4.0-next.0
-    repository: "https://eduide.github.io/EduIDE-Helm"
+    repository: "oci://ghcr.io/eduide/charts"
 
   - name: theia-certificates
     version: 0.1.0
