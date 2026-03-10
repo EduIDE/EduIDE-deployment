@@ -114,7 +114,15 @@ jobs:
           kubectl config get-contexts
           kubectl get nodes
 
-      # Step 3.5: Checkout upstream Helm chart branch if specified
+      # Step 3.5: Checkout upstream Helm charts from the source repository.
+      - name: Checkout Upstream Helm Main
+        if: inputs.helm_chart_branch == ''
+        uses: actions/checkout@v4
+        with:
+          repository: EduIDE/EduIDE-Helm
+          ref: main
+          path: upstream-helm
+
       - name: Checkout Upstream Helm Branch
         if: inputs.helm_chart_branch != ''
         uses: actions/checkout@v4
@@ -123,11 +131,14 @@ jobs:
           ref: ${{ inputs.helm_chart_branch }}
           path: upstream-helm
 
-      # Step 3.6: Patch Chart.yaml to use local upstream chart
+      # Step 3.6: Patch Chart.yaml to use the checked-out upstream chart
       - name: Patch Chart.yaml
-        if: inputs.helm_chart_branch != ''
         run: |
-          echo "Patching Chart.yaml to use local upstream chart from branch: ${{ inputs.helm_chart_branch }}"
+          if [ -n "${{ inputs.helm_chart_branch }}" ]; then
+            echo "Patching Chart.yaml to use local upstream chart from branch: ${{ inputs.helm_chart_branch }}"
+          else
+            echo "Patching Chart.yaml to use local upstream chart from main"
+          fi
           
           # Remove Chart.lock to force fresh dependency resolution
           rm -f ./charts/theia-cloud-combined/Chart.lock
@@ -136,11 +147,8 @@ jobs:
           UPSTREAM_VERSION=$(grep '^version:' ./upstream-helm/charts/theia-cloud/Chart.yaml | head -1 | awk '{print $2}')
           echo "Detected upstream chart version: $UPSTREAM_VERSION"
           
-          # Patch the repository URL to use local file path
-          sed -i 's|repository: "https://eduide.github.io/EduIDE-Helm"|repository: "file://../../upstream-helm/charts/theia-cloud"|' ./charts/theia-cloud-combined/Chart.yaml
-          
-          # Patch the version to match the local chart's version exactly
-          sed -i "/name: theia-cloud/{n;s/version: .*/version: $UPSTREAM_VERSION/}" ./charts/theia-cloud-combined/Chart.yaml
+          # Patch the dependency to use the local checkout instead of the published OCI chart.
+          sed -i "/name: theia-cloud/{n;s|version: .*|version: $UPSTREAM_VERSION|;n;s|repository: .*|repository: \"file://../../upstream-helm/charts/theia-cloud\"|;}" ./charts/theia-cloud-combined/Chart.yaml
           
           echo "Patched Chart.yaml content:"
           cat ./charts/theia-cloud-combined/Chart.yaml
@@ -151,18 +159,25 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
         run: |
-          # Add EduIDE Theia Cloud Helm repository
-          helm repo add theia-cloud-repo https://eduide.github.io/EduIDE-Helm/
-          helm repo update
-
           # Update dependencies for our custom chart
           helm dependency update ./charts/theia-cloud-combined
+      - name: Install Theia Cloud base and CRDs
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          THEIA_CLOUD_BASE_CHART=./upstream-helm/charts/theia-cloud-base
+          THEIA_CLOUD_CRDS_CHART=./upstream-helm/charts/theia-cloud-crds
 
           # Install base components (operator base, metrics, etc.)
-          helm upgrade theia-cloud-base theia-cloud-repo/theia-cloud-base --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
+          helm upgrade theia-cloud-base "$THEIA_CLOUD_BASE_CHART" --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
 
           # Install Custom Resource Definitions (CRDs) for Theia Cloud
-          helm upgrade theia-cloud-crds theia-cloud-repo/theia-cloud-crds --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
+          helm upgrade theia-cloud-crds "$THEIA_CLOUD_CRDS_CHART" --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
+
+      - name: Install cluster-wide monitoring
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
 
           # Install cluster-wide monitoring (PodMonitors + Grafana Dashboards)
           # This is installed once per cluster, not per environment
