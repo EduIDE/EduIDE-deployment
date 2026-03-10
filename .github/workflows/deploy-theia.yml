@@ -224,10 +224,10 @@ jobs:
             --set theia-certificates.wildcardCertificate="$(cat wildcard.crt)" \
             --set theia-certificates.wildcardKey="$(cat wildcard.key)" \
             --set theia-cloud.keycloak.cookieSecret="${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}" \
-            --set theia-cloud.landingPage.image="ghcr.io/eduide/eduide/landing-page:${THEIA_CLOUD_TAG}" \
-            --set theia-cloud.operator.image="ghcr.io/eduide/eduide/operator:${THEIA_CLOUD_TAG}" \
-            --set theia-cloud.service.image="ghcr.io/eduide/eduide/service:${THEIA_CLOUD_TAG}" \
-            --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduide/landing-page:${THEIA_CLOUD_TAG}" \
+            --set theia-cloud.landingPage.image="ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}" \
+            --set theia-cloud.operator.image="ghcr.io/eduide/eduide-cloud/operator:${THEIA_CLOUD_TAG}" \
+            --set theia-cloud.service.image="ghcr.io/eduide/eduide-cloud/service:${THEIA_CLOUD_TAG}" \
+            --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduid-cloud/landing-page:${THEIA_CLOUD_TAG}" \
             --set "theia-cloud.preloading.images[1]=ghcr.io/eduide/eduide/java-17:${IDE_IMAGES_TAG}" \
             --set "theia-cloud.preloading.images[2]=ghcr.io/eduide/eduide/c:${IDE_IMAGES_TAG}" \
             --set "theia-cloud.preloading.images[3]=ghcr.io/eduide/eduide/javascript:${IDE_IMAGES_TAG}" \
