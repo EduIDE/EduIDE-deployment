@@ -51,6 +51,9 @@ theia-cloud:
 
   # service:
   #   image: ghcr.io/eduide/eduide/service:latest
+  #   adminApiTokenSecret:
+  #     name: service-admin-api-token
+  #     key: ADMIN_API_TOKEN
 
   preloading:
     images:

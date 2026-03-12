@@ -9,6 +9,9 @@ hosts:
 theia-certificates:
   hosts:
     configuration: *hostsConfig
+  adminApiTokenSecret:
+    name: service-admin-api-token
+    key: ADMIN_API_TOKEN
 
 theia-cloud:
   app:
@@ -51,6 +54,10 @@ theia-cloud:
     image: ghcr.io/eduide/eduide/service:latest
     # Public token (must match app.id or be set explicitly)
     authToken: nJV3nKZmpxTD4wu2 
+    # Secret containing the admin API token, created by the theia-certificates chart
+    adminApiTokenSecret:
+      name: service-admin-api-token
+      key: ADMIN_API_TOKEN
 
   preloading:
     images:

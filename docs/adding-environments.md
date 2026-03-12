@@ -143,6 +143,9 @@ Add the following secrets to your environment:
 | `THEIA_WILDCARD_CERTIFICATE_CERT` | Wildcard SSL certificate  | See [TUM Certificates](tum-certificates.md) |
 | `THEIA_WILDCARD_CERTIFICATE_KEY` | Wildcard SSL key | See [TUM Certificates](tum-certificates.md) |
 | `THEIA_KEYCLOAK_COOKIE_SECRET` | OAuth2 proxy cookie secret | See below |
+| `THEIA_ADMIN_API_TOKEN` | Admin bearer token for protected service admin endpoints | Generate a long random string and store it as an environment secret. |
+
+The deployment workflow base64-encodes `THEIA_ADMIN_API_TOKEN` and passes it into the `theia-certificates` chart, which creates the Kubernetes Secret for the namespace alongside the TLS secret templates.
 
 Create the `THEIA_KEYCLOAK_COOKIE_SECRET` using the following command:
 ```bash

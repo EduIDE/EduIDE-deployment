@@ -7,3 +7,8 @@ hosts:
 
 wildcardCertificate: # The base64 encoded wildcard certificate
 wildcardKey: # The base64 encoded wildcard key
+adminApiToken: # The base64 encoded admin API token
+
+adminApiTokenSecret:
+  name: service-admin-api-token
+  key: ADMIN_API_TOKEN
