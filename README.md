@@ -202,10 +202,10 @@ The AppDefinitions chart configuration is documented in [charts/theia-appdefinit
 ### Scaling API and Helm behavior
 
 - Runtime scaling values are managed through Theia Cloud admin API endpoints:
-  - `GET /service/admin/appdefinition/{appId}`
-  - `GET /service/admin/appdefinition/{appDefinitionName}/{appId}`
+  - `GET /service/admin/appdefinition`
+  - `GET /service/admin/appdefinition/{appDefinitionName}`
   - `PATCH /service/admin/appdefinition/{appDefinitionName}`
-- Access requires membership in the configured Keycloak admin group (`theia-cloud.keycloak.adminGroup`).
+- Access requires the `X-Admin-Api-Token` header with the token from `theia.cloud.admin.api.token`.
 - The `theia-appdefinitions` chart always uses Helm `lookup` to preserve live `spec.minInstances` and `spec.maxInstances` from existing `AppDefinition` resources during upgrades.
 - Values from Helm values files are only used when an `AppDefinition` does not exist yet.
 
