@@ -105,7 +105,7 @@ theia-cloud:
       rust-no-ls:
         label: Rust No LS
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
-    infoText: "Test environment for Theia with external language server architecture (PR #98). The IDE runs separately from the language server for improved performance and modularity."
+    infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
