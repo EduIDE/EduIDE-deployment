@@ -81,10 +81,7 @@ jobs:
     name: Install Theia Cloud Helm Chart
     permissions:
       contents: read
-<<<<<<< HEAD
-=======
       packages: read
->>>>>>> main
     runs-on: ubuntu-latest
     # Link to GitHub Environment for secrets and protection rules
     environment: ${{ inputs.environment }}
