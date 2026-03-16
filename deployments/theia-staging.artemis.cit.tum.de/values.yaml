@@ -100,10 +100,10 @@ theia-cloud:
         version: "Staging-v1.0.0"
       bugReport:
         text: "Report a bug 🐛"
-        url: "https://github.com/ls1intum/theia-cloud/issues"
+        url: "https://github.com/EduIDE/EduIDE/issues"
       featureRequest:
         text: "Request a feature ✨"
-        url: "https://github.com/ls1intum/theia-cloud/issues"
+        url: "https://github.com/EduIDE/EduIDE/issues"
       about:
         text: "About"
         url: "https://aet.cit.tum.de/"
