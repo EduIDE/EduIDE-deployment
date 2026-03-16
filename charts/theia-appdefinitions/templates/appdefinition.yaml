@@ -1,6 +1,6 @@
 {{- range .Values.apps }}
 ---
-apiVersion: theia.cloud/v1beta10
+apiVersion: theia.cloud/v1beta11
 kind: AppDefinition
 metadata:
   name: {{ .name }}
@@ -39,5 +39,32 @@ spec:
   {{- if .options }}
   options:
     {{- toYaml .options | nindent 4 }}
+  {{- end }}
+  {{- if .sidecars }}
+  sidecars:
+    {{- range .sidecars }}
+    - name: {{ .name }}
+      image: {{ .image }}
+      port: {{ .port | default 5000 }}
+      {{- if .languages }}
+      languages:
+        {{- range .languages }}
+        - {{ . }}
+        {{- end }}
+      {{- end }}
+      {{- if .cpuLimit }}
+      cpuLimit: {{ .cpuLimit }}
+      {{- end }}
+      {{- if .memoryLimit }}
+      memoryLimit: {{ .memoryLimit }}
+      {{- end }}
+      {{- if .cpuRequest }}
+      cpuRequest: {{ .cpuRequest }}
+      {{- end }}
+      {{- if .memoryRequest }}
+      memoryRequest: {{ .memoryRequest }}
+      {{- end }}
+      mountWorkspace: {{ .mountWorkspace | default true }}
+    {{- end }}
   {{- end }}
 {{- end }}

@@ -140,14 +140,22 @@ theia-appdefinitions:
       image: ghcr.io/ls1intum/theia/java-17-no-ls
       imageTag: latest
       minInstances: 1
-      options:
-        langserver-image: ghcr.io/ls1intum/theia/langserver-java:latest
+      sidecars:
+        - name: langserver
+          image: ghcr.io/ls1intum/theia/langserver-java:latest
+          port: 5000
+          languages: [java]
+          mountWorkspace: true
     - name: rust-no-ls
       image: ghcr.io/ls1intum/theia/rust-no-ls
       imageTag: latest
       minInstances: 1
-      options:
-        langserver-image: ghcr.io/ls1intum/theia/langserver-rust:latest
+      sidecars:
+        - name: langserver
+          image: ghcr.io/ls1intum/theia/langserver-rust:latest
+          port: 5000
+          languages: [rust]
+          mountWorkspace: true
 
 monitoring:
   targetNamespaces:
