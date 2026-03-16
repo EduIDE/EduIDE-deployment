@@ -6,8 +6,13 @@ appVersion: 1.0.0
 
 dependencies:
   - name: theia-cloud
+<<<<<<< HEAD
     version: 1.4.0-next.0
     repository: "https://eduide.github.io/EduIDE-Helm"
+=======
+    version: 1.4.0-next.1
+    repository: "oci://ghcr.io/eduide/charts"
+>>>>>>> main
 
   - name: theia-certificates
     version: 0.1.0
@@ -22,5 +27,9 @@ dependencies:
     repository: "oci://ghcr.io/eduide/charts"
 
   - name: theia-shared-cache
+<<<<<<< HEAD
     version: 0.3.1
+=======
+    version: "0.3.1"
+>>>>>>> main
     repository: "oci://ghcr.io/eduide/charts"

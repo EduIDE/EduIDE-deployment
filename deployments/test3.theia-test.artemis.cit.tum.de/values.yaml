@@ -43,7 +43,7 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/ls1intum/theia/operator:latest
+    image: ghcr.io/eduide/eduide/operator:latest
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
@@ -55,19 +55,22 @@ theia-cloud:
         ephemeral-storage: "256Mi"
 
   # service:
-  #   image: ghcr.io/ls1intum/theia/service:latest
+  #   image: ghcr.io/eduide/eduide/service:latest
+  #   adminApiTokenSecret:
+  #     name: service-admin-api-token
+  #     key: ADMIN_API_TOKEN
 
   preloading:
     images:
-      - ghcr.io/ls1intum/theia/landing-page:latest
-      - ghcr.io/ls1intum/theia/java-17:latest
-      - ghcr.io/ls1intum/theia/c:latest
-      - ghcr.io/ls1intum/theia/javascript:latest
-      - ghcr.io/ls1intum/theia/ocaml:latest
-      - ghcr.io/ls1intum/theia/rust:latest
-      - ghcr.io/ls1intum/theia/python:latest
-      - ghcr.io/ls1intum/theia/theia-no-ls:pr-46
-      - ghcr.io/ls1intum/theia/langserver-java:pr-46
+      - ghcr.io/eduide/eduide/landing-page:latest
+      - ghcr.io/eduide/eduide/java-17:latest
+      - ghcr.io/eduide/eduide/c:latest
+      - ghcr.io/eduide/eduide/javascript:latest
+      - ghcr.io/eduide/eduide/ocaml:latest
+      - ghcr.io/eduide/eduide/rust:latest
+      - ghcr.io/eduide/eduide/python:latest
+      - ghcr.io/eduide/eduide/theia-no-ls:pr-46
+      - ghcr.io/eduide/eduide/langserver-java:pr-46
 
   imagePullPolicy: Always
 
@@ -77,7 +80,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/ls1intum/theia/landing-page
+    image: ghcr.io/eduide/eduide/landing-page
     # We can define a default blueprint
     
     # 1. The actual image data (Must be a Base64 encoded string)
@@ -114,10 +117,10 @@ theia-cloud:
         version: "Test3-v1.0.0"
       bugReport:
         text: "Report a bug 🐛"
-        url: "https://github.com/ls1intum/theia-cloud/issues"
+        url: "https://github.com/EduIDE/EduIDE/issues"
       featureRequest:
         text: "Request a feature ✨"
-        url: "https://github.com/ls1intum/theia-cloud/issues"
+        url: "https://github.com/EduIDE/EduIDE/issues"
       about:
         text: "About"
         url: "https://aet.cit.tum.de/"
@@ -137,10 +140,10 @@ theia-cloud:
 theia-appdefinitions:
   apps:
     - name: java-ls-test
-      image: ghcr.io/ls1intum/theia/theia-no-ls
+      image: ghcr.io/eduide/eduide/theia-no-ls
       imageTag: pr-46
       options:
-        langserver-image: ghcr.io/ls1intum/theia/langserver-java:pr-46
+        langserver-image: ghcr.io/eduide/eduide/langserver-java:pr-46
 
 monitoring:
   targetNamespaces:

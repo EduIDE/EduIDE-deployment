@@ -12,6 +12,9 @@ theia-shared-cache:
 theia-certificates:
   hosts:
     configuration: *hostsConfig
+  adminApiTokenSecret:
+    name: service-admin-api-token
+    key: ADMIN_API_TOKEN
 
 theia-cloud:
   app:
@@ -44,26 +47,30 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/ls1intum/theia/operator:latest
+    image: ghcr.io/eduide/eduide/operator:latest
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
     eagerStart: true
 
   service:
-    image: ghcr.io/ls1intum/theia/service:latest
+    image: ghcr.io/eduide/eduide/service:latest
     # Public token (must match app.id or be set explicitly)
     authToken: nJV3nKZmpxTD4wu2 
+    # Secret containing the admin API token, created by the theia-certificates chart
+    adminApiTokenSecret:
+      name: service-admin-api-token
+      key: ADMIN_API_TOKEN
 
   preloading:
     images:
-      - ghcr.io/ls1intum/theia/landing-page:latest
-      - ghcr.io/ls1intum/theia/java-17:latest
-      - ghcr.io/ls1intum/theia/c:latest
-      - ghcr.io/ls1intum/theia/javascript:latest
-      - ghcr.io/ls1intum/theia/ocaml:latest
-      - ghcr.io/ls1intum/theia/rust:latest
-      - ghcr.io/ls1intum/theia/python:latest
+      - ghcr.io/eduide/eduide/landing-page:latest
+      - ghcr.io/eduide/eduide/java-17:latest
+      - ghcr.io/eduide/eduide/c:latest
+      - ghcr.io/eduide/eduide/javascript:latest
+      - ghcr.io/eduide/eduide/ocaml:latest
+      - ghcr.io/eduide/eduide/rust:latest
+      - ghcr.io/eduide/eduide/python:latest
 
   imagePullPolicy: Always
 
@@ -73,7 +80,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/ls1intum/theia/landing-page:latest
+    image: ghcr.io/eduide/eduide/landing-page:latest
     # We can define a default blueprint
     appDefinition: "java-17-latest"
     ephemeralStorage: false
@@ -140,16 +147,16 @@ theia-appdefinitions:
   # Individual apps can override the tag in their definition, e.g.:
   # apps:
   #   - name: java-17-v1
-  #     image: ghcr.io/ls1intum/theia/java-17
+  #     image: ghcr.io/eduide/eduide/java-17
   #     imageTag: v1.0.0
   #   - name: python-v2
-  #     image: ghcr.io/ls1intum/theia/python
+  #     image: ghcr.io/eduide/eduide/python
   #     imageTag: v2.0.0
 
 theia-workspace-garbage-collector:
   replicaCount: 1
   image:
-    repository: ghcr.io/ls1intum/theia/garbage-collector
+    repository: ghcr.io/eduide/garbage-collector
     tag: latest
     pullPolicy: Always
 
