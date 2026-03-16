@@ -12,8 +12,29 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-  # Manual trigger via GitHub UI - deploys directly to test3 with values from current branch
+  # Manual trigger via GitHub UI
   workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment to deploy to"
+        required: true
+        type: choice
+        options:
+          - test1
+          - test2
+          - test3
+      theia_cloud_tag:
+        description: 'Theia Cloud components tag (operator, service, landing-page)'
+        required: false
+        default: 'latest'
+      ide_images_tag:
+        description: 'IDE images tag (appdefinitions and preloading)'
+        required: false
+        default: 'latest'
+      helm_chart_tag:
+        description: 'Preview OCI tag from theia-cloud-helm to use (for example pr-123)'
+        required: false
+        default: ''
 
 jobs:
   # Job 1: Deploy to Test1 environment
@@ -21,14 +42,14 @@ jobs:
   # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
   # Shared gateway inputs are hardcoded in each job below.
   deploy-test1:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test1')
     name: Deploy to Test1
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test1
-      theia_cloud_tag: 'latest'
-      ide_images_tag: 'latest'
-      helm_chart_branch: ''
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
+      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
@@ -39,14 +60,14 @@ jobs:
   # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
   # Shared gateway inputs are hardcoded in each job below.
   deploy-test2:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test2')
     name: Deploy to Test2
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test2
-      theia_cloud_tag: 'latest'
-      ide_images_tag: 'latest'
-      helm_chart_branch: ''
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
+      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
@@ -57,14 +78,14 @@ jobs:
   # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
   # Shared gateway inputs are hardcoded in each job below.
   deploy-test3:
-    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test3')
     name: Deploy to Test3
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test3
-      theia_cloud_tag: 'use-values-file'
-      ide_images_tag: 'use-values-file'
-      helm_chart_branch: ''
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
+      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
