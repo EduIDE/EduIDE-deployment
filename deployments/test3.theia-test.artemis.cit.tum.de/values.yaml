@@ -105,10 +105,12 @@ theia-cloud:
         label: Python
       rust-latest:
         label: Rust
-      java-ls-test:
-        label: Java LS Test
+      java-17-no-ls:
+        label: Java 17 No-LS (Sidecar)
+      rust-no-ls:
+        label: Rust No-LS (Sidecar)
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
-    infoText: "This is a testing environment for Theia Cloud. Select your programming language and start coding in seconds!"
+    infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
@@ -139,11 +141,26 @@ theia-cloud:
 
 theia-appdefinitions:
   apps:
-    - name: java-ls-test
-      image: ghcr.io/eduide/eduide/theia-no-ls
-      imageTag: pr-46
-      options:
-        langserver-image: ghcr.io/eduide/eduide/langserver-java:pr-46
+    - name: java-17-no-ls
+      image: ghcr.io/ls1intum/theia/java-17-no-ls
+      imageTag: latest
+      minInstances: 1
+      sidecars:
+        - name: langserver
+          image: ghcr.io/ls1intum/theia/langserver-java:latest
+          port: 5000
+          languages: [java]
+          mountWorkspace: true
+    - name: rust-no-ls
+      image: ghcr.io/ls1intum/theia/rust-no-ls
+      imageTag: latest
+      minInstances: 1
+      sidecars:
+        - name: langserver
+          image: ghcr.io/ls1intum/theia/langserver-rust:latest
+          port: 5000
+          languages: [rust]
+          mountWorkspace: true
 
 monitoring:
   targetNamespaces:
