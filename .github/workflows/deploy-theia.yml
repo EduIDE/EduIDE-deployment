@@ -251,4 +251,8 @@ jobs:
             --set "theia-cloud.preloading.images[4]=ghcr.io/eduide/eduide/ocaml:${IDE_IMAGES_TAG}" \
             --set "theia-cloud.preloading.images[5]=ghcr.io/eduide/eduide/rust:${IDE_IMAGES_TAG}" \
             --set "theia-cloud.preloading.images[6]=ghcr.io/eduide/eduide/python:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[7]=ghcr.io/eduide/eduide/java-17-no-ls:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[8]=ghcr.io/eduide/eduide/rust-no-ls:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[9]=ghcr.io/eduide/eduide/langserver-java:${IDE_IMAGES_TAG}" \
+            --set "theia-cloud.preloading.images[10]=ghcr.io/eduide/eduide/langserver-rust:${IDE_IMAGES_TAG}" \
             --set theia-appdefinitions.defaultImageTag="${IDE_IMAGES_TAG}"
