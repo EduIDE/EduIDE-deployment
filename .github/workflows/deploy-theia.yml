@@ -162,7 +162,7 @@ jobs:
           set -euo pipefail
 
           THEIA_CLOUD_BASE_VERSION="1.4.0-next.0"
-          THEIA_CLOUD_CRDS_VERSION="1.2.0-next.0"
+          THEIA_CLOUD_CRDS_VERSION="1.2.0-next.1"
 
           if [ -n "${{ inputs.helm_chart_tag }}" ]; then
             normalize_preview_version() {
