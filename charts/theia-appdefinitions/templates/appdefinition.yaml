@@ -58,7 +58,12 @@ spec:
   sidecars:
     {{- range .sidecars }}
     - name: {{ .name }}
-      image: {{ .image }}
+      {{- $sidecarImage := .image }}
+      {{- if or (contains "@sha256:" $sidecarImage) (regexMatch ".*:[^/]+$" $sidecarImage) }}
+      image: {{ $sidecarImage }}
+      {{- else }}
+      image: {{ $sidecarImage }}:{{ .imageTag | default $.Values.defaultImageTag | default "latest" }}
+      {{- end }}
       port: {{ .port | default 5000 }}
       {{- if .languages }}
       languages:
@@ -78,7 +83,11 @@ spec:
       {{- if .memoryRequest }}
       memoryRequest: {{ .memoryRequest }}
       {{- end }}
-      mountWorkspace: {{ .mountWorkspace | default true }}
+      {{- if hasKey . "mountWorkspace" }}
+      mountWorkspace: {{ .mountWorkspace }}
+      {{- else }}
+      mountWorkspace: true
+      {{- end }}
     {{- end }}
   {{- end }}
 {{- end }}

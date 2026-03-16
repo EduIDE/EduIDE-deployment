@@ -69,6 +69,10 @@ theia-cloud:
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
       - ghcr.io/eduide/eduide/python:latest
+      - ghcr.io/ls1intum/theia/java-17-no-ls:latest
+      - ghcr.io/ls1intum/theia/rust-no-ls:latest
+      - ghcr.io/ls1intum/theia/langserver-java:latest
+      - ghcr.io/ls1intum/theia/langserver-rust:latest
 
   imagePullPolicy: Always
 
@@ -88,21 +92,9 @@ theia-cloud:
     # 2. (Optional) If you removed the 'hardcoded png' logic in the template, 
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
-    appDefinition: "java-17-latest"
+    appDefinition: "java-17-no-ls"
     ephemeralStorage: true
     additionalApps:
-      java-17-latest:
-        label: Java 17
-      c-latest:
-        label: C
-      javascript-latest:
-        label: Javascript
-      ocaml-latest:
-        label: Ocaml
-      python-latest:
-        label: Python
-      rust-latest:
-        label: Rust
       java-17-no-ls:
         label: Java 17 No-LS (Sidecar)
       rust-no-ls:
@@ -141,21 +133,19 @@ theia-appdefinitions:
   apps:
     - name: java-17-no-ls
       image: ghcr.io/ls1intum/theia/java-17-no-ls
-      imageTag: latest
       minInstances: 1
       sidecars:
         - name: langserver
-          image: ghcr.io/ls1intum/theia/langserver-java:latest
+          image: ghcr.io/ls1intum/theia/langserver-java
           port: 5000
           languages: [java]
           mountWorkspace: true
     - name: rust-no-ls
       image: ghcr.io/ls1intum/theia/rust-no-ls
-      imageTag: latest
       minInstances: 1
       sidecars:
         - name: langserver
-          image: ghcr.io/ls1intum/theia/langserver-rust:latest
+          image: ghcr.io/ls1intum/theia/langserver-rust
           port: 5000
           languages: [rust]
           mountWorkspace: true
