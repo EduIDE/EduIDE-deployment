@@ -16,10 +16,12 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: "Select environment to deploy to"
+        description: "Select environment to deploy to. Choose 'all' to trigger all env jobs in one run (each still gated by its own environment approval)."
         required: true
         type: choice
+        default: all
         options:
+          - all
           - test1
           - test2
           - test3
@@ -42,7 +44,7 @@ jobs:
   # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
   # Shared gateway inputs are hardcoded in each job below.
   deploy-test1:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test1')
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (inputs.environment == 'test1' || inputs.environment == 'all'))
     name: Deploy to Test1
     uses: ./.github/workflows/deploy-theia.yml
     with:
@@ -60,7 +62,7 @@ jobs:
   # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
   # Shared gateway inputs are hardcoded in each job below.
   deploy-test2:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test2')
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (inputs.environment == 'test2' || inputs.environment == 'all'))
     name: Deploy to Test2
     uses: ./.github/workflows/deploy-theia.yml
     with:
@@ -78,7 +80,7 @@ jobs:
   # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
   # Shared gateway inputs are hardcoded in each job below.
   deploy-test3:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test3')
+    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && (inputs.environment == 'test3' || inputs.environment == 'all'))
     name: Deploy to Test3
     uses: ./.github/workflows/deploy-theia.yml
     with:
