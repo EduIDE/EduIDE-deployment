@@ -69,10 +69,10 @@ theia-cloud:
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
       - ghcr.io/eduide/eduide/python:latest
-      - ghcr.io/eduide/eduide/java-17-no-ls:latest
-      - ghcr.io/eduide/eduide/rust-no-ls:latest
-      - ghcr.io/eduide/eduide/langserver-java:latest
-      - ghcr.io/eduide/eduide/langserver-rust:latest
+      - ghcr.io/eduide/eduide/java-17-no-ls:pr-124
+      - ghcr.io/eduide/eduide/rust-no-ls:pr-124
+      - ghcr.io/eduide/eduide/langserver-java:pr-124
+      - ghcr.io/eduide/eduide/langserver-rust:pr-124
 
   imagePullPolicy: Always
 
@@ -130,6 +130,7 @@ theia-cloud:
     clientId: "theia-test"
 
 theia-appdefinitions:
+  defaultImageTag: pr-124
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
