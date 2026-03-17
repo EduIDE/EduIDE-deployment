@@ -46,15 +46,15 @@ on:
         required: true
         type: string
       theia_cloud_tag:
-        description: "Image tag for Theia Cloud components (operator, service, landing-page)"
+        description: "Image tag for Theia Cloud components (operator, service, landing-page). Leave empty to use the tag defined in values.yaml (no override)."
         required: false
         type: string
-        default: "latest"
+        default: ""
       ide_images_tag:
-        description: "Image tag for IDE images (appdefinitions and preloading)"
+        description: "Image tag for IDE images (appdefinitions and preloading). Leave empty to use the tag defined in values.yaml (no override)."
         required: false
         type: string
-        default: "latest"
+        default: ""
       helm_chart_tag:
         description: "Published OCI preview tag to use for upstream helm charts (e.g. pr-123)"
         required: false
@@ -219,6 +219,8 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
         run: |
+          set -euo pipefail
+
           # Prepare SSL certificates for ingress
           # Note: Secrets are already base64 encoded, but we need to write them to files
           echo "${{ secrets.THEIA_WILDCARD_CERTIFICATE_CERT }}" | base64 -w 0 > wildcard.crt
@@ -229,30 +231,45 @@ jobs:
           THEIA_CLOUD_TAG="${{ inputs.theia_cloud_tag }}"
           IDE_IMAGES_TAG="${{ inputs.ide_images_tag }}"
 
+          # Build base helm command with always-present flags
+          HELM_CMD=(helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined
+            --namespace ${{ vars.NAMESPACE }}
+            --create-namespace
+            -f ${{ vars.HELM_VALUES_PATH }}/values.yaml
+            --set-string theia-certificates.adminApiToken="${ADMIN_API_TOKEN_B64}"
+            --set theia-certificates.wildcardCertificate="$(cat wildcard.crt)"
+            --set theia-certificates.wildcardKey="$(cat wildcard.key)"
+            --set theia-cloud.keycloak.cookieSecret="${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}")
+
+          # Only override Theia Cloud component images when a tag is explicitly provided
+          if [ -n "${THEIA_CLOUD_TAG}" ]; then
+            HELM_CMD+=(
+              --set theia-cloud.landingPage.image="ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}"
+              --set theia-cloud.operator.image="ghcr.io/eduide/eduide-cloud/operator:${THEIA_CLOUD_TAG}"
+              --set theia-cloud.service.image="ghcr.io/eduide/eduide-cloud/service:${THEIA_CLOUD_TAG}"
+              --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}"
+            )
+          fi
+
+          # Only override IDE images when a tag is explicitly provided
+          if [ -n "${IDE_IMAGES_TAG}" ]; then
+            HELM_CMD+=(
+              --set "theia-cloud.preloading.images[1]=ghcr.io/eduide/eduide/java-17:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[2]=ghcr.io/eduide/eduide/c:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[3]=ghcr.io/eduide/eduide/javascript:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[4]=ghcr.io/eduide/eduide/ocaml:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[5]=ghcr.io/eduide/eduide/rust:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[6]=ghcr.io/eduide/eduide/python:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[7]=ghcr.io/eduide/eduide/java-17-no-ls:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[8]=ghcr.io/eduide/eduide/rust-no-ls:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[9]=ghcr.io/eduide/eduide/langserver-java:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[10]=ghcr.io/eduide/eduide/langserver-rust:${IDE_IMAGES_TAG}"
+              --set theia-appdefinitions.defaultImageTag="${IDE_IMAGES_TAG}"
+            )
+          fi
+
           # Install/upgrade the Helm chart with all configuration
           # --install: Create if it doesn't exist, upgrade if it does
           # --create-namespace: Create the namespace if it doesn't exist
-          # Image tags controlled by two variables: THEIA_CLOUD_TAG and IDE_IMAGES_TAG
-          helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined \
-            --namespace ${{ vars.NAMESPACE }} \
-            --create-namespace \
-            -f ${{ vars.HELM_VALUES_PATH }}/values.yaml \
-            --set-string theia-certificates.adminApiToken="${ADMIN_API_TOKEN_B64}" \
-            --set theia-certificates.wildcardCertificate="$(cat wildcard.crt)" \
-            --set theia-certificates.wildcardKey="$(cat wildcard.key)" \
-            --set theia-cloud.keycloak.cookieSecret="${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}" \
-            --set theia-cloud.landingPage.image="ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}" \
-            --set theia-cloud.operator.image="ghcr.io/eduide/eduide-cloud/operator:${THEIA_CLOUD_TAG}" \
-            --set theia-cloud.service.image="ghcr.io/eduide/eduide-cloud/service:${THEIA_CLOUD_TAG}" \
-            --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}" \
-            --set "theia-cloud.preloading.images[1]=ghcr.io/eduide/eduide/java-17:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[2]=ghcr.io/eduide/eduide/c:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[3]=ghcr.io/eduide/eduide/javascript:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[4]=ghcr.io/eduide/eduide/ocaml:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[5]=ghcr.io/eduide/eduide/rust:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[6]=ghcr.io/eduide/eduide/python:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[7]=ghcr.io/eduide/eduide/java-17-no-ls:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[8]=ghcr.io/eduide/eduide/rust-no-ls:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[9]=ghcr.io/eduide/eduide/langserver-java:${IDE_IMAGES_TAG}" \
-            --set "theia-cloud.preloading.images[10]=ghcr.io/eduide/eduide/langserver-rust:${IDE_IMAGES_TAG}" \
-            --set theia-appdefinitions.defaultImageTag="${IDE_IMAGES_TAG}"
+          # Image tag overrides are applied only when non-empty; otherwise values.yaml settings are preserved
+          "${HELM_CMD[@]}"
