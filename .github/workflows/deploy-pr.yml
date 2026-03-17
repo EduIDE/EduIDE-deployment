@@ -24,13 +24,13 @@ on:
           - test2
           - test3
       theia_cloud_tag:
-        description: 'Theia Cloud components tag (operator, service, landing-page)'
+        description: 'Theia Cloud components tag (operator, service, landing-page). Leave empty to use the tag defined in values.yaml (no override).'
         required: false
-        default: 'latest'
+        default: ''
       ide_images_tag:
-        description: 'IDE images tag (appdefinitions and preloading)'
+        description: 'IDE images tag (appdefinitions and preloading). Leave empty to use the tag defined in values.yaml (no override).'
         required: false
-        default: 'latest'
+        default: ''
       helm_chart_tag:
         description: 'Preview OCI tag from theia-cloud-helm to use (for example pr-123)'
         required: false
@@ -47,8 +47,8 @@ jobs:
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test1
-      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
-      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      ide_images_tag: ${{ inputs.ide_images_tag }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
@@ -65,8 +65,8 @@ jobs:
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test2
-      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
-      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      ide_images_tag: ${{ inputs.ide_images_tag }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
@@ -83,8 +83,8 @@ jobs:
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test3
-      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
-      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      ide_images_tag: ${{ inputs.ide_images_tag }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
