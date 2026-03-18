@@ -258,8 +258,8 @@ jobs:
           # Only override landing page image when a tag is explicitly provided
           if [ -n "${LANDING_PAGE_TAG}" ]; then
             HELM_CMD+=(
-              --set theia-cloud.landingPage.image="ghcr.io/EduIDE/eduidec-landing-page:${LANDING_PAGE_TAG}"
-              --set "theia-cloud.preloading.images[0]=ghcr.io/EduIDE/eduidec-landing-page:${LANDING_PAGE_TAG}"
+              --set theia-cloud.landingPage.image="ghcr.io/eduide/eduidec-landing-page:${LANDING_PAGE_TAG}"
+              --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduidec-landing-page:${LANDING_PAGE_TAG}"
             )
           fi
 
