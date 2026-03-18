@@ -43,14 +43,14 @@ theia-cloud:
       interval: 3
 
   operator:
-    #image: ghcr.io/eduide/eduide/operator:latest
+    #image: ghcr.io/eduide/eduide-cloud/operator:latest
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
 
   # service:
-  #   image: ghcr.io/eduide/eduide/service:latest
+  #   image: ghcr.io/eduide/eduide-cloud/service:latest
   #   adminApiTokenSecret:
   #     name: service-admin-api-token
   #     key: ADMIN_API_TOKEN

@@ -250,8 +250,8 @@ jobs:
           # Only override Theia Cloud component images when a tag is explicitly provided
           if [ -n "${THEIA_CLOUD_TAG}" ]; then
             HELM_CMD+=(
-              --set theia-cloud.operator.image="ghcr.io/eduide/eduide/operator:${THEIA_CLOUD_TAG}"
-              --set theia-cloud.service.image="ghcr.io/eduide/eduide/service:${THEIA_CLOUD_TAG}"
+              --set theia-cloud.operator.image="ghcr.io/eduide/eduide-cloud/operator:${THEIA_CLOUD_TAG}"
+              --set theia-cloud.service.image="ghcr.io/eduide/eduide-cloud/service:${THEIA_CLOUD_TAG}"
             )
           fi
 
