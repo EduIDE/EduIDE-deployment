@@ -148,7 +148,33 @@ Add to userinfo: ON
 
 Click **Save**
 
-### 2.5 Verify Client Scope Assignment
+### 2.5 Configure Admin API Token for Scaling Operations
+
+Theia Cloud scaling endpoints are no longer protected through the Keycloak admin group.
+They are protected by a dedicated admin API token configured in the service as:
+
+- Service property: `theia.cloud.admin.api.token`
+- Container environment variable: `ADMIN_API_TOKEN`
+- Deployment secret reference: `theia-cloud.service.adminApiTokenSecret`
+
+In this repository, the token is typically supplied through the deployment workflow secret:
+
+- GitHub environment secret: `THEIA_ADMIN_API_TOKEN`
+
+Requests to the scaling endpoints must send that token in the `X-Admin-Api-Token` header:
+
+```bash
+curl -H "X-Admin-Api-Token: <token>" \
+  https://service.<environment>/service/admin/appdefinition
+```
+
+Current scaling endpoints:
+
+- `GET /service/admin/appdefinition`
+- `GET /service/admin/appdefinition/{appDefinitionName}`
+- `PATCH /service/admin/appdefinition/{appDefinitionName}`
+
+### 2.6 Verify Client Scope Assignment
 
 1. Go back to **Clients > [your-client] > Client scopes**
 2. Verify that `theia-cloud-dedicated` appears under **Assigned client scopes**

@@ -22,12 +22,16 @@ theia-cloud:
     configuration: *hostsConfig
     allWildcardInstances: ["*.webview."]
 
-  ingress:
-    #instanceName: "theia-cloud-ws-ingress"
-    clusterIssuer: letsencrypt-prod
-    certManagerAnnotations: false
-    instances:
-      allWildcardSecretNames: { "*.webview.": static-theia-cert }
+  gateway:
+    enabled: true
+    create: true
+    routes:
+      enabled: true
+    className: envoy
+    name: theia-cloud-gateway
+    parentRefs: []
+    instancesWildcardSecretNames: { "*.webview.": static-theia-cert }
+    serviceRouteRequestTimeout: "60s"
 
   monitor:
     enable: true
@@ -36,24 +40,27 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/ls1intum/theia/operator:pr-22
+    image: ghcr.io/eduide/eduide/operator:pr-22
     eagerStart: false
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
 
   service:
-    image: ghcr.io/ls1intum/theia/service:pr-22
+    image: ghcr.io/eduide/eduide/service:pr-22
+    adminApiTokenSecret:
+      name: service-admin-api-token
+      key: ADMIN_API_TOKEN
 
   preloading:
     images:
-      - ghcr.io/ls1intum/theia/landing-page:latest
-      - ghcr.io/ls1intum/theia/java-17:latest
-      - ghcr.io/ls1intum/theia/c:latest
-      - ghcr.io/ls1intum/theia/javascript:latest
-      - ghcr.io/ls1intum/theia/ocaml:latest
-      - ghcr.io/ls1intum/theia/rust:latest
-      - ghcr.io/ls1intum/theia/python:latest
+      - ghcr.io/eduide/eduide/landing-page:latest
+      - ghcr.io/eduide/eduide/java-17:latest
+      - ghcr.io/eduide/eduide/c:latest
+      - ghcr.io/eduide/eduide/javascript:latest
+      - ghcr.io/eduide/eduide/ocaml:latest
+      - ghcr.io/eduide/eduide/rust:latest
+      - ghcr.io/eduide/eduide/python:latest
 
   imagePullPolicy: Always
 
@@ -63,7 +70,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/ls1intum/theia/landing-page
+    image: ghcr.io/eduide/eduide/landing-page
     # We can define a default blueprint
     appDefinition: "java-17-latest"
     ephemeralStorage: false

@@ -2,7 +2,11 @@
 # PR Deployment Workflow
 # ==============================================================================
 # This workflow handles deployments triggered by pull requests and manual
-# selections via the GitHub Actions UI.
+# dispatch via the GitHub Actions UI.
+#
+# Manual dispatch (workflow_dispatch) always triggers all three environment
+# jobs (test1, test2, test3). Each job is still gated by its own GitHub
+# Environment approval before the actual deployment runs.
 # ==============================================================================
 
 name: Deploy PR to Environment
@@ -12,76 +16,82 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-  # Manual trigger via GitHub UI
+  # Manual trigger via GitHub UI – always deploys to all three environments.
+  # Per-environment approvals (configured in GitHub Environment settings) still
+  # gate each individual job before deployment proceeds.
   workflow_dispatch:
     inputs:
-      environment:
-        description: "Select environment to deploy to"
-        required: true
-        type: choice
-        options:
-          - test1
-          - test2
-          - test3
       theia_cloud_tag:
-        description: 'Theia Cloud components tag (operator, service)'
+        description: 'Theia Cloud components tag (operator, service). Leave empty to use the tag defined in values.yaml (no override).'
         required: false
-        default: 'latest'
+        default: ''
       landing_page_tag:
-        description: 'EduTheia landing page tag'
+        description: 'EduTheia landing page tag. Leave empty to use the tag defined in values.yaml (no override).'
         required: false
-        default: 'latest'
+        default: ''
       ide_images_tag:
-        description: 'IDE images tag (appdefinitions and preloading)'
+        description: 'IDE images tag (appdefinitions and preloading). Leave empty to use the tag defined in values.yaml (no override).'
         required: false
-        default: 'latest'
-      helm_chart_branch:
-        description: 'Branch of theia-cloud-helm to use (leave empty for default)'
+        default: ''
+      helm_chart_tag:
+        description: 'Preview OCI tag from theia-cloud-helm to use (for example pr-123)'
         required: false
         default: ''
 
 jobs:
   # Job 1: Deploy to Test1 environment
-  # Runs automatically on all PR events OR when manually selected
-  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings
+  # Runs automatically on all PR events OR on any manual dispatch.
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test1:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test1')
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Deploy to Test1
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test1
-      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
-      landing_page_tag: ${{ inputs.landing_page_tag || 'latest' }}
-      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
-      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      landing_page_tag: ${{ inputs.landing_page_tag }}
+      ide_images_tag: ${{ inputs.ide_images_tag }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit
 
   # Job 2: Deploy to Test2 environment
-  # Runs automatically on all PR events OR when manually selected
-  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings
+  # Runs automatically on all PR events OR on any manual dispatch.
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test2:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test2')
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Deploy to Test2
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test2
-      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
-      landing_page_tag: ${{ inputs.landing_page_tag || 'latest' }}
-      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
-      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      landing_page_tag: ${{ inputs.landing_page_tag }}
+      ide_images_tag: ${{ inputs.ide_images_tag }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit
 
   # Job 3: Deploy to Test3 environment
-  # Runs automatically on all PR events OR when manually selected
-  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings
+  # Runs automatically on all PR events OR on any manual dispatch.
+  # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
+  # Shared gateway inputs are hardcoded in each job below.
   deploy-test3:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test3')
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     name: Deploy to Test3
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: test3
-      theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
-      landing_page_tag: ${{ inputs.landing_page_tag || 'latest' }}
-      ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
-      helm_chart_branch: ${{ inputs.helm_chart_branch || '' }}
+      theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      landing_page_tag: ${{ inputs.landing_page_tag }}
+      ide_images_tag: ${{ inputs.ide_images_tag }}
+      helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
+      deploy_shared_gateway: false
+      shared_gateway_values_file: deployments/shared-gateway/values.yaml
+      shared_gateway_namespace: gateway-system
     secrets: inherit

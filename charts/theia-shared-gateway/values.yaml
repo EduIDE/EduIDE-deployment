@@ -1,0 +1,50 @@
+gateway:
+  name: theia-shared-gateway
+  namespace: gateway-system
+  className: envoy
+  labels: {}
+  annotations: {}
+
+  # Optional static addresses (if supported by your Gateway controller).
+  # addresses:
+  #   - 131.159.88.21
+  addresses: []
+
+  allowedRoutes:
+    namespaces:
+      from: All
+
+  # Each listener needs:
+  # - name
+  # - hostname
+  # - tlsSecretName
+  listeners: []
+
+gatewayClass:
+  create: false
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  labels: {}
+  annotations: {}
+  parametersRef: {}
+
+envoyProxy:
+  create: false
+  name: theia-shared-gateway
+  namespace: envoy-gateway-system
+  labels: {}
+  annotations: {}
+  spec: {}
+
+managedCertificates:
+  enabled: false
+  issuerRef:
+    kind: ClusterIssuer
+    name: letsencrypt-prod
+  certificates: []
+
+wildcardTLSSecret:
+  create: false
+  name: static-theia-cert
+  namespace: gateway-system
+  certificate: ""
+  key: ""

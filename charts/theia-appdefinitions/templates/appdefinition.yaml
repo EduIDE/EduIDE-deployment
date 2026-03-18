@@ -1,4 +1,18 @@
 {{- range .Values.apps }}
+{{- $existingApp := lookup "theia.cloud/v1beta10" "AppDefinition" $.Release.Namespace .name }}
+{{- $existingSpec := dict }}
+{{- if $existingApp }}
+  {{- $existingSpec = get $existingApp "spec" | default dict }}
+{{- end }}
+# min/max from values are only bootstrap defaults. Existing AppDefinition scaling values are preserved across future deployments.
+{{- $minInstances := .minInstances | default 0 }}
+{{- if hasKey $existingSpec "minInstances" }}
+  {{- $minInstances = get $existingSpec "minInstances" }}
+{{- end }}
+{{- $maxInstances := .maxInstances | default 10 }}
+{{- if hasKey $existingSpec "maxInstances" }}
+  {{- $maxInstances = get $existingSpec "maxInstances" }}
+{{- end }}
 ---
 apiVersion: theia.cloud/v1beta10
 kind: AppDefinition
@@ -8,10 +22,10 @@ metadata:
     helm.sh/revision: {{ $.Release.Revision | quote }}
 spec:
   name: {{ .name }}
-  image: {{ .image | default "ghcr.io/ls1intum/theia/default" }}:{{ .imageTag | default $.Values.defaultImageTag | default "latest" }}
+  image: {{ .image | default "ghcr.io/eduide/eduide/default" }}:{{ .imageTag | default $.Values.defaultImageTag | default "latest" }}
   uid: {{ .uid | default 101 }}
   port: {{ .port | default 3000 }}
-  ingressname: {{ .ingressname | default "theia-cloud-demo-ws-ingress" }}
+  ingressname: {{ .ingressname | default "theia-cloud-demo-ws-route" }}
   ingressHostnamePrefixes: 
     {{- if .ingressHostnamePrefixes }}
     {{- range .ingressHostnamePrefixes }}
@@ -20,8 +34,8 @@ spec:
     {{- else }}
     - "*.webview."
     {{- end }}
-  minInstances: {{ .minInstances | default 0 }}
-  maxInstances: {{ .maxInstances | default 10 }}
+  minInstances: {{ $minInstances }}
+  maxInstances: {{ $maxInstances }}
   requestsMemory: {{ .requestsMemory | default "1000M" }}
   requestsCpu: {{ .requestsCpu | default "100m" }}
   limitsMemory: {{ .limitsMemory | default "1200M" }}

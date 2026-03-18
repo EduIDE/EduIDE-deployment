@@ -61,6 +61,24 @@ hosts:
 
 - `theia-cloud.app.name` - Change to reflect the new environment (e.g., "Artemis Online IDE (Test2)")
 - `landingPage.infoTitle` - Update the environment name in the title
+- `theia-cloud.gateway.parentRefs` - Keep this pointing to the shared gateway (`theia-shared-gateway` in `gateway-system`)
+
+For shared-gateway deployments, tenant namespaces should not create their own gateway:
+
+```yaml
+theia-cloud:
+  gateway:
+    enabled: true
+    create: false
+    routes:
+      enabled: true
+    parentRefs:
+      - name: theia-shared-gateway
+        namespace: gateway-system
+```
+
+Also update the shared Gateway listeners in `deployments/shared-gateway/values.yaml` (or `deployments/shared-gateway-prod/values.yaml` for production clusters).  
+For each new environment, add listener hostnames for landing, service, instances, and `*.webview.instance...`; otherwise Gateway API routes will not attach for that hostname.
 
 #### Update `theia-base-helm-values.yml`
 
@@ -125,6 +143,9 @@ Add the following secrets to your environment:
 | `THEIA_WILDCARD_CERTIFICATE_CERT` | Wildcard SSL certificate  | See [TUM Certificates](tum-certificates.md) |
 | `THEIA_WILDCARD_CERTIFICATE_KEY` | Wildcard SSL key | See [TUM Certificates](tum-certificates.md) |
 | `THEIA_KEYCLOAK_COOKIE_SECRET` | OAuth2 proxy cookie secret | See below |
+| `THEIA_ADMIN_API_TOKEN` | Admin bearer token for protected service admin endpoints | Generate a long random string and store it as an environment secret. |
+
+The deployment workflow base64-encodes `THEIA_ADMIN_API_TOKEN` and passes it into the `theia-certificates` chart, which creates the Kubernetes Secret for the namespace alongside the TLS secret templates.
 
 Create the `THEIA_KEYCLOAK_COOKIE_SECRET` using the following command:
 ```bash
@@ -142,6 +163,8 @@ dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d -- '\n' | tr -- '+
 - **Certificate wildcards**: Ensure your certificate covers the correct wildcard domain (e.g., `*.webview.instance.test2.theia-test.artemis.cit.tum.de`)
 - **Keycloak setup**: You may need to create a new Keycloak client or reuse an existing one. See [Keycloak Setup](keycloak-setup.md)
 - **Namespace isolation**: Each environment uses its own Kubernetes namespace, but test/staging environments typically share the same cluster
+- **Shared gateway values path**: For dedicated clusters (e.g. production), use a cluster-specific shared gateway values file, e.g. `deployments/shared-gateway-prod/values.yaml`
+- **Shared gateway workflow inputs**: Configure `deploy_shared_gateway`, `shared_gateway_values_file`, and `shared_gateway_namespace` in the caller workflows.
 
 ## Step 4: Update Workflow Configuration
 
@@ -167,11 +190,17 @@ workflow_dispatch:
 
 ```yaml
 deploy-test2:
-  if: github.event_name == 'workflow_dispatch' && inputs.environment == 'test2'
+  if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test2')
   name: Deploy to Test2
   uses: ./.github/workflows/deploy-theia.yml
   with:
     environment: test2
+    theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
+    ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+    helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
+    deploy_shared_gateway: true
+    shared_gateway_values_file: deployments/shared-gateway/values.yaml
+    shared_gateway_namespace: gateway-system
   secrets: inherit
 ```
 
@@ -197,4 +226,3 @@ jobs:
       environment: staging2
     secrets: inherit
 ```
-

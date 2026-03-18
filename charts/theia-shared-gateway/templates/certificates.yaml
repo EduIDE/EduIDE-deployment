@@ -1,0 +1,20 @@
+{{- if and .Values.managedCertificates.enabled (gt (len .Values.managedCertificates.certificates) 0) }}
+{{- range $cert := .Values.managedCertificates.certificates }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $cert.name }}
+  namespace: {{ default $.Values.gateway.namespace $cert.namespace }}
+spec:
+  secretName: {{ $cert.secretName }}
+  commonName: {{ $cert.hostname | quote }}
+  dnsNames:
+    - {{ $cert.hostname | quote }}
+  issuerRef:
+    kind: {{ $.Values.managedCertificates.issuerRef.kind }}
+    name: {{ $.Values.managedCertificates.issuerRef.name }}
+  privateKey:
+    rotationPolicy: Never
+{{- end }}
+{{- end }}
