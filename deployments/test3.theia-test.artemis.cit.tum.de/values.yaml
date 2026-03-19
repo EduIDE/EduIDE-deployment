@@ -43,34 +43,37 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/eduide/eduide/operator:latest
+    image: ghcr.io/eduide/eduide-cloud/operator:pr-70
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
-    storageClassName: csi-rbd-sc
+    # Test3 runs on the parma cluster where Longhorn is the default storage backend.
+    storageClassName: longhorn
     resources:
       requests:
         ephemeral-storage: "128Mi"
       limits:
         ephemeral-storage: "256Mi"
 
-  # service:
-  #   image: ghcr.io/eduide/eduide/service:latest
-  #   adminApiTokenSecret:
-  #     name: service-admin-api-token
-  #     key: ADMIN_API_TOKEN
+  service:
+    image: ghcr.io/eduide/eduide-cloud/service:pr-70
+    adminApiTokenSecret:
+      name: service-admin-api-token
+      key: ADMIN_API_TOKEN
 
   preloading:
     images:
-      - ghcr.io/eduide/eduide/landing-page:latest
+      - ghcr.io/eduide/eduide-cloud/landing-page:pr-70
       - ghcr.io/eduide/eduide/java-17:latest
       - ghcr.io/eduide/eduide/c:latest
       - ghcr.io/eduide/eduide/javascript:latest
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
       - ghcr.io/eduide/eduide/python:latest
-      - ghcr.io/eduide/eduide/theia-no-ls:pr-46
-      - ghcr.io/eduide/eduide/langserver-java:pr-46
+      - ghcr.io/eduide/eduide/java-17-no-ls:pr-70
+      - ghcr.io/eduide/eduide/rust-no-ls:pr-70
+      - ghcr.io/eduide/eduide/langserver-java:pr-70
+      - ghcr.io/eduide/eduide/langserver-rust:pr-70
 
   imagePullPolicy: Always
 
@@ -80,7 +83,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduide/landing-page
+    image: ghcr.io/eduide/eduide-cloud/landing-page:pr-70
     # We can define a default blueprint
     
     # 1. The actual image data (Must be a Base64 encoded string)
@@ -90,25 +93,15 @@ theia-cloud:
     # 2. (Optional) If you removed the 'hardcoded png' logic in the template, 
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
-    appDefinition: "java-17-latest"
+    appDefinition: "java-17-no-ls"
     ephemeralStorage: true
     additionalApps:
-      java-17-latest:
-        label: Java 17
-      c-latest:
-        label: C
-      javascript-latest:
-        label: Javascript
-      ocaml-latest:
-        label: Ocaml
-      python-latest:
-        label: Python
-      rust-latest:
-        label: Rust
-      java-ls-test:
-        label: Java LS Test
+      java-17-no-ls:
+        label: Java 17 No-LS (Sidecar)
+      rust-no-ls:
+        label: Rust No-LS (Sidecar)
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
-    infoText: "This is a testing environment for Theia Cloud. Select your programming language and start coding in seconds!"
+    infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
@@ -138,12 +131,26 @@ theia-cloud:
     clientId: "theia-test"
 
 theia-appdefinitions:
+  defaultImageTag: pr-70
   apps:
-    - name: java-ls-test
-      image: ghcr.io/eduide/eduide/theia-no-ls
-      imageTag: pr-46
-      options:
-        langserver-image: ghcr.io/eduide/eduide/langserver-java:pr-46
+    - name: java-17-no-ls
+      image: ghcr.io/eduide/eduide/java-17-no-ls
+      minInstances: 1
+      sidecars:
+        - name: langserver
+          image: ghcr.io/eduide/eduide/langserver-java
+          port: 5000
+          languages: [java]
+          mountWorkspace: true
+    - name: rust-no-ls
+      image: ghcr.io/eduide/eduide/rust-no-ls
+      minInstances: 1
+      sidecars:
+        - name: langserver
+          image: ghcr.io/eduide/eduide/langserver-rust
+          port: 5000
+          languages: [rust]
+          mountWorkspace: true
 
 monitoring:
   targetNamespaces:
