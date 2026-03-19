@@ -84,6 +84,7 @@ jobs:
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
+      include_no_ls_preloads: true
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system

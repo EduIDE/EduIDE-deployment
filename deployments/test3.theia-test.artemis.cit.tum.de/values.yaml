@@ -47,6 +47,7 @@ theia-cloud:
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
+    # Test3 runs on the parma cluster where Longhorn is the default storage backend.
     storageClassName: longhorn
     resources:
       requests:
@@ -55,24 +56,24 @@ theia-cloud:
         ephemeral-storage: "256Mi"
 
   service:
-    image: ghcr.io/eduide/eduide-cloud/service:latest
+    image: ghcr.io/eduide/eduide-cloud/service:pr-70
     adminApiTokenSecret:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
 
   preloading:
     images:
-      - ghcr.io/eduide/eduide-cloud/landing-page:latest
+      - ghcr.io/eduide/eduide-cloud/landing-page:pr-70
       - ghcr.io/eduide/eduide/java-17:latest
       - ghcr.io/eduide/eduide/c:latest
       - ghcr.io/eduide/eduide/javascript:latest
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
       - ghcr.io/eduide/eduide/python:latest
-      - ghcr.io/eduide/eduide/java-17-no-ls:pr-124
-      - ghcr.io/eduide/eduide/rust-no-ls:pr-124
-      - ghcr.io/eduide/eduide/langserver-java:pr-124
-      - ghcr.io/eduide/eduide/langserver-rust:pr-124
+      - ghcr.io/eduide/eduide/java-17-no-ls:pr-70
+      - ghcr.io/eduide/eduide/rust-no-ls:pr-70
+      - ghcr.io/eduide/eduide/langserver-java:pr-70
+      - ghcr.io/eduide/eduide/langserver-rust:pr-70
 
   imagePullPolicy: Always
 
@@ -82,7 +83,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduide-cloud/landing-page:latest
+    image: ghcr.io/eduide/eduide-cloud/landing-page:pr-70
     # We can define a default blueprint
     
     # 1. The actual image data (Must be a Base64 encoded string)
@@ -130,7 +131,7 @@ theia-cloud:
     clientId: "theia-test"
 
 theia-appdefinitions:
-  defaultImageTag: pr-124
+  defaultImageTag: pr-70
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
