@@ -46,7 +46,12 @@ on:
         required: true
         type: string
       theia_cloud_tag:
-        description: "Image tag for Theia Cloud components (operator, service, landing-page). Leave empty to use the tag defined in values.yaml (no override)."
+        description: "Image tag for Theia Cloud components (operator, service). Leave empty to use the tag defined in values.yaml (no override)."
+        required: false
+        type: string
+        default: ""
+      landing_page_tag:
+        description: "Image tag for EduTheia landing page. Leave empty to use the tag defined in values.yaml (no override)."
         required: false
         type: string
         default: ""
@@ -294,6 +299,7 @@ jobs:
 
           # Define image tag variables for cleaner command
           THEIA_CLOUD_TAG="${{ inputs.theia_cloud_tag }}"
+          LANDING_PAGE_TAG="${{ inputs.landing_page_tag }}"
           IDE_IMAGES_TAG="${{ inputs.ide_images_tag }}"
 
           # Build base helm command with always-present flags
@@ -309,10 +315,16 @@ jobs:
           # Only override Theia Cloud component images when a tag is explicitly provided
           if [ -n "${THEIA_CLOUD_TAG}" ]; then
             HELM_CMD+=(
-              --set theia-cloud.landingPage.image="ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}"
               --set theia-cloud.operator.image="ghcr.io/eduide/eduide-cloud/operator:${THEIA_CLOUD_TAG}"
               --set theia-cloud.service.image="ghcr.io/eduide/eduide-cloud/service:${THEIA_CLOUD_TAG}"
-              --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduide-cloud/landing-page:${THEIA_CLOUD_TAG}"
+            )
+          fi
+
+          # Only override landing page image when a tag is explicitly provided
+          if [ -n "${LANDING_PAGE_TAG}" ]; then
+            HELM_CMD+=(
+              --set theia-cloud.landingPage.image="ghcr.io/eduide/eduidec-landing-page:${LANDING_PAGE_TAG}"
+              --set "theia-cloud.preloading.images[0]=ghcr.io/eduide/eduidec-landing-page:${LANDING_PAGE_TAG}"
             )
           fi
 

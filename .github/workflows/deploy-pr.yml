@@ -22,7 +22,11 @@ on:
   workflow_dispatch:
     inputs:
       theia_cloud_tag:
-        description: 'Theia Cloud components tag (operator, service, landing-page). Leave empty to use the tag defined in values.yaml (no override).'
+        description: 'Theia Cloud components tag (operator, service). Leave empty to use the tag defined in values.yaml (no override).'
+        required: false
+        default: ''
+      landing_page_tag:
+        description: 'EduTheia landing page tag. Leave empty to use the tag defined in values.yaml (no override).'
         required: false
         default: ''
       ide_images_tag:
@@ -54,6 +58,7 @@ jobs:
     with:
       environment: test1
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      landing_page_tag: ${{ inputs.landing_page_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
@@ -73,6 +78,7 @@ jobs:
     with:
       environment: test2
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      landing_page_tag: ${{ inputs.landing_page_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
@@ -92,6 +98,7 @@ jobs:
     with:
       environment: test3
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+      landing_page_tag: ${{ inputs.landing_page_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
