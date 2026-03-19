@@ -1,8 +1,5 @@
 {{- range .Values.apps }}
 {{- $existingApp := lookup "theia.cloud/v1beta11" "AppDefinition" $.Release.Namespace .name }}
-{{- if not $existingApp }}
-  {{- $existingApp = lookup "theia.cloud/v1beta10" "AppDefinition" $.Release.Namespace .name }}
-{{- end }}
 {{- $existingSpec := dict }}
 {{- if $existingApp }}
   {{- $existingSpec = get $existingApp "spec" | default dict }}

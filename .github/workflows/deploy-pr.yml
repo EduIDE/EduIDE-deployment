@@ -29,6 +29,14 @@ on:
         description: 'IDE images tag (appdefinitions and preloading). Leave empty to use the tag defined in values.yaml (no override).'
         required: false
         default: ''
+      execution_mode:
+        description: 'Runner backend to use (self-hosted-buildkit or github-runners)'
+        required: false
+        default: 'self-hosted-buildkit'
+        type: choice
+        options:
+          - self-hosted-buildkit
+          - github-runners
       helm_chart_tag:
         description: 'Preview OCI tag from theia-cloud-helm to use (for example pr-123)'
         required: false
@@ -47,6 +55,7 @@ jobs:
       environment: test1
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
+      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
@@ -65,6 +74,7 @@ jobs:
       environment: test2
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
+      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
@@ -83,8 +93,8 @@ jobs:
       environment: test3
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
+      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
-      include_no_ls_preloads: true
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system

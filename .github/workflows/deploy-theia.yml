@@ -75,11 +75,11 @@ on:
         required: false
         type: string
         default: "gateway-system"
-      include_no_ls_preloads:
-        description: "Also override no-ls + langserver preload image tags (indices 7..10)"
+      execution_mode:
+        description: "Runner backend to use (self-hosted-buildkit or github-runners)"
         required: false
-        type: boolean
-        default: false
+        type: string
+        default: "self-hosted-buildkit"
 
 jobs:
   helm-install:
@@ -87,7 +87,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.execution_mode == 'github-runners' && 'ubuntu-latest' || 'arc-buildkit-eduide-amd64' }}
     # Link to GitHub Environment for secrets and protection rules
     environment: ${{ inputs.environment }}
 
@@ -265,17 +265,13 @@ jobs:
               --set "theia-cloud.preloading.images[4]=ghcr.io/eduide/eduide/ocaml:${IDE_IMAGES_TAG}"
               --set "theia-cloud.preloading.images[5]=ghcr.io/eduide/eduide/rust:${IDE_IMAGES_TAG}"
               --set "theia-cloud.preloading.images[6]=ghcr.io/eduide/eduide/python:${IDE_IMAGES_TAG}"
+              # Intentionally override no-ls + langserver preload images globally when IDE tag is overridden.
+              --set "theia-cloud.preloading.images[7]=ghcr.io/eduide/eduide/java-17-no-ls:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[8]=ghcr.io/eduide/eduide/rust-no-ls:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[9]=ghcr.io/eduide/eduide/langserver-java:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[10]=ghcr.io/eduide/eduide/langserver-rust:${IDE_IMAGES_TAG}"
               --set theia-appdefinitions.defaultImageTag="${IDE_IMAGES_TAG}"
             )
-
-            if [ "${{ inputs.include_no_ls_preloads }}" = "true" ]; then
-              HELM_CMD+=(
-                --set "theia-cloud.preloading.images[7]=ghcr.io/eduide/eduide/java-17-no-ls:${IDE_IMAGES_TAG}"
-                --set "theia-cloud.preloading.images[8]=ghcr.io/eduide/eduide/rust-no-ls:${IDE_IMAGES_TAG}"
-                --set "theia-cloud.preloading.images[9]=ghcr.io/eduide/eduide/langserver-java:${IDE_IMAGES_TAG}"
-                --set "theia-cloud.preloading.images[10]=ghcr.io/eduide/eduide/langserver-rust:${IDE_IMAGES_TAG}"
-              )
-            fi
           fi
 
           # Install/upgrade the Helm chart with all configuration

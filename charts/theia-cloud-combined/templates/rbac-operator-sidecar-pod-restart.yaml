@@ -8,7 +8,8 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["pods"]
-    verbs: ["get", "list", "watch", "delete"]
+    # deletecollection is intentionally kept for batch sidecar-pod restart cleanup operations.
+    verbs: ["get", "list", "watch", "delete", "deletecollection"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
