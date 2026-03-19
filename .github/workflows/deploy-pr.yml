@@ -45,10 +45,6 @@ on:
         description: 'Preview OCI tag from theia-cloud-helm to use (for example pr-123)'
         required: false
         default: ''
-      execution_mode:
-        description: 'Runner backend to use (self-hosted-buildkit or github-runners)'
-        required: false
-        default: 'self-hosted-buildkit'
 
 jobs:
   # Job 1: Deploy to Test1 environment
@@ -66,7 +62,6 @@ jobs:
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
-      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
@@ -87,7 +82,6 @@ jobs:
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
-      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
@@ -108,7 +102,6 @@ jobs:
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
-      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
