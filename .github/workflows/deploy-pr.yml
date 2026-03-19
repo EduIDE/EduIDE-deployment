@@ -33,6 +33,14 @@ on:
         description: 'IDE images tag (appdefinitions and preloading). Leave empty to use the tag defined in values.yaml (no override).'
         required: false
         default: ''
+      execution_mode:
+        description: 'Runner backend to use (self-hosted-buildkit or github-runners)'
+        required: false
+        default: 'self-hosted-buildkit'
+        type: choice
+        options:
+          - self-hosted-buildkit
+          - github-runners
       helm_chart_tag:
         description: 'Preview OCI tag from theia-cloud-helm to use (for example pr-123)'
         required: false
@@ -56,6 +64,7 @@ jobs:
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
       landing_page_tag: ${{ inputs.landing_page_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
+      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       deploy_shared_gateway: false
@@ -76,6 +85,7 @@ jobs:
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
       landing_page_tag: ${{ inputs.landing_page_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
+      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       deploy_shared_gateway: false
@@ -96,6 +106,7 @@ jobs:
       theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
       landing_page_tag: ${{ inputs.landing_page_tag }}
       ide_images_tag: ${{ inputs.ide_images_tag }}
+      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       deploy_shared_gateway: false
