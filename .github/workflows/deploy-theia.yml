@@ -180,6 +180,45 @@ jobs:
         run: |
           set -euo pipefail
 
+          helm_upgrade_with_retry() {
+            local release="$1"
+            shift
+
+            local max_retries=6
+            local delay_seconds=10
+            local attempt=1
+            local output
+            local status
+
+            while true; do
+              set +e
+              output="$(helm upgrade "$release" "$@" --install --wait 2>&1)"
+              status=$?
+              set -e
+
+              if [ "$status" -eq 0 ]; then
+                echo "$output"
+                return 0
+              fi
+
+              if [ "$attempt" -ge "$max_retries" ]; then
+                echo "$output"
+                return "$status"
+              fi
+
+              if echo "$output" | grep -Eq "release: already exists|another operation \(install/upgrade/rollback\) is in progress"; then
+                echo "$output"
+                echo "Helm race detected for release '$release' (attempt ${attempt}/${max_retries}), retrying in ${delay_seconds}s..."
+                sleep "$delay_seconds"
+                attempt=$((attempt + 1))
+                continue
+              fi
+
+              echo "$output"
+              return "$status"
+            done
+          }
+
           THEIA_CLOUD_BASE_VERSION="1.4.0-next.0"
           THEIA_CLOUD_CRDS_VERSION="1.2.0-next.1"
 
@@ -197,10 +236,10 @@ jobs:
           THEIA_CLOUD_CRDS_CHART=oci://ghcr.io/eduide/charts/theia-cloud-crds
 
           # Install base components (operator base, metrics, etc.)
-          helm upgrade theia-cloud-base "$THEIA_CLOUD_BASE_CHART" --version "$THEIA_CLOUD_BASE_VERSION" --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
+          helm_upgrade_with_retry theia-cloud-base "$THEIA_CLOUD_BASE_CHART" --version "$THEIA_CLOUD_BASE_VERSION" -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
 
           # Install Custom Resource Definitions (CRDs) for Theia Cloud
-          helm upgrade theia-cloud-crds "$THEIA_CLOUD_CRDS_CHART" --version "$THEIA_CLOUD_CRDS_VERSION" --install -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
+          helm_upgrade_with_retry theia-cloud-crds "$THEIA_CLOUD_CRDS_CHART" --version "$THEIA_CLOUD_CRDS_VERSION" -n default -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
 
       - name: Install cluster-wide monitoring
         env:
