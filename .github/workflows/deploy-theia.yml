@@ -80,6 +80,11 @@ on:
         required: false
         type: string
         default: "gateway-system"
+      execution_mode:
+        description: "Runner backend to use for deploy job"
+        required: false
+        type: string
+        default: "self-hosted-buildkit"
 
 jobs:
   helm-install:
@@ -87,7 +92,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.execution_mode == 'github-runners' && 'ubuntu-latest' || 'arc-buildkit-eduide-amd64' }}
     # Link to GitHub Environment for secrets and protection rules
     environment: ${{ inputs.environment }}
 

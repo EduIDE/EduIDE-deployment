@@ -33,6 +33,11 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      execution_mode:
+        description: 'Runner backend to use (self-hosted-buildkit or github-runners)'
+        required: false
+        default: 'self-hosted-buildkit'
 
 jobs:
   deploy:
@@ -42,6 +47,7 @@ jobs:
     uses: ./.github/workflows/deploy-theia.yml
     with:
       environment: theia-staging
+      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       deploy_shared_gateway: true
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
