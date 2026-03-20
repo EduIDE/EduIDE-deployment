@@ -125,10 +125,10 @@ theia-cloud:
     authUrl: "https://keycloak.ase.in.tum.de/"
 
     # -- The Keycloak Realm. Only has to be specified when enable: true
-    realm: "Test"
+    realm: ""
 
     # -- The client-id. Only has to be specified when enable: true
-    clientId: "theia-test"
+    clientId: ""
 
 theia-appdefinitions:
   defaultImageTag: pr-70
