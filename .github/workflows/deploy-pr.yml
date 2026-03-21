@@ -46,7 +46,7 @@ on:
         required: false
         default: ''
       clean_install:
-        description: 'Clean Install: If true, perform namespace-scoped cleanup before install (delete sessions/workspaces, appdefinitions, deployments, daemonsets, statefulsets, PVCs), then wait 60s.'
+        description: 'Clean Install: If true, perform namespace-scoped cleanup before install (delete sessions/workspaces, appdefinitions, deployments, daemonsets, statefulsets, PVCs).'
         required: false
         default: false
         type: boolean
