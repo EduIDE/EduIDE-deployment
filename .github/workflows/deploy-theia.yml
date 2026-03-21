@@ -192,6 +192,15 @@ jobs:
           # This is installed once per cluster, not per environment
           helm upgrade theia-monitoring ./charts/theia-monitoring --install -n default
 
+      - name: Install internal TLS infrastructure
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+
+          # Install cluster-scoped internal CA and trust bundle (once per cluster)
+          # Distributes the trust bundle ConfigMap to all namespaces
+          helm upgrade --install theia-internal-tls ./charts/theia-internal-tls -n cert-manager
+
       # Step 5: Install shared Gateway (optional, cluster-level)
       - name: Install Shared Gateway (optional)
         if: inputs.deploy_shared_gateway && inputs.shared_gateway_values_file != ''

@@ -22,12 +22,3 @@ spec:
     additionalFormats:
       jks:
         key: "truststore.jks"
-
-    namespaceSelector:
-      matchExpressions:
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values:
-            {{- range .Values.trustBundle.namespaces }}
-            - {{ . }}
-            {{- end }}

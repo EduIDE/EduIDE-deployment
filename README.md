@@ -29,8 +29,9 @@ This repository serves as the infrastructure-as-code for deploying and managing 
 ├── charts/                 # Custom Helm charts
 │   ├── theia-cloud-combined/    # Combined chart with all components
 │   ├── theia-shared-gateway/    # Shared Gateway API entrypoint
+│   ├── theia-internal-tls/      # Cluster-scoped internal CA + trust bundle
 │   ├── theia-appdefinitions/    # Custom IDE environments (images/configs)
-│   ├── theia-certificates/      # SSL certificate management
+│   ├── theia-certificates/      # SSL certificate management (per-namespace)
 │   └── theia-metrics/           # Prometheus/Grafana dashboards
 │
 ├── value-reference-files/  # Reference Helm values for different setups
@@ -147,7 +148,16 @@ Configuration files for each environment are located in the [deployments/](deplo
    For the dedicated production cluster, use:
    `deployments/shared-gateway-prod/values.yaml`.
 
-4. **Install the combined Theia Cloud chart**:
+4. **Install the internal TLS infrastructure (once per cluster)**:
+   ```bash
+   helm upgrade --install theia-internal-tls ./charts/theia-internal-tls \
+     --namespace cert-manager
+   ```
+   This deploys the cluster-scoped internal CA and trust bundle used for TLS
+   between internal services (e.g., shared cache and workspaces). The trust
+   bundle ConfigMap is automatically distributed to all namespaces.
+
+5. **Install the combined Theia Cloud chart**:
    ```bash
    helm registry login ghcr.io
    helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined \

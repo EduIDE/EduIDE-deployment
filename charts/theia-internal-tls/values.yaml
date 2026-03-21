@@ -1,7 +1,1 @@
-trustBundle:
-  namespaces:
-    - test2
-    - theia
-    - theia-staging
-    - test1
-    - test3
+# No values needed — the trust bundle is distributed to all namespaces.
