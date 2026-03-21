@@ -313,9 +313,7 @@ jobs:
           # Delete PVCs associated with this namespace
           kubectl delete pvc --all -n "$NAMESPACE" --ignore-not-found=true
 
-          # Mandatory pause after cleanup
-          echo "Clean install purge complete. Waiting 60 seconds before Helm install..."
-          sleep 60
+          echo "Clean install purge complete. Proceeding to Helm install."
 
       # Step 6: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
