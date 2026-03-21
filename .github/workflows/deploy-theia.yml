@@ -84,8 +84,8 @@ jobs:
           kubectl config get-contexts
           kubectl get nodes
 
-      # Step 4: Install Theia Cloud base components, CRDs, and cluster-wide monitoring
-      # These are prerequisites from the upstream Theia Cloud Helm repository
+      # Step 4: Prepare Helm dependencies only.
+      # This branch is rolled out against the already-installed cluster-wide resources.
       - name: Setup Helm dependencies
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
@@ -96,16 +96,6 @@ jobs:
 
           # Update dependencies for our custom chart
           helm dependency update ./charts/theia-cloud-combined
-
-          # Install base components (operator base, metrics, etc.)
-          helm upgrade theia-cloud-base theia-cloud-repo/theia-cloud-base --install -f ${{ vars.HELM_VALUES_PATH }}/theia-base-helm-values.yml
-
-          # Install Custom Resource Definitions (CRDs) for Theia Cloud
-          helm upgrade theia-cloud-crds theia-cloud-repo/theia-cloud-crds --install -f ${{ vars.HELM_VALUES_PATH }}/theia-crds-helm-values.yml
-
-          # Install cluster-wide monitoring (PodMonitors + Grafana Dashboards)
-          # This is installed once per cluster, not per environment
-          helm upgrade theia-monitoring ./charts/theia-monitoring --install
 
       # Step 5: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
