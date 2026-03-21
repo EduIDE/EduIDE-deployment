@@ -293,18 +293,11 @@ jobs:
 
           # Delete active session resources first if these CRDs exist
           RESOURCE_LIST="$(kubectl api-resources --namespaced=true -o name)"
-          if echo "$RESOURCE_LIST" | grep -qx "session"; then
-            kubectl delete session --all -n "$NAMESPACE" --ignore-not-found=true
-          fi
-          if echo "$RESOURCE_LIST" | grep -qx "sessions"; then
-            kubectl delete sessions --all -n "$NAMESPACE" --ignore-not-found=true
-          fi
-          if echo "$RESOURCE_LIST" | grep -qx "workspace"; then
-            kubectl delete workspace --all -n "$NAMESPACE" --ignore-not-found=true
-          fi
-          if echo "$RESOURCE_LIST" | grep -qx "workspaces"; then
-            kubectl delete workspaces --all -n "$NAMESPACE" --ignore-not-found=true
-          fi
+          while IFS= read -r resource; do
+            if echo "$resource" | grep -Eq '^sessions(\.|$)|^session(\.|$)|^workspaces(\.|$)|^workspace(\.|$)'; then
+              kubectl delete "$resource" --all -n "$NAMESPACE" --ignore-not-found=true || true
+            fi
+          done <<< "$RESOURCE_LIST"
 
           # Delete AppDefinitions for a full clean slate
           kubectl delete appdefinitions --all -n "$NAMESPACE" --ignore-not-found=true
