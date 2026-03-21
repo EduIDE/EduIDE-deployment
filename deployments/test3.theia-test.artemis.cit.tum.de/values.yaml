@@ -142,7 +142,7 @@ theia-appdefinitions:
           port: 5000
           languages: [java]
           mountWorkspace: true
-    - name: java-17
+    - name: java-17-latest
       image: ghcr.io/eduide/eduide/java-17
       minInstances: 1
     - name: rust-no-ls
