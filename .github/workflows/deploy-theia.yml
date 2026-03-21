@@ -283,7 +283,7 @@ jobs:
             --set wildcardTLSSecret.key="$(cat shared-gateway-wildcard.key)"
 
       - name: Clean install - namespace-scoped resource purge
-        if: inputs.clean_install && github.event_name == 'workflow_dispatch'
+        if: inputs.clean_install
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
         run: |
