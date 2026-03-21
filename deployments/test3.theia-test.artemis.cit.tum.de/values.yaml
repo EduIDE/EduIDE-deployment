@@ -64,16 +64,16 @@ theia-cloud:
   preloading:
     images:
       - ghcr.io/eduide/eduide-cloud/landing-page:latest
-      - ghcr.io/eduide/eduide/java-17:latest
-      - ghcr.io/eduide/eduide/c:latest
-      - ghcr.io/eduide/eduide/javascript:latest
-      - ghcr.io/eduide/eduide/ocaml:latest
-      - ghcr.io/eduide/eduide/rust:latest
-      - ghcr.io/eduide/eduide/python:latest
-      - ghcr.io/eduide/eduide/java-17-no-ls:latest
-      - ghcr.io/eduide/eduide/rust-no-ls:latest
-      - ghcr.io/eduide/eduide/langserver-java:latest
-      - ghcr.io/eduide/eduide/langserver-rust:latest
+      - ghcr.io/eduide/eduide/java-17:pr-125
+      - ghcr.io/eduide/eduide/c:pr-125
+      - ghcr.io/eduide/eduide/javascript:pr-125
+      - ghcr.io/eduide/eduide/ocaml:pr-125
+      - ghcr.io/eduide/eduide/rust:pr-125
+      - ghcr.io/eduide/eduide/python:pr-125
+      - ghcr.io/eduide/eduide/java-17-no-ls:pr-125
+      - ghcr.io/eduide/eduide/rust-no-ls:pr-125
+      - ghcr.io/eduide/eduide/langserver-java:pr-125
+      - ghcr.io/eduide/eduide/langserver-rust:pr-125
 
   imagePullPolicy: Always
 
@@ -131,7 +131,7 @@ theia-cloud:
     clientId: ""
 
 theia-appdefinitions:
-  defaultImageTag: latest
+  defaultImageTag: pr-125
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
@@ -142,6 +142,9 @@ theia-appdefinitions:
           port: 5000
           languages: [java]
           mountWorkspace: true
+    - name: java-17
+      image: ghcr.io/eduide/eduide/java-17
+      minInstances: 1
     - name: rust-no-ls
       image: ghcr.io/eduide/eduide/rust-no-ls
       minInstances: 1
