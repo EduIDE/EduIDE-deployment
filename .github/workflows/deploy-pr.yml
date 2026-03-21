@@ -46,7 +46,7 @@ on:
         required: false
         default: ''
       clean_install:
-        description: 'If true, performs namespace-scoped clean install routine after deployment (delete sessions, scale appdefinitions minInstances to 0 temporarily, then restore).'
+        description: 'Clean Install: If true, perform namespace-scoped cleanup before install (delete sessions/workspaces, appdefinitions, deployments, daemonsets, statefulsets, PVCs), then wait 60s.'
         required: false
         default: false
         type: boolean
