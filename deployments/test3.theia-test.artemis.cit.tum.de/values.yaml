@@ -97,9 +97,9 @@ theia-cloud:
     ephemeralStorage: true
     additionalApps:
       java-17-no-ls:
-        label: Java 17 No-LS (Sidecar)
+        label: Java 17 No-LS
       rust-no-ls:
-        label: Rust No-LS (Sidecar)
+        label: Rust No-LS
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
     infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
