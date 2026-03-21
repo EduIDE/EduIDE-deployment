@@ -291,6 +291,18 @@ jobs:
 
           NAMESPACE="${{ vars.NAMESPACE }}"
 
+          # Validate target namespace before running destructive operations
+          if [ -z "$NAMESPACE" ]; then
+            echo "ERROR: NAMESPACE is empty. Aborting clean install purge."
+            exit 1
+          fi
+
+          case "$NAMESPACE" in
+            default|kube-system|kube-public|kube-node-lease)
+              echo "ERROR: Refusing to run clean install purge in protected namespace '$NAMESPACE'."
+              exit 1
+              ;;
+          esac
           # Delete active session resources first if these CRDs exist
           RESOURCE_LIST="$(kubectl api-resources --namespaced=true -o name)"
           while IFS= read -r resource; do
