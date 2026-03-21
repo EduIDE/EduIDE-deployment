@@ -125,19 +125,3 @@ theia-appdefinitions:
   #   - name: python-v2
   #     image: ghcr.io/ls1intum/theia/python
   #     imageTag: v2.0.0
-
-theia-workspace-garbage-collector:
-  replicaCount: 1
-  image:
-    repository: ghcr.io/ls1intum/theia/garbage-collector
-    tag: latest
-    pullPolicy: Always
-
-  serviceAccount:
-    name: garbage-collector-sa
-
-  env:
-    # The time to live of a workspace. The default is 2 weeks
-    WORKSPACE_TTL: "1209600s"
-    # The interval at which to check for old workspaces. The Default is 30 minutes
-    CHECK_INTERVAL: "1800s"

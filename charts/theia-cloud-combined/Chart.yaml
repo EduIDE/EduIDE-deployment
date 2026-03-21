@@ -16,7 +16,3 @@ dependencies:
   - name: theia-appdefinitions
     version: 0.1.0
     repository: "file://../theia-appdefinitions"
-
-  - name: theia-workspace-garbage-collector
-    version: 0.1.0
-    repository: "https://ls1intum.github.io/theia-workspace-garbage-collector/"
