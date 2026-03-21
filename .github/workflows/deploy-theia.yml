@@ -85,6 +85,11 @@ on:
         required: false
         type: string
         default: "self-hosted-buildkit"
+      clean_install:
+        description: "If true, perform clean install routine in target namespace after Helm deployment"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   helm-install:
@@ -250,6 +255,7 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
         run: |
+          set -euo pipefail
 
           # Install cluster-wide monitoring (PodMonitors + Grafana Dashboards)
           # This is installed once per cluster, not per environment
@@ -351,3 +357,79 @@ jobs:
           # --create-namespace: Create the namespace if it doesn't exist
           # Image tag overrides are applied only when non-empty; otherwise values.yaml settings are preserved
           "${HELM_CMD[@]}"
+
+      - name: Clean install - snapshot AppDefinitions minInstances
+        if: inputs.clean_install && github.event_name == 'workflow_dispatch'
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          set -euo pipefail
+
+          NAMESPACE="${{ vars.NAMESPACE }}"
+          SNAPSHOT_FILE="appdefinition-mininstances-snapshot.txt"
+
+          kubectl get appdefinitions -n "$NAMESPACE" -o json \
+            | jq -r '.items[] | "\(.metadata.name) \(.spec.minInstances // 0)"' > "$SNAPSHOT_FILE"
+
+          echo "Saved minInstances snapshot:"
+          cat "$SNAPSHOT_FILE"
+
+      - name: Clean install - scale AppDefinitions down and purge sessions
+        if: inputs.clean_install && github.event_name == 'workflow_dispatch'
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          set -euo pipefail
+
+          NAMESPACE="${{ vars.NAMESPACE }}"
+          SNAPSHOT_FILE="appdefinition-mininstances-snapshot.txt"
+
+          if [ ! -s "$SNAPSHOT_FILE" ]; then
+            echo "No AppDefinition snapshot file found. Nothing to scale down."
+          else
+            while read -r APPDEF_NAME _; do
+              [ -n "$APPDEF_NAME" ] || continue
+              kubectl patch appdefinitions "$APPDEF_NAME" -n "$NAMESPACE" --type=merge -p '{"spec":{"minInstances":0}}'
+            done < "$SNAPSHOT_FILE"
+          fi
+
+          # Delete active session resources if these CRDs are installed (namespace-scoped only)
+          RESOURCE_LIST="$(kubectl api-resources --namespaced=true -o name)"
+          if echo "$RESOURCE_LIST" | grep -qx "session"; then
+            kubectl delete session --all -n "$NAMESPACE" --ignore-not-found=true
+          fi
+          if echo "$RESOURCE_LIST" | grep -qx "sessions"; then
+            kubectl delete sessions --all -n "$NAMESPACE" --ignore-not-found=true
+          fi
+          if echo "$RESOURCE_LIST" | grep -qx "workspace"; then
+            kubectl delete workspace --all -n "$NAMESPACE" --ignore-not-found=true
+          fi
+          if echo "$RESOURCE_LIST" | grep -qx "workspaces"; then
+            kubectl delete workspaces --all -n "$NAMESPACE" --ignore-not-found=true
+          fi
+
+          echo "Waiting 60 seconds before restoring minInstances..."
+          sleep 60
+
+      - name: Clean install - restore AppDefinitions minInstances
+        if: always() && inputs.clean_install && github.event_name == 'workflow_dispatch'
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          set -euo pipefail
+
+          NAMESPACE="${{ vars.NAMESPACE }}"
+          SNAPSHOT_FILE="appdefinition-mininstances-snapshot.txt"
+
+          if [ ! -s "$SNAPSHOT_FILE" ]; then
+            echo "No snapshot file to restore. Skipping restore step."
+            exit 0
+          fi
+
+          while read -r APPDEF_NAME MIN_INSTANCES; do
+            [ -n "$APPDEF_NAME" ] || continue
+            RESTORE_VALUE="${MIN_INSTANCES:-0}"
+            kubectl patch appdefinitions "$APPDEF_NAME" -n "$NAMESPACE" --type=merge -p "{\"spec\":{\"minInstances\":${RESTORE_VALUE}}}"
+          done < "$SNAPSHOT_FILE"
+
+          echo "Restored AppDefinition minInstances from snapshot."
