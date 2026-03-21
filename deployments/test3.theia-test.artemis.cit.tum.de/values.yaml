@@ -63,17 +63,17 @@ theia-cloud:
 
   preloading:
     images:
-      - ghcr.io/eduide/eduide-cloud/landing-page:pr-70
+      - ghcr.io/eduide/eduide-cloud/landing-page:latest
       - ghcr.io/eduide/eduide/java-17:latest
       - ghcr.io/eduide/eduide/c:latest
       - ghcr.io/eduide/eduide/javascript:latest
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
       - ghcr.io/eduide/eduide/python:latest
-      - ghcr.io/eduide/eduide/java-17-no-ls:pr-70
-      - ghcr.io/eduide/eduide/rust-no-ls:pr-70
-      - ghcr.io/eduide/eduide/langserver-java:pr-70
-      - ghcr.io/eduide/eduide/langserver-rust:pr-70
+      - ghcr.io/eduide/eduide/java-17-no-ls:pr-130
+      - ghcr.io/eduide/eduide/rust-no-ls:pr-130
+      - ghcr.io/eduide/eduide/langserver-java:pr-130
+      - ghcr.io/eduide/eduide/langserver-rust:pr-130
 
   imagePullPolicy: Always
 
@@ -83,7 +83,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduide-cloud/landing-page:pr-70
+    image: ghcr.io/eduide/eduide-cloud/landing-page:latest
     # We can define a default blueprint
     
     # 1. The actual image data (Must be a Base64 encoded string)
@@ -97,9 +97,9 @@ theia-cloud:
     ephemeralStorage: true
     additionalApps:
       java-17-no-ls:
-        label: Java 17 No-LS (Sidecar)
+        label: Java 17 No-LS
       rust-no-ls:
-        label: Rust No-LS (Sidecar)
+        label: Rust No-LS
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
     infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
@@ -119,19 +119,19 @@ theia-cloud:
         url: "https://aet.cit.tum.de/"
 
   keycloak:
-    enable: true
+    enable: false
 
     # -- Key cloak auth URL. Only has to be specified when enable: true
     authUrl: "https://keycloak.ase.in.tum.de/"
 
     # -- The Keycloak Realm. Only has to be specified when enable: true
-    realm: "Test"
+    realm: ""
 
     # -- The client-id. Only has to be specified when enable: true
-    clientId: "theia-test"
+    clientId: ""
 
 theia-appdefinitions:
-  defaultImageTag: pr-70
+  defaultImageTag: pr-130
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
@@ -142,6 +142,9 @@ theia-appdefinitions:
           port: 5000
           languages: [java]
           mountWorkspace: true
+    - name: java-17-latest
+      image: ghcr.io/eduide/eduide/java-17
+      minInstances: 1
     - name: rust-no-ls
       image: ghcr.io/eduide/eduide/rust-no-ls
       minInstances: 1
