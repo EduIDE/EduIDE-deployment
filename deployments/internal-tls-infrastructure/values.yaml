@@ -1,0 +1,7 @@
+trustBundle:
+  namespaces:
+    - test2
+    - theia
+    - theia-staging
+    - test1
+    - test3

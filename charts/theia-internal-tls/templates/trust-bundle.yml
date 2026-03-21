@@ -28,9 +28,6 @@ spec:
         - key: kubernetes.io/metadata.name
           operator: In
           values:
-            - test2
-            - theia
-            - theia-staging
-            - test1
-            - test3
-
+            {{- range .Values.trustBundle.namespaces }}
+            - {{ . }}
+            {{- end }}
