@@ -82,10 +82,10 @@ theia-cloud:
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
     enableBuildCaching: true
-    buildCacheUrl: "https://theia-cloud-combined-cache-server:8080/cache/"
+    buildCacheUrl: "https://theia-cloud-combined-cache:8080/cache/"
     enableBuildCachePush: true
     enableDependencyCaching: true
-    dependencyCacheUrl: "http://theia-cloud-combined-reposilite:8080"
+    dependencyCacheUrl: "http://theia-cloud-combined-reposilite:8080/releases/"
 
   # service:
   #   image: ghcr.io/eduide/eduide-cloud/service:latest
