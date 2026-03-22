@@ -36,8 +36,11 @@ operator:
   replicas: 1
   sessionsPerUser: 10
   storageClassName: csi-rbd-sc
-  enableCaching: true
-  cacheUrl: "http://theia-shared-cache:5071"
+  enableBuildCaching: false
+  buildCacheUrl: ""
+  enableBuildCachePush: false
+  enableDependencyCaching: false
+  dependencyCacheUrl: ""
 
 service:
   adminApiTokenSecret:

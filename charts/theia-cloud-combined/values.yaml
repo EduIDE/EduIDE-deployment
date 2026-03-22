@@ -52,6 +52,11 @@ theia-cloud:
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
     eagerStart: true
+    enableBuildCaching: false
+    buildCacheUrl: ""
+    enableBuildCachePush: false
+    enableDependencyCaching: false
+    dependencyCacheUrl: ""
 
   service:
     image: ghcr.io/eduide/eduide/service:latest
