@@ -64,7 +64,7 @@ theia-cloud:
   preloading:
     images:
       - ghcr.io/eduide/eduide/java-17:pr-130
-      - ghcr.io/eduide/eduide/rust:pr
+      - ghcr.io/eduide/eduide/rust:pr-130
       - ghcr.io/eduide/eduide/java-17-no-ls:pr-130
       - ghcr.io/eduide/eduide/rust-no-ls:pr-130
       - ghcr.io/eduide/eduide/langserver-java:pr-130
