@@ -85,6 +85,11 @@ on:
         required: false
         type: string
         default: "self-hosted-buildkit"
+      clean_install:
+        description: "If true, perform namespace-scoped cleanup before Helm install"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   helm-install:
@@ -250,6 +255,7 @@ jobs:
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
         run: |
+          set -euo pipefail
 
           # Install cluster-wide monitoring (PodMonitors + Grafana Dashboards)
           # This is installed once per cluster, not per environment
@@ -275,6 +281,51 @@ jobs:
             -f "$SHARED_GATEWAY_VALUES_FILE" \
             --set wildcardTLSSecret.certificate="$(cat shared-gateway-wildcard.crt)" \
             --set wildcardTLSSecret.key="$(cat shared-gateway-wildcard.key)"
+
+      - name: Clean install - namespace-scoped resource purge
+        if: inputs.clean_install
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
+        run: |
+          set -euo pipefail
+
+          NAMESPACE="${{ vars.NAMESPACE }}"
+
+          # Validate target namespace before running destructive operations
+          if [ -z "$NAMESPACE" ]; then
+            echo "ERROR: NAMESPACE is empty. Aborting clean install purge."
+            exit 1
+          fi
+
+          case "$NAMESPACE" in
+            default|kube-system|kube-public|kube-node-lease)
+              echo "ERROR: Refusing to run clean install purge in protected namespace '$NAMESPACE'."
+              exit 1
+              ;;
+          esac
+          # Delete active session resources first if these CRDs exist
+          RESOURCE_LIST="$(kubectl api-resources --namespaced=true -o name)"
+          while IFS= read -r resource; do
+            if echo "$resource" | grep -Eq '^sessions(\.|$)|^session(\.|$)|^workspaces(\.|$)|^workspace(\.|$)'; then
+              kubectl delete "$resource" --all -n "$NAMESPACE" --ignore-not-found=true || true
+            fi
+          done <<< "$RESOURCE_LIST"
+
+          # Delete AppDefinitions for a full clean slate
+          kubectl delete appdefinitions --all -n "$NAMESPACE" --ignore-not-found=true
+
+          # Delete namespace workloads
+          kubectl delete deployments --all -n "$NAMESPACE" --ignore-not-found=true
+          kubectl delete daemonsets --all -n "$NAMESPACE" --ignore-not-found=true
+          kubectl delete statefulsets --all -n "$NAMESPACE" --ignore-not-found=true
+
+          # Wait until workload pods terminate (best effort)
+          kubectl wait --for=delete pod --all -n "$NAMESPACE" --timeout=120s || true
+
+          # Delete PVCs associated with this namespace
+          kubectl delete pvc --all -n "$NAMESPACE" --ignore-not-found=true
+
+          echo "Clean install purge complete. Proceeding to Helm install."
 
       # Step 6: Install the main Theia Cloud application with environment-specific configuration
       # This includes the operator, service, certificates, and app definitions
