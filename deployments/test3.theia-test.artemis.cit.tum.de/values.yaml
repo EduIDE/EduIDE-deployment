@@ -78,7 +78,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduide-cloud/landing-page:latest
+    image: ghcr.io/eduide/eduidec-landing-page:latest
     # We can define a default blueprint
     
     # 1. The actual image data (Must be a Base64 encoded string)
