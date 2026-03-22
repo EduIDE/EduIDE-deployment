@@ -9,7 +9,7 @@ spec:
     kind: ClusterIssuer
   commonName: "theia-shared-cache"
   dnsNames:
-    - theia-cloud-combined-cache
-    - theia-cloud-combined-cache.{{ .Release.Namespace }}.svc.cluster.local
+    - theia-cloud-combined-cache-server
+    - theia-cloud-combined-cache-server.{{ .Release.Namespace }}.svc.cluster.local
   privateKey:
     rotationPolicy: Never
