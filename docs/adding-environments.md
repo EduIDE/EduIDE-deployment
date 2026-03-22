@@ -176,31 +176,17 @@ dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d -- '\n' | tr -- '+
 
 Edit [.github/workflows/deploy-pr.yml](../.github/workflows/deploy-pr.yml):
 
-1. Add the environment to the `options` list:
-
-```yaml
-workflow_dispatch:
-  inputs:
-    environment:
-      description: 'Target Environment'
-      required: true
-      type: choice
-      options:
-        - test1
-        - test2  # Add your new environment
-```
-
-2. Add a new job for the environment:
+1. Add a new job for the environment (manual dispatch now deploys to all jobs; there is no `environment` selector input):
 
 ```yaml
 deploy-test2:
-  if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'test2')
+  if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
   name: Deploy to Test2
   uses: ./.github/workflows/deploy-theia.yml
   with:
     environment: test2
-    theia_cloud_tag: ${{ inputs.theia_cloud_tag || 'latest' }}
-    ide_images_tag: ${{ inputs.ide_images_tag || 'latest' }}
+    theia_cloud_tag: ${{ inputs.theia_cloud_tag }}
+    ide_images_tag: ${{ inputs.ide_images_tag }}
     helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
     deploy_shared_gateway: true
     shared_gateway_values_file: deployments/shared-gateway/values.yaml
