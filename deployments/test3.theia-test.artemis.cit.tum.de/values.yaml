@@ -114,7 +114,7 @@ theia-cloud:
         url: "https://aet.cit.tum.de/"
 
   keycloak:
-    enable: true
+    enable: false
 
     # -- Key cloak auth URL. Only has to be specified when enable: true
     authUrl: "https://keycloak.ase.in.tum.de/"
