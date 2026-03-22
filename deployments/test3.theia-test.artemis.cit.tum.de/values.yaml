@@ -63,12 +63,12 @@ theia-cloud:
 
   preloading:
     images:
-      - ghcr.io/eduide/eduide/java-17:pr-130
-      - ghcr.io/eduide/eduide/rust:pr-130
-      - ghcr.io/eduide/eduide/java-17-no-ls:pr-130
-      - ghcr.io/eduide/eduide/rust-no-ls:pr-130
-      - ghcr.io/eduide/eduide/langserver-java:pr-130
-      - ghcr.io/eduide/eduide/langserver-rust:pr-130
+      - ghcr.io/eduide/eduide/java-17:pr-131
+      - ghcr.io/eduide/eduide/rust:pr-131
+      - ghcr.io/eduide/eduide/java-17-no-ls:pr-131
+      - ghcr.io/eduide/eduide/rust-no-ls:pr-131
+      - ghcr.io/eduide/eduide/langserver-java:pr-131
+      - ghcr.io/eduide/eduide/langserver-rust:pr-131
 
   imagePullPolicy: Always
 
@@ -92,9 +92,9 @@ theia-cloud:
     ephemeralStorage: false
     additionalApps:
       java-17-no-ls:
-        label: Java 17 No-LS (Sidecar)
+        label: Java 17 No-LS
       rust-no-ls:
-        label: Rust No-LS (Sidecar)
+        label: Rust No-LS
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
     infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
@@ -126,7 +126,7 @@ theia-cloud:
     clientId: "theia-test"
 
 theia-appdefinitions:
-  defaultImageTag: pr-130
+  defaultImageTag: pr-131
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
