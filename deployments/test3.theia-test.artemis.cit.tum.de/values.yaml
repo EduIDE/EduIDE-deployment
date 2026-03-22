@@ -130,16 +130,22 @@ theia-appdefinitions:
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
-      minInstances: 1
+      minInstances: 3
+      maxInstances: 20
       sidecars:
         - name: langserver
           image: ghcr.io/eduide/eduide/langserver-java
           port: 5000
           languages: [java]
           mountWorkspace: true
+    - name: java-17-latest
+      image: ghcr.io/eduide/eduide/java-17
+      minInstances: 3
+      maxInstances: 20
     - name: rust-no-ls
       image: ghcr.io/eduide/eduide/rust-no-ls
-      minInstances: 1
+      minInstances: 3
+      maxInstances: 20
       sidecars:
         - name: langserver
           image: ghcr.io/eduide/eduide/langserver-rust
