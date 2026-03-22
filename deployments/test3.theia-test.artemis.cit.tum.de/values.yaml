@@ -43,7 +43,7 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:pr-100
+    image: ghcr.io/eduide/eduide-cloud/operator:pr-70
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
@@ -56,19 +56,24 @@ theia-cloud:
         ephemeral-storage: "256Mi"
 
   service:
-    image: ghcr.io/eduide/eduide-cloud/service:pr-100
+    image: ghcr.io/eduide/eduide-cloud/service:pr-70
     adminApiTokenSecret:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
 
   preloading:
     images:
-      - ghcr.io/eduide/eduide/java-17:pr-130
-      - ghcr.io/eduide/eduide/rust:pr-130
-      - ghcr.io/eduide/eduide/java-17-no-ls:pr-130
-      - ghcr.io/eduide/eduide/rust-no-ls:pr-130
-      - ghcr.io/eduide/eduide/langserver-java:pr-130
-      - ghcr.io/eduide/eduide/langserver-rust:pr-130
+      - ghcr.io/eduide/eduidec-landing-page:latest
+      - ghcr.io/eduide/eduide/java-17:latest
+      - ghcr.io/eduide/eduide/c:latest
+      - ghcr.io/eduide/eduide/javascript:latest
+      - ghcr.io/eduide/eduide/ocaml:latest
+      - ghcr.io/eduide/eduide/rust:latest
+      - ghcr.io/eduide/eduide/python:latest
+      - ghcr.io/eduide/eduide/java-17-no-ls:pr-70
+      - ghcr.io/eduide/eduide/rust-no-ls:pr-70
+      - ghcr.io/eduide/eduide/langserver-java:pr-70
+      - ghcr.io/eduide/eduide/langserver-rust:pr-70
 
   imagePullPolicy: Always
 
@@ -89,12 +94,12 @@ theia-cloud:
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
     appDefinition: "java-17-no-ls"
-    ephemeralStorage: false
+    ephemeralStorage: true
     additionalApps:
       java-17-no-ls:
-        label: Java 17 No-LS
+        label: Java 17 No-LS (Sidecar)
       rust-no-ls:
-        label: Rust No-LS
+        label: Rust No-LS (Sidecar)
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
     infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
     loadingText: "⚡ Setting up your development workspace..."
@@ -114,38 +119,32 @@ theia-cloud:
         url: "https://aet.cit.tum.de/"
 
   keycloak:
-    enable: false
+    enable: true
 
     # -- Key cloak auth URL. Only has to be specified when enable: true
     authUrl: "https://keycloak.ase.in.tum.de/"
 
     # -- The Keycloak Realm. Only has to be specified when enable: true
-    realm: ""
+    realm: "Test"
 
     # -- The client-id. Only has to be specified when enable: true
-    clientId: ""
+    clientId: "theia-test"
 
 theia-appdefinitions:
-  defaultImageTag: pr-130
+  defaultImageTag: pr-70
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
-      minInstances: 3
-      maxInstances: 20
+      minInstances: 1
       sidecars:
         - name: langserver
           image: ghcr.io/eduide/eduide/langserver-java
           port: 5000
           languages: [java]
           mountWorkspace: true
-    - name: java-17-latest
-      image: ghcr.io/eduide/eduide/java-17
-      minInstances: 3
-      maxInstances: 20
     - name: rust-no-ls
       image: ghcr.io/eduide/eduide/rust-no-ls
-      minInstances: 3
-      maxInstances: 20
+      minInstances: 1
       sidecars:
         - name: langserver
           image: ghcr.io/eduide/eduide/langserver-rust
