@@ -4,7 +4,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: reposilite-prometheus-credentials
-  namespace: { { .Values.namespace } }
+  namespace: {{ .Values.namespace }}
 type: Opaque
 stringData:
   username: "prometheus"
@@ -14,7 +14,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: theia-cloud-reposilite
-  namespace: { { .Values.namespace } }
+  namespace: {{ .Values.namespace }}
 spec:
   selector:
     matchLabels:

@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: theia-shared-cache
-  namespace: { { .Values.namespace } }
+  namespace: {{ .Values.namespace }}
 spec:
   selector:
     matchLabels:
@@ -14,5 +14,5 @@ spec:
       path: /metrics
       interval: 15s
       scheme: https
-      tlsConfig:
+      tlsConfig:``
         insecureSkipVerify: true
