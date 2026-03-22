@@ -774,18 +774,25 @@ data:
       "templating": {
         "list": [
           {
-            "current": { "selected": false, "text": "test2", "value": "test2" },
+            "current": {},
+            "datasource": { "type": "prometheus", "uid": "prometheus" },
+            "definition": "label_values(jetty_requests_total, namespace)",
             "hide": 0,
             "includeAll": false,
             "label": "Namespace",
             "multi": false,
             "name": "namespace",
-            "options": [
-              { "selected": true, "text": "test2", "value": "test2" }
-            ],
-            "query": "test2",
+            "options": [],
+            "query": {
+              "qryType": 1,
+              "query": "label_values(jetty_requests_total, namespace)",
+              "refId": "PrometheusVariableQueryEditor-VariableQuery"
+            },
+            "refresh": 2,
+            "regex": "",
             "skipUrlSync": false,
-            "type": "custom"
+            "sort": 0,
+            "type": "query"
           }
         ]
       },
