@@ -14,7 +14,7 @@ theia-shared-cache:
   enabled: true
 
   image:
-    repository: ghcr.io/ls1intum/theia-shared-cache/gradle-cache
+    repository: ghcr.io/eduide/eduide-shared-cache/gradle-cache
     tag: "main"
     pullPolicy: IfNotPresent
 
