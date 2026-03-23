@@ -55,6 +55,8 @@ theia-cloud:
   #     name: service-admin-api-token
   #     key: ADMIN_API_TOKEN
 
+  # Preload list indices 0–10 must match deploy-theia.yml --set overrides when tags are passed.
+  # Index 11 is oauth2-proxy (distroless); the workflow does not override it.
   preloading:
     images:
       - ghcr.io/eduide/eduidec-landing-page:latest
@@ -64,6 +66,10 @@ theia-cloud:
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
       - ghcr.io/eduide/eduide/python:latest
+      - ghcr.io/eduide/eduide/java-17-no-ls:latest
+      - ghcr.io/eduide/eduide/rust-no-ls:latest
+      - ghcr.io/eduide/eduide/langserver-java:latest
+      - ghcr.io/eduide/eduide/langserver-rust:latest
       - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
         args: ["--version"]
 

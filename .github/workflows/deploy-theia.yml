@@ -379,7 +379,9 @@ jobs:
             )
           fi
 
-          # Only override IDE images when a tag is explicitly provided
+          # Only override IDE images when a tag is explicitly provided.
+          # Indices 0 (landing) and 1-10 (IDE + no-ls + langserver preload) are set above / here.
+          # Index 11 is oauth2-proxy (distroless); keep it only in values.yaml so it is never replaced by a string override.
           if [ -n "${IDE_IMAGES_TAG}" ]; then
             HELM_CMD+=(
               --set "theia-cloud.preloading.images[1]=ghcr.io/eduide/eduide/java-17:${IDE_IMAGES_TAG}"
