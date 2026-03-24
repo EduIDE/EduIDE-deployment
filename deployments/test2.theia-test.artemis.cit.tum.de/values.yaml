@@ -37,6 +37,11 @@ theia-shared-cache:
       limits:
         memory: "2Gi"
         cpu: "1000m"
+  
+
+  cache:
+    maxEntrySizeMB: 100
+    verifyCASHash: true
 
   tls:
     enabled: true
