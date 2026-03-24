@@ -47,7 +47,7 @@ theia-cloud:
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 1000 # Needed for load tests - not recommended for production
-    storageClassName: csi-rbd-sc
+    storageClassName: longhorn
 
   # service:
   #   image: ghcr.io/eduide/eduide-cloud/service:latest
