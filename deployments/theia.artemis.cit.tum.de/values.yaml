@@ -127,6 +127,7 @@ theia-cloud:
 
     #     # -- The client-id. Only has to be specified when enable: true
     clientId: "theia"
+
 monitoring:
   targetNamespaces:
     - theia
