@@ -127,10 +127,6 @@ theia-cloud:
 
     #     # -- The client-id. Only has to be specified when enable: true
     clientId: "theia"
-
-theia-appdefinitions:
-  defaultImageTag: latest-0c8eec9
-
 monitoring:
   targetNamespaces:
     - theia
