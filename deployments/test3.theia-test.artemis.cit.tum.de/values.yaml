@@ -48,7 +48,7 @@ theia-cloud:
     replicas: 1
     sessionsPerUser: 10
     # Test3 runs on the parma cluster where Longhorn is the default storage backend.
-    storageClassName: longhorn
+    storageClassName: csi-rbd-sc
     resources:
       requests:
         ephemeral-storage: "128Mi"
