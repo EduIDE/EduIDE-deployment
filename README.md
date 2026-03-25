@@ -186,9 +186,10 @@ When a new release is published, you must update the short SHA suffix in the env
 - `theia-cloud.service.image`
 - `theia-cloud.preloading.images`
 - `theia-cloud.landingPage.image`
+- `theia-appdefinitions.defaultImageTag`
 - `conversion.image` in `theia-crds-helm-values.yml`
 
-The landing page can use a different SHA suffix from the IDE images, so keep `theia-cloud.landingPage.image` and `theia-cloud.preloading.images[0]` aligned with each other, and keep the remaining IDE preload tags aligned separately.
+The landing page can use a different SHA suffix from the IDE images, so keep `theia-cloud.landingPage.image` and `theia-cloud.preloading.images[0]` aligned with each other, and keep the IDE preload/appdefinition tags aligned separately.
 
 See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinned-image-tags) for the full release checklist.
 
