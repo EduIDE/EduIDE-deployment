@@ -42,33 +42,33 @@ theia-cloud:
       interval: 3
 
   operator:
-    #image: ghcr.io/eduide/eduide-cloud/operator:latest
+    image: ghcr.io/eduide/eduide-cloud/operator:latest-dfe0d09
     #eagerStart: false
     replicas: 3
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
 
-  # service:
-  #   image: ghcr.io/eduide/eduide-cloud/service:latest
-  #   adminApiTokenSecret:
-  #     name: service-admin-api-token
-  #     key: ADMIN_API_TOKEN
+  service:
+    image: ghcr.io/eduide/eduide-cloud/service:latest-dfe0d09
+    adminApiTokenSecret:
+      name: service-admin-api-token
+      key: ADMIN_API_TOKEN
 
   # Preload list indices 0–10 must match deploy-theia.yml --set overrides when tags are passed.
   # Index 11 is oauth2-proxy (distroless); the workflow does not override it.
   preloading:
     images:
-      - ghcr.io/eduide/eduidec-landing-page:latest
-      - ghcr.io/eduide/eduide/java-17:latest
-      - ghcr.io/eduide/eduide/c:latest
-      - ghcr.io/eduide/eduide/javascript:latest
-      - ghcr.io/eduide/eduide/ocaml:latest
-      - ghcr.io/eduide/eduide/rust:latest
-      - ghcr.io/eduide/eduide/python:latest
-      - ghcr.io/eduide/eduide/java-17-no-ls:latest
-      - ghcr.io/eduide/eduide/rust-no-ls:latest
-      - ghcr.io/eduide/eduide/langserver-java:latest
-      - ghcr.io/eduide/eduide/langserver-rust:latest
+      - ghcr.io/eduide/eduidec-landing-page:latest-2c6f8ac
+      - ghcr.io/eduide/eduide/java-17:latest-0c8eec9
+      - ghcr.io/eduide/eduide/c:latest-0c8eec9
+      - ghcr.io/eduide/eduide/javascript:latest-0c8eec9
+      - ghcr.io/eduide/eduide/ocaml:latest-0c8eec9
+      - ghcr.io/eduide/eduide/rust:latest-0c8eec9
+      - ghcr.io/eduide/eduide/python:latest-0c8eec9
+      - ghcr.io/eduide/eduide/java-17-no-ls:latest-0c8eec9
+      - ghcr.io/eduide/eduide/rust-no-ls:latest-0c8eec9
+      - ghcr.io/eduide/eduide/langserver-java:latest-0c8eec9
+      - ghcr.io/eduide/eduide/langserver-rust:latest-0c8eec9
       - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
         args: ["--version"]
 
@@ -80,7 +80,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduidec-landing-page
+    image: ghcr.io/eduide/eduidec-landing-page:latest-2c6f8ac
     logoFileExtension: "png"
     # We can define a default blueprint
     appDefinition: "java-17-latest"
