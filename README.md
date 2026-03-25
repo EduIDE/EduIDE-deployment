@@ -176,9 +176,25 @@ The recommended approach is to use the automated GitHub Actions workflows:
 
 See [Deployment Workflows](docs/deployment-workflows.md) for detailed instructions.
 
+### Updating pinned release tags
+
+Staging and production intentionally pin several images to SHA-suffixed tags such as `latest-dfe0d09` and `latest-0c8eec9`.
+
+When a new release is published, you must update the short SHA suffix in the environment values files instead of relying on plain `latest`. In practice this means bumping:
+
+- `theia-cloud.operator.image`
+- `theia-cloud.service.image`
+- `theia-cloud.preloading.images`
+- `theia-cloud.landingPage.image`
+- `theia-appdefinitions.defaultImageTag`
+- `conversion.image` in `theia-crds-helm-values.yml`
+
+See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinned-image-tags) for the release checklist.
+
 ## Common Tasks
 
 - **Deploy a PR to test environment**: See [Deployment Workflows](docs/deployment-workflows.md#pull-request-deployments)
+- **Bump release image tags**: See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinned-image-tags)
 - **Add a new environment**: See [Adding Environments](docs/adding-environments.md)
 - **Configure Keycloak authentication**: See [Keycloak Setup](docs/keycloak-setup.md)
 - **Request TUM wildcard certificates**: See [TUM Certificates](docs/tum-certificates.md)
