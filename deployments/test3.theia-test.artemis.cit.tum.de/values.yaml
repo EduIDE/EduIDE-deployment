@@ -43,8 +43,8 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:pr-100
-    #eagerStart: false
+    image: ghcr.io/eduide/eduide-cloud/operator:pr-101
+    eagerStart: false
     replicas: 1
     sessionsPerUser: 10
     # Test3 runs on the parma cluster where Longhorn is the default storage backend.
@@ -56,7 +56,7 @@ theia-cloud:
         ephemeral-storage: "256Mi"
 
   service:
-    image: ghcr.io/eduide/eduide-cloud/service:pr-100
+    image: ghcr.io/eduide/eduide-cloud/service:pr-101
     adminApiTokenSecret:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
