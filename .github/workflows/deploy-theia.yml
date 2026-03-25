@@ -283,7 +283,7 @@ jobs:
             --set wildcardTLSSecret.key="$(cat shared-gateway-wildcard.key)"
 
       - name: Clean install - namespace-scoped resource purge
-        if: inputs.clean_install && github.event_name == 'workflow_dispatch'
+        if: inputs.clean_install
         env:
           KUBECONFIG: ${{ github.workspace }}/kubeconfig
         run: |
@@ -291,6 +291,18 @@ jobs:
 
           NAMESPACE="${{ vars.NAMESPACE }}"
 
+          # Validate target namespace before running destructive operations
+          if [ -z "$NAMESPACE" ]; then
+            echo "ERROR: NAMESPACE is empty. Aborting clean install purge."
+            exit 1
+          fi
+
+          case "$NAMESPACE" in
+            default|kube-system|kube-public|kube-node-lease)
+              echo "ERROR: Refusing to run clean install purge in protected namespace '$NAMESPACE'."
+              exit 1
+              ;;
+          esac
           # Delete active session resources first if these CRDs exist
           RESOURCE_LIST="$(kubectl api-resources --namespaced=true -o name)"
           while IFS= read -r resource; do
@@ -367,7 +379,9 @@ jobs:
             )
           fi
 
-          # Only override IDE images when a tag is explicitly provided
+          # Only override IDE images when a tag is explicitly provided.
+          # Indices 0 (landing) and 1-10 (IDE + no-ls + langserver preload) are set above / here.
+          # Index 11 is oauth2-proxy (distroless); keep it only in values.yaml so it is never replaced by a string override.
           if [ -n "${IDE_IMAGES_TAG}" ]; then
             HELM_CMD+=(
               --set "theia-cloud.preloading.images[1]=ghcr.io/eduide/eduide/java-17:${IDE_IMAGES_TAG}"
