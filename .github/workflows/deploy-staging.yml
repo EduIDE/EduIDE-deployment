@@ -38,6 +38,15 @@ on:
         description: 'Runner backend to use (self-hosted-buildkit or github-runners)'
         required: false
         default: 'self-hosted-buildkit'
+        type: choice
+        options:
+          - self-hosted-buildkit
+          - github-runners
+      clean_install:
+        description: 'Clean Install: If true, perform namespace-scoped cleanup before install (delete sessions/workspaces, appdefinitions, deployments, daemonsets, statefulsets, PVCs).'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   deploy:
@@ -48,6 +57,7 @@ jobs:
     with:
       environment: theia-staging
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
+      clean_install: ${{ github.event_name == 'workflow_dispatch' && (inputs.clean_install || false) }}
       deploy_shared_gateway: true
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system

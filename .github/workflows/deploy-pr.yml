@@ -48,7 +48,7 @@ on:
       clean_install:
         description: 'Clean Install: If true, perform namespace-scoped cleanup before install (delete sessions/workspaces, appdefinitions, deployments, daemonsets, statefulsets, PVCs).'
         required: false
-        default: false
+        default: true
         type: boolean
 
 jobs:
