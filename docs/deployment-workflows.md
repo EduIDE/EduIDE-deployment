@@ -90,16 +90,18 @@ In each environment `theia-crds-helm-values.yml`:
 
 ### Practical rule
 
-There are currently two image families with separate tag suffixes:
+There are currently three image families with separate tag suffixes:
 
 - Theia Cloud control-plane images:
   - `operator`
   - `service`
   - `conversion-webhook`
-- IDE and landing-page images:
-  - landing page
-  - preload images
-  - app definition default image tag
+- Landing page images:
+  - `theia-cloud.landingPage.image`
+  - `theia-cloud.preloading.images[0]`
+- IDE and language-server images:
+  - `theia-cloud.preloading.images[1..10]`
+  - `theia-appdefinitions.defaultImageTag`
 
 If a new release publishes a new short SHA for one of those families, update every field in that family in both staging and production before merging.
 
@@ -107,10 +109,11 @@ If a new release publishes a new short SHA for one of those families, update eve
 
 1. Confirm the published image tags in GHCR.
 2. Update staging and production values files with the new short SHA suffixes.
-3. Keep `preloading.images`, `landingPage.image`, and `theia-appdefinitions.defaultImageTag` in sync.
-4. Keep `operator`, `service`, and `conversion.image` in sync when rolling a new control-plane build.
-5. If test environments should stop using a PR-specific conversion webhook, update their `theia-crds-helm-values.yml` files as well.
-6. Validate the edited YAML files before opening the PR.
+3. Keep `theia-cloud.landingPage.image` and `theia-cloud.preloading.images[0]` in sync.
+4. Keep `theia-cloud.preloading.images[1..10]` and `theia-appdefinitions.defaultImageTag` in sync.
+5. Keep `operator`, `service`, and `conversion.image` in sync when rolling a new control-plane build.
+6. If test environments should stop using a PR-specific conversion webhook, update their `theia-crds-helm-values.yml` files as well.
+7. Validate the edited YAML files before opening the PR.
 
 Example validation:
 

@@ -178,7 +178,7 @@ See [Deployment Workflows](docs/deployment-workflows.md) for detailed instructio
 
 ### Updating pinned release tags
 
-Staging and production intentionally pin several images to SHA-suffixed tags such as `latest-dfe0d09` and `latest-0c8eec9`.
+Staging and production intentionally pin several images to SHA-suffixed tags such as `latest-dfe0d09`, `latest-2c6f8ac`, and `latest-0c8eec9`.
 
 When a new release is published, you must update the short SHA suffix in the environment values files instead of relying on plain `latest`. In practice this means bumping:
 
@@ -189,7 +189,9 @@ When a new release is published, you must update the short SHA suffix in the env
 - `theia-appdefinitions.defaultImageTag`
 - `conversion.image` in `theia-crds-helm-values.yml`
 
-See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinned-image-tags) for the release checklist.
+The landing page can use a different SHA suffix from the IDE images, so keep `theia-cloud.landingPage.image` and `theia-cloud.preloading.images[0]` aligned with each other, and keep the IDE preload/appdefinition tags aligned separately.
+
+See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinned-image-tags) for the full release checklist.
 
 ## Common Tasks
 
