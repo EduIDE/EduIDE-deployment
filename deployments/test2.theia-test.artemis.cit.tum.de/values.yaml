@@ -10,6 +10,44 @@ theia-certificates:
   hosts:
     configuration: *hostsConfig
 
+theia-shared-cache:
+  enabled: true
+
+  image:
+    repository: ghcr.io/eduide/eduide-shared-cache/gradle-cache
+    tag: "main"
+    pullPolicy: IfNotPresent
+
+  auth:
+    enabled: false
+
+  resources:
+    cacheServer:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+    redis:
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  
+
+  cache:
+    maxEntrySizeMB: 100
+    verifyCASHash: true
+
+  tls:
+    enabled: true
+    secretName: cache-internal-cert-secret
+
+
 theia-cloud:
   app:
     id: nJV3nKZmpxTD4wu2
@@ -48,6 +86,11 @@ theia-cloud:
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
+    enableBuildCaching: true
+    buildCacheUrl: "https://theia-cloud-combined-cache:8080/cache/"
+    enableBuildCachePush: true
+    enableDependencyCaching: true
+    dependencyCacheUrl: "http://theia-cloud-combined-reposilite:8080/releases/"
 
   # service:
   #   image: ghcr.io/eduide/eduide-cloud/service:latest

@@ -93,6 +93,10 @@ issuer:
 
 Typically no changes needed for this file.
 
+### 1.4 Internal TLS
+
+The internal TLS infrastructure (internal CA + trust bundle) is deployed once per cluster via `charts/theia-internal-tls`. The trust bundle ConfigMap (`theia-internal-trust`) is automatically distributed to all namespaces, so no additional configuration is needed when adding a new environment.
+
 ## Step 2: Create GitHub Environment
 
 ### 2.1 Create the Environment

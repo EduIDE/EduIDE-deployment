@@ -1,0 +1,24 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: theia-internal-ca
+spec:
+  isCA: true
+  commonName: theia-internal-ca
+  secretName: theia-internal-ca-secret
+  issuerRef:
+    name: theia-cloud-selfsigned-issuer
+    kind: ClusterIssuer
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  duration: 87600h    # 10 years
+  renewBefore: 8760h  # renew 1 year before expiry
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: theia-internal-ca-issuer
+spec:
+  ca:
+    secretName: theia-internal-ca-secret
