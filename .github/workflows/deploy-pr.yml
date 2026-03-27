@@ -45,6 +45,11 @@ on:
         description: 'Preview OCI tag from theia-cloud-helm to use (for example pr-123)'
         required: false
         default: ''
+      clean_install:
+        description: 'Clean Install: If true, perform namespace-scoped cleanup before install (delete sessions/workspaces, appdefinitions, deployments, daemonsets, statefulsets, PVCs).'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   # Job 1: Deploy to Test1 environment
@@ -62,6 +67,7 @@ jobs:
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
+      clean_install: ${{ github.event_name == 'workflow_dispatch' && (inputs.clean_install || false) }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
@@ -82,6 +88,7 @@ jobs:
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
+      clean_install: ${{ github.event_name == 'workflow_dispatch' && (inputs.clean_install || false) }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
@@ -102,6 +109,7 @@ jobs:
       ide_images_tag: ${{ inputs.ide_images_tag }}
       execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
       helm_chart_tag: ${{ inputs.helm_chart_tag || '' }}
+      clean_install: ${{ github.event_name == 'workflow_dispatch' && (inputs.clean_install || false) }}
       deploy_shared_gateway: false
       shared_gateway_values_file: deployments/shared-gateway/values.yaml
       shared_gateway_namespace: gateway-system
