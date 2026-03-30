@@ -44,7 +44,7 @@ theia-cloud:
 
   operator:
     image: ghcr.io/eduide/eduide-cloud/operator:latest
-    eagerStart: false
+    eagerStart: true
     replicas: 1
     sessionsPerUser: 10
     # Test3 runs on the parma cluster where Longhorn is the default storage backend.
@@ -132,7 +132,7 @@ theia-appdefinitions:
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
-      minInstances: 3
+      minInstances: 5
       maxInstances: 20
       sidecars:
         - name: langserver
@@ -142,11 +142,11 @@ theia-appdefinitions:
           mountWorkspace: true
     - name: java-17-latest
       image: ghcr.io/eduide/eduide/java-17
-      minInstances: 3
+      minInstances: 5
       maxInstances: 20
     - name: rust-no-ls
       image: ghcr.io/eduide/eduide/rust-no-ls
-      minInstances: 3
+      minInstances: 5
       maxInstances: 20
       sidecars:
         - name: langserver
