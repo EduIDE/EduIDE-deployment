@@ -95,8 +95,10 @@ theia-cloud:
     additionalApps:
       java-17-no-ls:
         label: Java 17 No-LS
+        image: "java-17"
       rust-no-ls:
         label: Rust No-LS
+        image: "rust"
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
     infoText: "Welcome to Theia Test 3"
     loadingText: "Preparing your personal Online IDE..."
