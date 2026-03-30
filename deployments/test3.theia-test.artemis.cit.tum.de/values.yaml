@@ -91,15 +91,15 @@ theia-cloud:
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
     appDefinition: "java-17-no-ls"
-    ephemeralStorage: false
+    ephemeralStorage: true
     additionalApps:
       java-17-no-ls:
         label: Java 17 No-LS
       rust-no-ls:
         label: Rust No-LS
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
-    infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
-    loadingText: "⚡ Setting up your development workspace..."
+    infoText: "Welcome to Theia Test 3"
+    loadingText: "Preparing your personal Online IDE..."
     footerLinks:
       attribution:
         text: "Built by TUM LS1 Team 👨‍💻"
