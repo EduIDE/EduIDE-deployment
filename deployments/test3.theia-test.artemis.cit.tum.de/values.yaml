@@ -43,12 +43,12 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:pr-101
+    image: ghcr.io/eduide/eduide-cloud/operator:latest
     eagerStart: false
     replicas: 1
     sessionsPerUser: 10
     # Test3 runs on the parma cluster where Longhorn is the default storage backend.
-    storageClassName: csi-rbd-sc
+    storageClassName: longhorn
     resources:
       requests:
         ephemeral-storage: "128Mi"
@@ -56,7 +56,7 @@ theia-cloud:
         ephemeral-storage: "256Mi"
 
   service:
-    image: ghcr.io/eduide/eduide-cloud/service:pr-101
+    image: ghcr.io/eduide/eduide-cloud/service:latest
     adminApiTokenSecret:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
@@ -65,12 +65,12 @@ theia-cloud:
   # Index 11 is oauth2-proxy (distroless); the workflow does not override it.
   preloading:
     images:
-      - ghcr.io/eduide/eduide/java-17:pr-131
-      - ghcr.io/eduide/eduide/rust:pr-131
-      - ghcr.io/eduide/eduide/java-17-no-ls:pr-131
-      - ghcr.io/eduide/eduide/rust-no-ls:pr-131
-      - ghcr.io/eduide/eduide/langserver-java:pr-131
-      - ghcr.io/eduide/eduide/langserver-rust:pr-131
+      - ghcr.io/eduide/eduide/java-17:latest
+      - ghcr.io/eduide/eduide/rust:latest
+      - ghcr.io/eduide/eduide/java-17-no-ls:latest
+      - ghcr.io/eduide/eduide/rust-no-ls:latest
+      - ghcr.io/eduide/eduide/langserver-java:latest
+      - ghcr.io/eduide/eduide/langserver-rust:latest
 
   imagePullPolicy: Always
 
@@ -128,7 +128,7 @@ theia-cloud:
     clientId: "theia-test"
 
 theia-appdefinitions:
-  defaultImageTag: pr-131
+  defaultImageTag: latest
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
