@@ -43,7 +43,7 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:pr-70
+    image: ghcr.io/eduide/eduide-cloud/operator:latest
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
@@ -56,7 +56,7 @@ theia-cloud:
         ephemeral-storage: "256Mi"
 
   service:
-    image: ghcr.io/eduide/eduide-cloud/service:pr-70
+    image: ghcr.io/eduide/eduide-cloud/service:latest
     adminApiTokenSecret:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
@@ -135,7 +135,7 @@ theia-cloud:
     clientId: "theia-test"
 
 theia-appdefinitions:
-  defaultImageTag: pr-70
+  defaultImageTag: latest
   apps:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
