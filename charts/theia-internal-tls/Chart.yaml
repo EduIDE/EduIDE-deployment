@@ -1,0 +1,5 @@
+apiVersion: v2
+name: theia-internal-tls
+description: Cluster-scoped trust infrastructure for internal tls (internal CA + trust bundle)
+version: 0.1.0
+appVersion: 1.0.0

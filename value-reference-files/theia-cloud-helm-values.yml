@@ -31,11 +31,16 @@ monitor:
     interval: 3
 
 operator:
-  image: theiacloud/theia-cloud-operator:1.1.0-next
+  image: ghcr.io/ls1intum/theia/operator:pr-41
   eagerStart: false
   replicas: 1
   sessionsPerUser: 10
   storageClassName: csi-rbd-sc
+  enableBuildCaching: false
+  buildCacheUrl: ""
+  enableBuildCachePush: false
+  enableDependencyCaching: false
+  dependencyCacheUrl: ""
 
 service:
   adminApiTokenSecret:
