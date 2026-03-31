@@ -129,6 +129,11 @@ theia-cloud:
     additionalApps:
       java-17-latest:
         label: Java 17
+        buildSystems:
+          - id: gradle
+            label: Gradle
+          - id: maven
+            label: Maven
       c-latest:
         label: C
       javascript-latest:
