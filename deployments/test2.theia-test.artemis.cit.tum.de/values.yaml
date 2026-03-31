@@ -10,42 +10,37 @@ theia-certificates:
   hosts:
     configuration: *hostsConfig
 
-theia-shared-cache:
+eduide-shared-cache:
+
+
+enabled: true
+
+auth:
   enabled: true
+  reader:
+    username: "reader"
+    password: "changeme-reader"
+  writer:
+    username: "writer"
+    password: "changeme-writer"
 
-  image:
-    repository: ghcr.io/eduide/eduide-shared-cache/gradle-cache
-    tag: "main"
-    pullPolicy: IfNotPresent
+cache:
+  maxEntrySizeMB: 100
+  verifyCASHash: true
 
-  auth:
-    enabled: false
+tls:
+  enabled: true
+  secretName: cache-internal-cert-secret
 
-  resources:
-    cacheServer:
-      requests:
-        memory: "256Mi"
-        cpu: "100m"
-      limits:
-        memory: "1Gi"
-        cpu: "500m"
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
 
-    redis:
-      requests:
-        memory: "128Mi"
-        cpu: "100m"
-      limits:
-        memory: "2Gi"
-        cpu: "1000m"
-  
-
-  cache:
-    maxEntrySizeMB: 100
-    verifyCASHash: true
-
-  tls:
-    enabled: true
-    secretName: cache-internal-cert-secret
+  enabled: true
 
 
 theia-cloud:
@@ -86,11 +81,14 @@ theia-cloud:
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
-    enableBuildCaching: true
-    buildCacheUrl: "https://theia-cloud-combined-cache:8080/cache/"
-    enableBuildCachePush: true
-    enableDependencyCaching: true
-    dependencyCacheUrl: "http://theia-cloud-combined-reposilite:8080/releases/"
+    buildCache:
+      enabled: true
+      push: true
+      url: "https://theia-cloud-combined-cache:8080/cache/"
+      secretName: ""
+    dependencyCache:
+      enabled: false
+      url: "http://theia-cloud-combined-reposilite:8080/releases/"
 
   # service:
   #   image: ghcr.io/eduide/eduide-cloud/service:latest
@@ -124,7 +122,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support multiple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduidec-landing-page
+    image: ghcr.io/eduide/eduidec-landing-page:pr-14
     # We can define a default blueprint
     appDefinition: "java-17-latest"
     ephemeralStorage: true
