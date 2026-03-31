@@ -44,7 +44,7 @@ theia-cloud:
 
   operator:
     image: ghcr.io/eduide/eduide-cloud/operator:latest
-    eagerStart: true
+    eagerStart: false
     replicas: 1
     sessionsPerUser: 10
     # Test3 runs on the parma cluster where Longhorn is the default storage backend.
@@ -91,7 +91,7 @@ theia-cloud:
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
     appDefinition: "java-17-no-ls"
-    ephemeralStorage: true
+    ephemeralStorage: false
     additionalApps:
       java-17-no-ls:
         label: Java 17 No-LS
