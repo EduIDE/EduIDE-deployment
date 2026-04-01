@@ -91,7 +91,7 @@ theia-cloud:
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
     appDefinition: "java-17-no-ls"
-    ephemeralStorage: false
+    ephemeralStorage: true
     additionalApps:
       java-17-no-ls:
         label: Java 17 No-LS
@@ -135,7 +135,7 @@ theia-appdefinitions:
     - name: java-17-no-ls
       image: ghcr.io/eduide/eduide/java-17-no-ls
       minInstances: 5
-      maxInstances: 20
+      maxInstances: 200
       sidecars:
         - name: langserver
           image: ghcr.io/eduide/eduide/langserver-java
@@ -145,11 +145,11 @@ theia-appdefinitions:
     - name: java-17-latest
       image: ghcr.io/eduide/eduide/java-17
       minInstances: 5
-      maxInstances: 20
+      maxInstances: 200
     - name: rust-no-ls
       image: ghcr.io/eduide/eduide/rust-no-ls
       minInstances: 5
-      maxInstances: 20
+      maxInstances: 200
       sidecars:
         - name: langserver
           image: ghcr.io/eduide/eduide/langserver-rust
