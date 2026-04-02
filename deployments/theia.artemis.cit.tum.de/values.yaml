@@ -43,7 +43,10 @@ theia-cloud:
 
   operator:
     image: ghcr.io/eduide/eduide-cloud/operator:latest-e431a13
-    #eagerStart: false
+    # Production keeps Ceph RBD and does not configure sidecars.
+    # Disable eager-start so the operator stays on the workspace-backed RWO path
+    # instead of creating prewarmed RWX PVCs that do not fit csi-rbd-sc.
+    eagerStart: false
     replicas: 3
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
