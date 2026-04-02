@@ -91,7 +91,7 @@ theia-cloud:
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
     appDefinition: "java-17-no-ls"
-    ephemeralStorage: false
+    ephemeralStorage: true
     additionalApps:
       java-17-no-ls:
         label: Java 17 No-LS
