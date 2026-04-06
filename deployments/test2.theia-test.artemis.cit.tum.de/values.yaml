@@ -11,36 +11,35 @@ theia-certificates:
     configuration: *hostsConfig
 
 eduide-shared-cache:
-
-
-enabled: true
-
-auth:
   enabled: true
-  reader:
-    username: "reader"
-    password: "changeme-reader"
-  writer:
-    username: "writer"
-    password: "changeme-writer"
 
-cache:
-  maxEntrySizeMB: 100
-  verifyCASHash: true
+  auth:
+    enabled: true
+    reader:
+      username: "reader"
+      password: "changeme-reader"
+    writer:
+      username: "writer"
+      password: "changeme-writer"
 
-tls:
-  enabled: true
-  secretName: cache-internal-cert-secret
+  cache:
+    maxEntrySizeMB: 100
+    verifyCASHash: true
 
-resources:
-  requests:
-    memory: "256Mi"
-    cpu: "100m"
-  limits:
-    memory: "1Gi"
-    cpu: "500m"
+  tls:
+    enabled: true
+    secretName: cache-internal-cert-secret
 
-  enabled: true
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+  monitoring:
+    enabled: true
 
 
 theia-cloud:
