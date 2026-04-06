@@ -43,6 +43,8 @@ theia-cloud:
 
   operator:
     image: ghcr.io/eduide/eduide-cloud/operator:latest-e431a13
+    sentry:
+      enable: true
     #eagerStart: false
     replicas: 3
     sessionsPerUser: 10
@@ -50,6 +52,8 @@ theia-cloud:
 
   service:
     image: ghcr.io/eduide/eduide-cloud/service:latest-e431a13
+    sentry:
+      enable: true
     adminApiTokenSecret:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
@@ -81,6 +85,8 @@ theia-cloud:
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
     image: ghcr.io/eduide/eduidec-landing-page:latest-2c6f8ac
+    sentry:
+      enable: true
     logoFileExtension: "png"
     # We can define a default blueprint
     appDefinition: "java-17-latest"

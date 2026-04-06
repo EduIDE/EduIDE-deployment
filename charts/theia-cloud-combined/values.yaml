@@ -45,6 +45,8 @@ theia-cloud:
 
   operator:
     image: ghcr.io/eduide/eduide-cloud/operator:latest
+    sentry:
+      enable: true
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
@@ -52,6 +54,8 @@ theia-cloud:
 
   service:
     image: ghcr.io/eduide/eduide-cloud/service:latest
+    sentry:
+      enable: true
     # Public token (must match app.id or be set explicitly)
     authToken: nJV3nKZmpxTD4wu2 
     # Secret containing the admin API token, created by the theia-certificates chart
@@ -85,6 +89,8 @@ theia-cloud:
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
     image: ghcr.io/eduide/eduidec-landing-page:latest
+    sentry:
+      enable: true
     # We can define a default blueprint
     appDefinition: "java-17-latest"
     ephemeralStorage: false

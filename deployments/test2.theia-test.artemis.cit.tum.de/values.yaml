@@ -44,6 +44,8 @@ theia-cloud:
 
   operator:
     #image: ghcr.io/eduide/eduide-cloud/operator:latest
+    sentry:
+      enable: true
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
@@ -82,6 +84,8 @@ theia-cloud:
   landingPage:
     # We use the try now page as landing page since the default does not support multiple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
     image: ghcr.io/eduide/eduidec-landing-page
+    sentry:
+      enable: true
     # We can define a default blueprint
     appDefinition: "java-17-latest"
     ephemeralStorage: true
