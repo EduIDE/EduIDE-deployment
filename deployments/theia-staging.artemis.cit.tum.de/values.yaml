@@ -42,7 +42,7 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:latest-e431a13
+    image: ghcr.io/eduide/eduide-cloud/operator:latest
     sentry:
       enable: true
     #eagerStart: false
@@ -51,7 +51,7 @@ theia-cloud:
     storageClassName: csi-rbd-sc
 
   service:
-    image: ghcr.io/eduide/eduide-cloud/service:latest-e431a13
+    image: ghcr.io/eduide/eduide-cloud/service:latest
     sentry:
       enable: true
     adminApiTokenSecret:
