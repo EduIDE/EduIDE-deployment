@@ -103,9 +103,16 @@ theia-cloud:
     # 2. (Optional) If you removed the 'hardcoded png' logic in the template, 
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
-    appDefinition: "java-17-no-ls"
+    appDefinition: "java-17-templates-latest"
     ephemeralStorage: true
     additionalApps:
+      java-17-templates-latest:
+        label: Java 17
+        buildSystems:
+          - id: maven
+            label: Maven
+          - id: gradle
+            label: Gradle
       java-17-no-ls:
         label: Java 17 No-LS
         image: "java-17"
