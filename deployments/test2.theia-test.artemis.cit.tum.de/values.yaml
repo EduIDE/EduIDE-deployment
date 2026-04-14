@@ -107,7 +107,7 @@ theia-cloud:
     loadingText: "Preparing your personal Online IDE..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
+        text: "Built by TUM AET Research Group 👨‍💻"
         url: "https://aet.cit.tum.de/"
         version: "Test2-v1.0.0"
       bugReport:

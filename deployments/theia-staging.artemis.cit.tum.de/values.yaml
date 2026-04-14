@@ -105,11 +105,11 @@ theia-cloud:
       rust-latest:
         label: Rust
     infoTitle: "Welcome to Theia - your tailor-made online IDE (Staging)"
-    infoText: "We are offering a online programming environment perfectly fitting for your project, please log in to continue."
+    infoText: "We are offering an online programming environment for your project."
     loadingText: "Preparing your personal Online IDE..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
+        text: "Built by TUM AET Research Group 👨‍💻"
         url: "https://aet.cit.tum.de/"
         version: "Staging-v1.0.0"
       bugReport:

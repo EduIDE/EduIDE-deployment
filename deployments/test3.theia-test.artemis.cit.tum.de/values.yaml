@@ -113,11 +113,11 @@ theia-cloud:
         label: Rust No-LS
         image: "rust"
     infoTitle: "🚀 Welcome to Test3 IDE Environment"
-    infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
+    infoText: "Test environment for Theia with external language server architecture."
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
+        text: "Built by TUM AET Research Group 👨‍💻"
         url: "https://aet.cit.tum.de/"
         version: "Test3-v1.0.0"
       bugReport:
