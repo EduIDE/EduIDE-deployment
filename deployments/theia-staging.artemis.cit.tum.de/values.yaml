@@ -84,7 +84,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduidec-landing-page:latest-2c6f8ac
+    image: ghcr.io/eduide/eduidec-landing-page:latest-32b1c8b
     sentry:
       enable: true
     logoFileExtension: "png"
