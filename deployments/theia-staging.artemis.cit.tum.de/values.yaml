@@ -104,8 +104,8 @@ theia-cloud:
         label: Python
       rust-latest:
         label: Rust
-    infoTitle: "Welcome to Theia - your tailor-made online IDE (Staging)"
-    infoText: "We are offering an online programming environment for your project."
+    infoTitle: "Welcome to EduIDE Cloud (Staging)"
+    infoText: ""
     loadingText: "Preparing your personal Online IDE..."
     footerLinks:
       attribution:

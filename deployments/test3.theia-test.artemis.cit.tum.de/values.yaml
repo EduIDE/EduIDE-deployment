@@ -112,8 +112,8 @@ theia-cloud:
       rust-no-ls:
         label: Rust No-LS
         image: "rust"
-    infoTitle: "🚀 Welcome to Test3 IDE Environment"
-    infoText: "Test environment for Theia with external language server architecture."
+    infoTitle: "🚀 Welcome to EduIDE Cloud (Test3)"
+    infoText: ""
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
