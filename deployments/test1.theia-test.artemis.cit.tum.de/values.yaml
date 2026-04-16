@@ -102,12 +102,12 @@ theia-cloud:
         label: Python
       rust-latest:
         label: Rust
-    infoTitle: "Welcome to Theia Test 1"
+    infoTitle: "Welcome to EduIDE Cloud (Test1)"
     infoText: ""
     loadingText: "Preparing your personal Online IDE..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
+        text: "Built by TUM AET Research Group 👨‍💻"
         url: "https://aet.cit.tum.de/"
         version: "Test1-v1.0.0"
       bugReport:
