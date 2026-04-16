@@ -105,7 +105,7 @@ theia-cloud:
       rust-latest:
         label: Rust
     infoTitle: "Welcome to EduIDE Cloud"
-    infoText: ""
+    infoText: " "
     loadingText: "Preparing your personal Online IDE..."
     footerLinks:
       attribution:
