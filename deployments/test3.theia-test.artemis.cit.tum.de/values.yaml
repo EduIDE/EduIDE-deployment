@@ -113,7 +113,7 @@ theia-cloud:
         label: Rust No-LS
         image: "rust"
     infoTitle: "🚀 Welcome to EduIDE Cloud (Test3)"
-    infoText: ""
+    infoText: " "
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
