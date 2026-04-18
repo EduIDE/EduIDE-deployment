@@ -95,8 +95,13 @@ theia-cloud:
     appDefinition: "java-17-latest"
     ephemeralStorage: false
     additionalApps:
-      java-17-latest:
-        label: Java
+      java-17-templates-latest:
+        label: Java 17
+        buildSystems:
+          - id: maven
+            label: Maven
+          - id: gradle
+            label: Gradle
       c-latest:
         label: C
       javascript-latest:
