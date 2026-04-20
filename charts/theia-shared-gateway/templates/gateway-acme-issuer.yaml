@@ -1,0 +1,21 @@
+{{- if .Values.gatewayAcmeIssuer.enabled }}
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: {{ .Values.gatewayAcmeIssuer.name }}
+spec:
+  acme:
+    server: {{ .Values.gatewayAcmeIssuer.server | quote }}
+    email: {{ required "gatewayAcmeIssuer.email must be set when gatewayAcmeIssuer.enabled=true" .Values.gatewayAcmeIssuer.email | quote }}
+    privateKeySecretRef:
+      name: {{ .Values.gatewayAcmeIssuer.privateKeySecretName | quote }}
+    solvers:
+    - http01:
+        gatewayHTTPRoute:
+          serviceType: {{ .Values.gatewayAcmeIssuer.serviceType | quote }}
+          parentRefs:
+          - group: gateway.networking.k8s.io
+            kind: Gateway
+            name: {{ .Values.gateway.name }}
+            namespace: {{ .Values.gateway.namespace }}
+{{- end }}

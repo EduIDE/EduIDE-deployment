@@ -16,8 +16,10 @@ gateway:
 
   # Each listener needs:
   # - name
+  # - protocol (`HTTPS` by default, `HTTP` for ACME challenge listeners)
+  # - port (defaults to 443 for HTTPS, 80 for HTTP)
   # - hostname
-  # - tlsSecretName
+  # - tlsSecretName (required for HTTPS listeners)
   listeners: []
 
 gatewayClass:
@@ -41,6 +43,14 @@ managedCertificates:
     kind: ClusterIssuer
     name: letsencrypt-prod
   certificates: []
+
+gatewayAcmeIssuer:
+  enabled: false
+  name: letsencrypt-prod-gateway
+  email: ""
+  privateKeySecretName: letsencrypt-prod-gateway-priv-key
+  server: https://acme-v02.api.letsencrypt.org/directory
+  serviceType: ClusterIP
 
 wildcardTLSSecret:
   create: false

@@ -9,7 +9,15 @@ hosts:
 theia-certificates:
   hosts:
     configuration: *hostsConfig
+  certificates:
+    enabled: true
+    issuerRef:
+      name: letsencrypt-prod
+      kind: ClusterIssuer
+  wildcardTLSSecret:
+    enabled: true
   adminApiTokenSecret:
+    enabled: true
     name: service-admin-api-token
     key: ADMIN_API_TOKEN
 
@@ -32,6 +40,8 @@ theia-cloud:
       enabled: true
     className: envoy
     name: theia-cloud-gateway
+    # When reusing a shared Gateway, set sectionName on each parentRef to scope
+    # these routes to the environment's HTTPS listeners only.
     parentRefs: []
     instancesRouteName: "theia-cloud-demo-ws-route"
     instancesWildcardSecretNames: {"*.webview.": static-theia-cert}
