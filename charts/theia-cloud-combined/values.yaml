@@ -12,6 +12,9 @@ theia-certificates:
   certificates:
     enabled: true
     issuerRef:
+      # Default for tenant-local certificate management.
+      # Shared-gateway environments disable these certificates and use the
+      # shared gateway chart's Gateway API issuer instead.
       name: letsencrypt-prod
       kind: ClusterIssuer
   wildcardTLSSecret:
