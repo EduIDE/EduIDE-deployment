@@ -4,9 +4,9 @@ This guide explains the TUM-specific process for obtaining and configuring wildc
 
 ## Overview
 
-Theia Cloud creates dynamic URIs for each session-plugin combination, requiring wildcard SSL certificates. At TUM, certificates are externally signed by RBG and have specific requirements:
+Theia Cloud creates dynamic URIs for each session-plugin combination, requiring wildcard SSL certificates. At TUM, those wildcard certificates are externally signed by RBG and have specific requirements:
 
-- Certificates cannot be automatically renewed via cert-manager
+- Wildcard certificates cannot be automatically renewed via cert-manager
 - Certificates must be requested through a specific approval process
 - Certificates are issued by Harica (TUM's certificate authority)
 

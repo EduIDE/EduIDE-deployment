@@ -125,6 +125,8 @@ Configuration files for each environment are located in the [deployments/](deplo
    ```bash
    # Install Envoy Gateway and Gateway API CRDs according to your cluster provider.
    # Ensure the GatewayClass name matches `theia-cloud.gateway.className` (default: "envoy").
+   # If cert-manager will solve HTTP-01 challenges through Gateway API, enable:
+   #   --set config.enableGatewayAPI=true
    ```
 
 2. **Install Theia Cloud base charts**:

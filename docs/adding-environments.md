@@ -61,7 +61,7 @@ hosts:
 
 - `theia-cloud.app.name` - Change to reflect the new environment (e.g., "Artemis Online IDE (Test2)")
 - `landingPage.infoTitle` - Update the environment name in the title
-- `theia-cloud.gateway.parentRefs` - Keep this pointing to the shared gateway (`theia-shared-gateway` in `gateway-system`)
+- `theia-cloud.gateway.parentRefs` - Keep this pointing to the shared gateway (`theia-shared-gateway` in `gateway-system`) and scope it to the environment's HTTPS listeners with `sectionName`
 
 For shared-gateway deployments, tenant namespaces should not create their own gateway:
 
@@ -75,10 +75,38 @@ theia-cloud:
     parentRefs:
       - name: theia-shared-gateway
         namespace: gateway-system
+        sectionName: <env>-landing
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: <env>-service
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: <env>-instances
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: <env>-webview
 ```
 
 Also update the shared Gateway listeners in `deployments/shared-gateway/values.yaml` (or `deployments/shared-gateway-prod/values.yaml` for production clusters).  
 For each new environment, add listener hostnames for landing, service, instances, and `*.webview.instance...`; otherwise Gateway API routes will not attach for that hostname.
+The listener names in the shared gateway must match the `sectionName` values above.
+If the shared gateway owns concrete host certificates through cert-manager, also add matching `HTTP` port `80` listeners so ACME HTTP-01 challenges can be routed through Gateway API.
+
+For shared-gateway deployments, disable the tenant-local certificate resources in `values.yaml` so the release does not recreate legacy namespace-local `Certificate` objects or wildcard TLS secrets:
+
+```yaml
+theia-certificates:
+  certificates:
+    enabled: false
+  wildcardTLSSecret:
+    enabled: false
+  adminApiTokenSecret:
+    enabled: true
+```
+
+Do not set `theia-cloud.gateway.instancesWildcardSecretNames` in these tenant values when `gateway.create: false`.
+That mapping is only used when the tenant release renders its own `Gateway`.
+In the shared-gateway setup, the wildcard TLS secret is owned only by the shared gateway release in `gateway-system`.
 
 #### Update `theia-base-helm-values.yml`
 

@@ -9,6 +9,12 @@ hosts:
 theia-certificates:
   hosts:
     configuration: *hostsConfig
+  certificates:
+    enabled: false
+  wildcardTLSSecret:
+    enabled: false
+  adminApiTokenSecret:
+    enabled: true
 
 theia-cloud:
   app:
@@ -32,8 +38,17 @@ theia-cloud:
     parentRefs:
       - name: theia-shared-gateway
         namespace: gateway-system
+        sectionName: test3-landing
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test3-service
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test3-instances
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test3-webview
     instancesRouteName: "theia-cloud-demo-ws-route"
-    instancesWildcardSecretNames: { "*.webview.": static-theia-cert }
     serviceRouteRequestTimeout: "60s"
 
   monitor:
