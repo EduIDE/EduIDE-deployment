@@ -22,6 +22,8 @@ For production cluster values, use `deployments/shared-gateway-prod/values.yaml`
 ## Notes
 
 - The shared gateway chart should own the TLS material referenced by its listeners.
+- For concrete host certificates on Envoy Gateway, enable `gatewayAcmeIssuer` and add `HTTP` listeners on port `80` so cert-manager can solve HTTP-01 challenges through Gateway API.
+- cert-manager must be installed with Gateway API support enabled (`config.enableGatewayAPI=true`) before using `gatewayAcmeIssuer`.
 - For production, use cert-manager `Certificate` resources for concrete hosts and create the wildcard webview secret in `gateway.namespace` from the deploy-time wildcard certificate/key.
 - Tenant charts should set:
   - `theia-cloud.gateway.create=false`

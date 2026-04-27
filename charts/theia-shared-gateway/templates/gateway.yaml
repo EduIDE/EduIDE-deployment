@@ -23,15 +23,21 @@ spec:
   {{- end }}
   listeners:
   {{- range $listener := .Values.gateway.listeners }}
+  {{- $protocol := default "HTTPS" $listener.protocol }}
+  {{- $port := default (ternary 443 80 (eq $protocol "HTTPS")) $listener.port }}
   - name: {{ $listener.name }}
-    protocol: HTTPS
-    port: 443
+    protocol: {{ $protocol }}
+    port: {{ $port }}
+    {{- with $listener.hostname }}
     hostname: {{ $listener.hostname | quote }}
+    {{- end }}
+    {{- if eq $protocol "HTTPS" }}
     tls:
       mode: Terminate
       certificateRefs:
       - kind: Secret
         name: {{ $listener.tlsSecretName | quote }}
+    {{- end }}
     allowedRoutes:
 {{ toYaml (default $.Values.gateway.allowedRoutes $listener.allowedRoutes) | nindent 6 }}
   {{- end }}

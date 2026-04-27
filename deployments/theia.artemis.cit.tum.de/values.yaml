@@ -9,6 +9,12 @@ hosts:
 theia-certificates:
   hosts:
     configuration: *hostsConfig
+  certificates:
+    enabled: false
+  wildcardTLSSecret:
+    enabled: false
+  adminApiTokenSecret:
+    enabled: true
 
 theia-cloud:
   app:
@@ -32,7 +38,16 @@ theia-cloud:
     parentRefs:
       - name: theia-shared-gateway
         namespace: gateway-system
-    instancesWildcardSecretNames: { "*.webview.": static-theia-cert }
+        sectionName: prod-landing
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: prod-service
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: prod-instances
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: prod-webview
     serviceRouteRequestTimeout: "60s"
 
   monitor:
@@ -85,7 +100,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduidec-landing-page:latest-c51d7c0
+    image: ghcr.io/eduide/eduidec-landing-page:latest-2c6f8ac
     sentry:
       enable: true
     logoFileExtension: "png"
@@ -110,12 +125,12 @@ theia-cloud:
         label: Python
       rust-latest:
         label: Rust
-    infoTitle: "Welcome to Theia - your tailor-made online IDE"
-    infoText: "We are offering a online programming environment perfectly fitting for your project, please log in to continue."
+    infoTitle: "Welcome to EduIDE Cloud"
+    infoText: " "
     loadingText: "Preparing your personal Online IDE..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
+        text: "Built by TUM AET Research Group 👨‍💻"
         url: "https://aet.cit.tum.de/"
         version: "v1.0.0"
       bugReport:
