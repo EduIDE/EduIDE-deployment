@@ -51,6 +51,7 @@ preloading:
   images:
     - ghcr.io/eduide/eduidec-landing-page:latest
     - ghcr.io/eduide/eduide/java-17:latest
+    - ghcr.io/eduide/eduide/java-17-templates:latest
     - ghcr.io/eduide/eduide/c:latest
     - ghcr.io/eduide/eduide/javascript:latest
     - ghcr.io/eduide/eduide/ocaml:latest
