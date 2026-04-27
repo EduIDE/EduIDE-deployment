@@ -88,7 +88,7 @@ theia-cloud:
     sentry:
       enable: true
     # We can define a default blueprint
-    appDefinition: "java-17-templates-slatest"
+    appDefinition: "java-17-templates-latest"
     ephemeralStorage: true
     additionalApps:
       java-17-templates-latest:

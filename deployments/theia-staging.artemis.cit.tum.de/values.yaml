@@ -62,7 +62,7 @@ theia-cloud:
   # Index 11 is oauth2-proxy (distroless); the workflow does not override it.
   preloading:
     images:
-      - ghcr.io/eduide/eduidec-landing-page:latest-9d54644 
+      - ghcr.io/eduide/eduidec-landing-page:latest-c51d7c0
       - ghcr.io/eduide/eduide/java-17:latest-9d54644
       - ghcr.io/eduide/eduide/java-17-templates:latest-9d54644
       - ghcr.io/eduide/eduide/c:latest-9d54644
