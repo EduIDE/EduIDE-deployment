@@ -64,6 +64,7 @@ theia-cloud:
     images:
       - ghcr.io/eduide/eduidec-landing-page:latest-9d54644 
       - ghcr.io/eduide/eduide/java-17:latest-9d54644
+      - ghcr.io/eduide/eduide/java-17-templates:latest-9d54644
       - ghcr.io/eduide/eduide/c:latest-9d54644
       - ghcr.io/eduide/eduide/javascript:latest-9d54644
       - ghcr.io/eduide/eduide/ocaml:latest-9d54644
