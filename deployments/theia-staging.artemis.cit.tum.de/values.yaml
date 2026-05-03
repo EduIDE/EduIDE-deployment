@@ -1,6 +1,7 @@
 hosts:
   configuration:
-    &hostsConfig # This is a YAML anchor for reusability and readability
+    # This is a YAML anchor for reusability and readability
+    &hostsConfig
     baseHost: artemis.cit.tum.de
     service: service.theia-staging
     landing: theia-staging
@@ -80,6 +81,8 @@ theia-cloud:
       - ghcr.io/eduide/eduidec-landing-page:2026-05-05
       - ghcr.io/eduide/eduide/java-17:2026-05-05
       - ghcr.io/eduide/eduide/java-17-templates:2026-05-05
+      - ghcr.io/eduide/eduide/java-17-ai:latest
+      - ghcr.io/eduide/eduide/java-templates-ai-17:latest
       - ghcr.io/eduide/eduide/c:2026-05-05
       - ghcr.io/eduide/eduide/javascript:2026-05-05
       - ghcr.io/eduide/eduide/ocaml:2026-05-05
@@ -118,6 +121,15 @@ theia-cloud:
             label: Maven
           - id: gradle
             label: Gradle
+      java-17-ai-latest:
+        label: Java 17 AI
+      java-17-templates-ai-latest:
+        label: Java 17 AI
+        buildSystems:
+          - id: maven
+            label: Maven
+          - id: gradle
+            label: Gradle
       c-latest:
         label: C
       javascript-latest:
@@ -145,7 +157,6 @@ theia-cloud:
       about:
         text: "About"
         url: "https://aet.cit.tum.de/"
-
 
   keycloak:
     enable: true
