@@ -9,7 +9,7 @@ spec:
     kind: ClusterIssuer
   commonName: "eduide-shared-cache"
   dnsNames:
-    - eduide-shared-cache-server
-    - eduide-shared-cache-server.{{ .Release.Namespace }}.svc.cluster.local
+    - eduide-shared-cache
+    - eduide-shared-cache.{{ .Release.Namespace }}.svc.cluster.local
   privateKey:
     rotationPolicy: Never
