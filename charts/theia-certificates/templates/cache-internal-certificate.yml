@@ -7,9 +7,9 @@ spec:
   issuerRef:
     name: theia-internal-ca-issuer
     kind: ClusterIssuer
-  commonName: "theia-shared-cache"
+  commonName: "eduide-shared-cache"
   dnsNames:
-    - theia-cloud-combined-cache
-    - theia-cloud-combined-cache.{{ .Release.Namespace }}.svc.cluster.local
+    - eduide-shared-cache
+    - eduide-shared-cache.{{ .Release.Namespace }}.svc.cluster.local
   privateKey:
     rotationPolicy: Never

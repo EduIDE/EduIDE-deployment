@@ -6,7 +6,7 @@ hosts:
     landing: theia
     instance: instance.theia
 
-theia-shared-cache:
+eduide-shared-cache:
   enabled: false
 
 theia-certificates:
