@@ -40,6 +40,9 @@ eduide-shared-cache:
   monitoring:
     enabled: true
 
+  reposilite:
+    fullnameOverride: eduide-shared-cache-reposilite
+
 
 theia-cloud:
   app:
@@ -91,7 +94,7 @@ theia-cloud:
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
     enableBuildCaching: true
-    buildCacheUrl: "https://eduide-shared-cache:8080/cache/"
+    buildCacheUrl: "https://eduide-shared-cache-server:8080/cache/"
     enableBuildCachePush: true
     enableDependencyCaching: true
     dependencyCacheUrl: "http://eduide-shared-cache-reposilite:8080/releases/"
