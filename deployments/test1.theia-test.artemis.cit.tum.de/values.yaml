@@ -9,6 +9,12 @@ hosts:
 theia-certificates:
   hosts:
     configuration: *hostsConfig
+  certificates:
+    enabled: false
+  wildcardTLSSecret:
+    enabled: false
+  adminApiTokenSecret:
+    enabled: true
 
 theia-cloud:
   app:
@@ -32,8 +38,17 @@ theia-cloud:
     parentRefs:
       - name: theia-shared-gateway
         namespace: gateway-system
+        sectionName: test1-landing
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test1-service
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test1-instances
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test1-webview
     instancesRouteName: "theia-cloud-demo-ws-route"
-    instancesWildcardSecretNames: { "*.webview.": static-theia-cert }
     serviceRouteRequestTimeout: "60s"
 
   monitor:
@@ -44,6 +59,8 @@ theia-cloud:
 
   operator:
     #image: ghcr.io/eduide/eduide-cloud/operator:latest
+    sentry:
+      enable: true
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 1000 # Needed for load tests - not recommended for production
@@ -51,7 +68,7 @@ theia-cloud:
 
   # service:
   #   image: ghcr.io/eduide/eduide-cloud/service:latest
-  #   adminApiTokenSecret:
+  #   adminApiTokenSecret
   #     name: service-admin-api-token
   #     key: ADMIN_API_TOKEN
 
@@ -61,6 +78,7 @@ theia-cloud:
     images:
       - ghcr.io/eduide/eduidec-landing-page:latest
       - ghcr.io/eduide/eduide/java-17:latest
+      - ghcr.io/eduide/eduide/java-17-templates:latest
       - ghcr.io/eduide/eduide/c:latest
       - ghcr.io/eduide/eduide/javascript:latest
       - ghcr.io/eduide/eduide/ocaml:latest
@@ -82,12 +100,19 @@ theia-cloud:
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
     image: ghcr.io/eduide/eduidec-landing-page
+    sentry:
+      enable: true
     # We can define a default blueprint
-    appDefinition: "java-17-latest"
+    appDefinition: "java-17-templates-latest"
     ephemeralStorage: true
     additionalApps:
-      java-17-latest:
+      java-17-templates-latest:
         label: Java 17
+        buildSystems:
+          - id: maven
+            label: Maven
+          - id: gradle
+            label: Gradle
       c-latest:
         label: C
       javascript-latest:
@@ -98,12 +123,12 @@ theia-cloud:
         label: Python
       rust-latest:
         label: Rust
-    infoTitle: "Welcome to Theia Test 1"
-    infoText: ""
+    infoTitle: "Welcome to EduIDE Cloud (Test1)"
+    infoText: " "
     loadingText: "Preparing your personal Online IDE..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
+        text: "Built by TUM AET Research Group 👨‍💻"
         url: "https://aet.cit.tum.de/"
         version: "Test1-v1.0.0"
       bugReport:

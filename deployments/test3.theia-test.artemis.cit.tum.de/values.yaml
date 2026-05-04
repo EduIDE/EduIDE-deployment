@@ -9,6 +9,12 @@ hosts:
 theia-certificates:
   hosts:
     configuration: *hostsConfig
+  certificates:
+    enabled: false
+  wildcardTLSSecret:
+    enabled: false
+  adminApiTokenSecret:
+    enabled: true
 
 theia-cloud:
   app:
@@ -32,8 +38,17 @@ theia-cloud:
     parentRefs:
       - name: theia-shared-gateway
         namespace: gateway-system
+        sectionName: test3-landing
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test3-service
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test3-instances
+      - name: theia-shared-gateway
+        namespace: gateway-system
+        sectionName: test3-webview
     instancesRouteName: "theia-cloud-demo-ws-route"
-    instancesWildcardSecretNames: { "*.webview.": static-theia-cert }
     serviceRouteRequestTimeout: "60s"
 
   monitor:
@@ -44,6 +59,8 @@ theia-cloud:
 
   operator:
     image: ghcr.io/eduide/eduide-cloud/operator:pr-70
+    sentry:
+      enable: true
     #eagerStart: false
     replicas: 1
     sessionsPerUser: 10
@@ -57,6 +74,8 @@ theia-cloud:
 
   service:
     image: ghcr.io/eduide/eduide-cloud/service:pr-70
+    sentry:
+      enable: true
     adminApiTokenSecret:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
@@ -67,6 +86,7 @@ theia-cloud:
     images:
       - ghcr.io/eduide/eduidec-landing-page:latest
       - ghcr.io/eduide/eduide/java-17:latest
+      - ghcr.io/eduide/eduide/java-17-templates:latest
       - ghcr.io/eduide/eduide/c:latest
       - ghcr.io/eduide/eduide/javascript:latest
       - ghcr.io/eduide/eduide/ocaml:latest
@@ -88,6 +108,8 @@ theia-cloud:
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
     image: ghcr.io/eduide/eduidec-landing-page:latest
+    sentry:
+      enable: true
     # We can define a default blueprint
     
     # 1. The actual image data (Must be a Base64 encoded string)
@@ -101,15 +123,17 @@ theia-cloud:
     ephemeralStorage: true
     additionalApps:
       java-17-no-ls:
-        label: Java 17 No-LS (Sidecar)
+        label: Java 17 No-LS
+        image: "java-17"
       rust-no-ls:
-        label: Rust No-LS (Sidecar)
-    infoTitle: "🚀 Welcome to Test3 IDE Environment"
-    infoText: "Test environment for Theia with external language server architecture (PR #70). The IDE runs separately from the language server for improved performance and modularity."
+        label: Rust No-LS
+        image: "rust"
+    infoTitle: "🚀 Welcome to EduIDE Cloud (Test3)"
+    infoText: " "
     loadingText: "⚡ Setting up your development workspace..."
     footerLinks:
       attribution:
-        text: "Built by TUM LS1 Team 👨‍💻"
+        text: "Built by TUM AET Research Group 👨‍💻"
         url: "https://aet.cit.tum.de/"
         version: "Test3-v1.0.0"
       bugReport:
