@@ -13,7 +13,7 @@ apps:
     requestsMemory: 500M
     requestsCpu: 500m
     limitsMemory: 3000M
-    minInstances: 0
+    minInstances: 3
     maxInstances: 1000
     options:
       dataBridgeEnabled: "true"
