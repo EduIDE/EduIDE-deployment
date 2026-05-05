@@ -124,6 +124,7 @@ theia-cloud:
     additionalApps:
       java-17-latest:
         label: Java 17
+        visible: false
       java-17-no-ls:
         label: Java 17 No-LS
         image: "java-17"
