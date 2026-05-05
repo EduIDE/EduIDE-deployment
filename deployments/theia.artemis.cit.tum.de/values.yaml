@@ -101,7 +101,7 @@ theia-cloud:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
     image: ghcr.io/eduide/eduidec-landing-page:latest-cebbb7f
     sentry:
-      enable: true
+      enable: false
     logoFileExtension: "png"
     # We can define a default blueprint
     appDefinition: "java-17-latest"
