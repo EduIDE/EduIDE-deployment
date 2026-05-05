@@ -159,7 +159,7 @@ theia-cloud:
     clientId: "theia"
 
 theia-appdefinitions:
-  defaultImageTag: 2026-05-05
+  defaultImageTag: "2026-05-05"
 
 monitoring:
   targetNamespaces:
