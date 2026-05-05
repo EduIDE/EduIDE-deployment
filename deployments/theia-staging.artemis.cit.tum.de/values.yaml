@@ -79,6 +79,7 @@ theia-cloud:
     images:
       - ghcr.io/eduide/eduidec-landing-page:2026-05-05
       - ghcr.io/eduide/eduide/java-17:2026-05-05
+      - ghcr.io/eduide/eduide/java-17-templates:2026-05-05
       - ghcr.io/eduide/eduide/c:2026-05-05
       - ghcr.io/eduide/eduide/javascript:2026-05-05
       - ghcr.io/eduide/eduide/ocaml:2026-05-05
@@ -104,11 +105,16 @@ theia-cloud:
       enable: true
     logoFileExtension: "png"
     # We can define a default blueprint
-    appDefinition: "java-17-latest"
+    appDefinition: "java-17-templates-latest"
     ephemeralStorage: true
     additionalApps:
-      java-17-latest:
+      java-17-templates-latest:
         label: Java 17
+        buildSystems:
+          - id: maven
+            label: Maven
+          - id: gradle
+            label: Gradle
       c-latest:
         label: C
       javascript-latest:
