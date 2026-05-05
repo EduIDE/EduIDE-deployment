@@ -73,6 +73,8 @@ landingPage:
   appDefinition: "java-17-templates-latest"
   ephemeralStorage: true
   additionalApps:
+    java-17-latest:
+      label: Java 17
     java-17-templates-latest:
       label: Java 17
       buildSystems:

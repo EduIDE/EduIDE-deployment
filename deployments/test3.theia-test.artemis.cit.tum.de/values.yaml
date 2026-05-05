@@ -122,6 +122,8 @@ theia-cloud:
     appDefinition: "java-17-no-ls"
     ephemeralStorage: true
     additionalApps:
+      java-17-latest:
+        label: Java 17
       java-17-no-ls:
         label: Java 17 No-LS
         image: "java-17"
