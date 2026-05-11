@@ -76,7 +76,7 @@ theia-cloud:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
 
-  # Preload indices 0–10 align with .github/workflows/deploy-theia.yml tag overrides; 11 = oauth2-proxy (not overridden there).
+  # Preload indices 0–11 align with .github/workflows/deploy-theia.yml tag overrides; 12 = oauth2-proxy (not overridden there).
   preloading:
     images:
       - ghcr.io/eduide/eduidec-landing-page:latest
