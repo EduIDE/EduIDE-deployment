@@ -44,7 +44,7 @@ theia-cloud:
 
   operator:
     image: ghcr.io/eduide/eduide-cloud/operator:latest
-    eagerStart: false
+    eagerStart: true
     replicas: 1
     sessionsPerUser: 10
     # Test3 runs on the parma cluster where Longhorn is the default storage backend.
