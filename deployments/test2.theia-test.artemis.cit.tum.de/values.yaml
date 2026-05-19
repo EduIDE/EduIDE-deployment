@@ -114,15 +114,7 @@ theia-cloud:
         visible: false
       java-17-templates-latest:
         label: Java 17
-        buildSystems:
-          - id: maven
-            label: Maven
-          - id: gradle
-            label: Gradle
-      java-17-ai-latest:
-        label: Java 17 AI
-      java-17-templates-ai-latest:
-        label: Java 17 AI
+        aiVariant: java-17-templates-ai-latest
         buildSystems:
           - id: maven
             label: Maven

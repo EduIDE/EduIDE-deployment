@@ -84,6 +84,7 @@ theia-cloud:
     additionalApps:
       java-17-templates-latest:
         label: Java 17
+        aiVariant: java-17-templates-ai-latest
         buildSystems:
           - id: maven
             label: Maven
