@@ -58,7 +58,7 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:2026-05-05
+    image: ghcr.io/eduide/eduide-cloud/operator:1.1.0
     sentry:
       enable: true
     #eagerStart: false
@@ -67,7 +67,7 @@ theia-cloud:
     storageClassName: csi-rbd-sc
 
   service:
-    image: ghcr.io/eduide/eduide-cloud/service:2026-05-05
+    image: ghcr.io/eduide/eduide-cloud/service:1.1.0
     sentry:
       enable: true
     adminApiTokenSecret:
@@ -78,20 +78,20 @@ theia-cloud:
   # Index 14 is oauth2-proxy (distroless); the workflow does not override it.
   preloading:
     images:
-      - ghcr.io/eduide/eduidec-landing-page:2026-05-05
-      - ghcr.io/eduide/eduide/java-17:2026-05-05
-      - ghcr.io/eduide/eduide/java-17-templates:2026-05-05
+      - ghcr.io/eduide/eduidec-landing-page:1.1.0
+      - ghcr.io/eduide/eduide/java-17:1.1.0
+      - ghcr.io/eduide/eduide/java-17-templates:1.1.0
       - ghcr.io/eduide/eduide/java-17-ai:latest
       - ghcr.io/eduide/eduide/java-17-templates-ai:latest
-      - ghcr.io/eduide/eduide/c:2026-05-05
-      - ghcr.io/eduide/eduide/javascript:2026-05-05
-      - ghcr.io/eduide/eduide/ocaml:2026-05-05
-      - ghcr.io/eduide/eduide/rust:2026-05-05
-      - ghcr.io/eduide/eduide/python:2026-05-05
-      - ghcr.io/eduide/eduide/java-17-no-ls:2026-05-05
-      - ghcr.io/eduide/eduide/rust-no-ls:2026-05-05
-      - ghcr.io/eduide/eduide/langserver-java:2026-05-05
-      - ghcr.io/eduide/eduide/langserver-rust:2026-05-05
+      - ghcr.io/eduide/eduide/c:1.1.0
+      - ghcr.io/eduide/eduide/javascript:1.1.0
+      - ghcr.io/eduide/eduide/ocaml:1.1.0
+      - ghcr.io/eduide/eduide/rust:1.1.0
+      - ghcr.io/eduide/eduide/python:1.1.0
+      - ghcr.io/eduide/eduide/java-17-no-ls:1.1.0
+      - ghcr.io/eduide/eduide/rust-no-ls:1.1.0
+      - ghcr.io/eduide/eduide/langserver-java:1.1.0
+      - ghcr.io/eduide/eduide/langserver-rust:1.1.0
       - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
         args: ["--version"]
 
@@ -103,7 +103,7 @@ theia-cloud:
 
   landingPage:
     # We use the try now page as landing page since the default does not support mutliple apps -> https://github.com/eclipsesource/theia-cloud/discussions/301
-    image: ghcr.io/eduide/eduidec-landing-page:2026-05-05
+    image: ghcr.io/eduide/eduidec-landing-page:1.1.0
     sentry:
       enable: false
     logoFileExtension: "png"
@@ -139,7 +139,7 @@ theia-cloud:
       attribution:
         text: "Built by TUM AET Research Group 👨‍💻"
         url: "https://aet.cit.tum.de/"
-        version: "v1.0.0"
+        version: "v1.1.0"
       bugReport:
         text: "Report a bug 🐛"
         url: "https://github.com/EduIDE/EduIDE/issues"
@@ -163,7 +163,7 @@ theia-cloud:
     clientId: "theia"
 
 theia-appdefinitions:
-  defaultImageTag: "2026-05-05"
+  defaultImageTag: "1.1.0"
 
 monitoring:
   targetNamespaces:
