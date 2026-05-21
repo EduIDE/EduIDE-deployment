@@ -160,6 +160,92 @@ envoyProxy:
 
 Adjust this section for a different cluster. On cloud providers, this may be replaced by provider-specific load balancer annotations or omitted entirely.
 
+## MetalLB IP Assignment
+
+The following values describe the current production Theia cluster. Treat them as an example of the pattern, not as universal defaults. Other deployments must use their own MetalLB pools, external IPs, DNS records, and load-balancer annotations.
+
+In the current Artemis cluster, MetalLB exposes two single-address pools:
+
+| Pool | Address | DNS label on the pool | Current purpose |
+| --- | --- | --- | --- |
+| `general` | `131.159.88.81/32` | `k8s-theia-lb0.aet.cit.tum.de` | general load balancer pool, not assigned to Envoy Gateway |
+| `ingress` | `131.159.88.82/32` | `k8s-theia-lb1.aet.cit.tum.de` | Envoy Gateway ingress pool |
+
+The production Theia DNS names in this cluster resolve to `k8s-theia-lb1.aet.cit.tum.de`, which resolves to `131.159.88.82`. Therefore this deployment's Envoy Gateway data-plane service must receive `131.159.88.82`, not the other MetalLB address.
+
+The general procedure is to choose the MetalLB pool and external address that DNS points to, then encode that choice in the shared gateway values. In this production setup, that is enforced through the shared gateway production values, not by manually editing the generated service. The `theia-shared-gateway` chart creates an Envoy Gateway `EnvoyProxy` resource with:
+
+```yaml
+envoyProxy:
+  create: true
+  name: theia-shared-gateway
+  namespace: envoy-gateway-system
+  spec:
+    provider:
+      type: Kubernetes
+      kubernetes:
+        envoyService:
+          annotations:
+            metallb.io/address-pool: ingress
+            metallb.io/loadBalancerIPs: 131.159.88.82
+          externalTrafficPolicy: Local
+          type: LoadBalancer
+```
+
+Envoy Gateway reads this `EnvoyProxy` configuration and creates the actual data-plane service in `envoy-gateway-system`. The live service is named like:
+
+```text
+envoy-gateway-system-theia-shared-gateway-74c11d26
+```
+
+That service is generated and managed by Envoy Gateway. It currently has these relevant annotations and status:
+
+```yaml
+metadata:
+  annotations:
+    metallb.io/address-pool: ingress
+    metallb.io/ip-allocated-from-pool: ingress
+    metallb.io/loadBalancerIPs: 131.159.88.82
+spec:
+  type: LoadBalancer
+  clusterIP: 198.19.125.184
+  externalTrafficPolicy: Local
+status:
+  loadBalancer:
+    ingress:
+      - ip: 131.159.88.82
+```
+
+The `clusterIP` is only the internal Kubernetes service address. Public DNS must point to the MetalLB-assigned LoadBalancer address in `status.loadBalancer.ingress`, not to the internal `clusterIP`.
+
+The `metallb.io/address-pool: ingress` annotation selects the MetalLB pool. The `metallb.io/loadBalancerIPs: 131.159.88.82` annotation pins the exact address from that pool. MetalLB then records the actual allocation with `metallb.io/ip-allocated-from-pool: ingress` and publishes the address in the service status.
+
+Do not rely on MetalLB auto-assignment when the public DNS name must target a specific address. In the production cluster, both pools have `autoAssign: true`, so without the explicit EnvoyProxy annotations a new LoadBalancer service could receive the wrong address. If Envoy Gateway receives `131.159.88.81` while public DNS points at `131.159.88.82`, Theia hostnames will resolve to an address that is not serving the Gateway.
+
+For a different deployment, adapt all of the following together:
+
+- the MetalLB `IPAddressPool` name
+- the exact external IP requested through `metallb.io/loadBalancerIPs`
+- the DNS `A` / `AAAA` records for the public Theia hostnames
+- the shared gateway `EnvoyProxy` load-balancer annotations
+- any provider-specific load balancer annotations if the cluster does not use MetalLB
+
+Use these checks after installing or changing the shared gateway:
+
+```bash
+kubectl get ipaddresspools.metallb.io -n metallb-system
+kubectl get l2advertisements.metallb.io -n metallb-system
+kubectl get envoyproxy theia-shared-gateway -n envoy-gateway-system -o yaml
+kubectl get svc -n envoy-gateway-system -o wide
+kubectl get svc -n envoy-gateway-system \
+  -l gateway.envoyproxy.io/owning-gateway-name=theia-shared-gateway \
+  -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.metallb\.io/address-pool}{"\t"}{.metadata.annotations.metallb\.io/loadBalancerIPs}{"\t"}{.status.loadBalancer.ingress[*].ip}{"\n"}{end}'
+dig +short theia.artemis.cit.tum.de A
+dig +short k8s-theia-lb1.aet.cit.tum.de A
+```
+
+In the current Artemis production setup, the expected result is that the Envoy Gateway LoadBalancer service and the public DNS chain both end at `131.159.88.82`. In another deployment, the same check should end at that deployment's chosen public load-balancer address.
+
 ## Configure Tenant Theia Releases
 
 Each tenant environment should attach its routes to the shared Gateway instead of creating a namespace-local Gateway:
