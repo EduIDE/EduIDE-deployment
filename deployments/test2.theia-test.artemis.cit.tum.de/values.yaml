@@ -102,7 +102,7 @@ theia-cloud:
       interval: 3
 
   operator:
-    #image: ghcr.io/eduide/eduide-cloud/operator:latest
+    image: ghcr.io/eduide/eduide-cloud/operator:pr-114
     sentry:
       enable: true
     #eagerStart: false
@@ -111,12 +111,12 @@ theia-cloud:
     storageClassName: csi-rbd-sc
     buildCache:
       enabled: true
-      gradleUrl: "https://eduide-shared-cache:8080/cache/"
-      bazelUrl: "https://eduide-shared-cache:8080/cache/"
+      gradleUrl: "https://cache.test2.theia-test.artemis.cit.tum.de/gradle/"
+      bazelUrl: "https://cache.test2.theia-test.artemis.cit.tum.de/bazel/"
       enablePush: true
     dependencyCache:
       enabled: true
-      url: "http://eduide-shared-cache-reposilite:8080/releases/"
+      url: "http://repo.test2.theia-test.artemis.cit.tum.de/releases/"
 
 
   # service:
