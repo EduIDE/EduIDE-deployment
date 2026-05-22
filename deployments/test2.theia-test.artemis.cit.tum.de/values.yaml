@@ -116,8 +116,13 @@ theia-cloud:
             label: Maven
           - id: gradle
             label: Gradle
-      c-latest:
+      c-templates-latest:
         label: C
+        buildSystems:
+          - id: bazel
+            label: Bazel
+          - id: make
+            label: Make
       javascript-latest:
         label: Javascript
       ocaml-latest:
