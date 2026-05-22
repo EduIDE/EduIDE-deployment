@@ -26,7 +26,7 @@ eduide-shared-cache:
     verifyCASHash: true
 
   tls:
-    enabled: true
+    enabled: false
     secretName: cache-internal-cert-secret
 
   resources:
@@ -42,6 +42,22 @@ eduide-shared-cache:
 
   reposilite:
     fullnameOverride: eduide-shared-cache-reposilite
+
+  gateway:
+    enabled: true
+    parentRefs:
+      cache:
+        - name: theia-shared-gateway
+          namespace: gateway-system
+          sectionName: test2-cache
+      repo:
+        - name: theia-shared-gateway
+          namespace: gateway-system
+          sectionName: test2-repo
+    cache:
+      hostname: cache.test2.theia-test.artemis.cit.tum.de
+    repo:
+      hostname: repo.test2.theia-test.artemis.cit.tum.de
 
 
 theia-cloud:

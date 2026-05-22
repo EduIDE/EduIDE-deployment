@@ -35,6 +35,12 @@ gateway:
     - name: test2-webview
       hostname: "*.webview.instance.test2.theia-test.artemis.cit.tum.de"
       tlsSecretName: static-theia-cert
+    - name: test2-cache
+      hostname: cache.test2.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test2-repo
+      hostname: repo.test2.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
 
     # test3
     - name: test3-landing
