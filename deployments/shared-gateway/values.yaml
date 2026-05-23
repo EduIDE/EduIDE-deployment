@@ -63,5 +63,3 @@ gateway:
     - name: staging-webview
       hostname: "*.webview.instance.theia-staging.artemis.cit.tum.de"
       tlsSecretName: static-theia-cert
-
-    
