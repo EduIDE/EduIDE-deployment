@@ -84,13 +84,14 @@ theia-cloud:
       name: service-admin-api-token
       key: ADMIN_API_TOKEN
 
-  # Preload indices 0–10 align with .github/workflows/deploy-theia.yml tag overrides; 11 = oauth2-proxy (not overridden there).
+  # Preload indices 0–11 align with .github/workflows/deploy-theia.yml tag overrides; 12 = oauth2-proxy (not overridden there).
   preloading:
     images:
       - ghcr.io/eduide/eduidec-landing-page:latest
       - ghcr.io/eduide/eduide/java-17:latest
       - ghcr.io/eduide/eduide/java-17-templates:latest
       - ghcr.io/eduide/eduide/c:latest
+      - ghcr.io/eduide/eduide/c-templates:latest
       - ghcr.io/eduide/eduide/javascript:latest
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
@@ -117,6 +118,9 @@ theia-cloud:
     appDefinition: "java-17-templates-latest"
     ephemeralStorage: false
     additionalApps:
+      java-17-latest:
+        label: Java 17
+        visible: false
       java-17-templates-latest:
         label: Java 17
         buildSystems:
@@ -126,6 +130,14 @@ theia-cloud:
             label: Gradle
       c-latest:
         label: C
+        visible: false
+      c-templates-latest:
+        label: C
+        buildSystems:
+          - id: bazel
+            label: Bazel
+          - id: make
+            label: Make
       javascript-latest:
         label: Javascript
       ocaml-latest:
