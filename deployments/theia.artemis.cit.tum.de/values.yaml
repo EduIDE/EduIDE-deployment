@@ -150,7 +150,7 @@ theia-cloud:
     enable: true
 
     # -- Key cloak auth URL. Only has to be specified when enable: true
-    authUrl: "https://keycloak.ase.in.tum.de/"
+    authUrl: "https://keycloak.aet.cit.tum.de/"
 
     # # -- The Keycloak Realm. Only has to be specified when enable: true
     realm: "tum"
