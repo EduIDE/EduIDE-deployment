@@ -380,22 +380,23 @@ jobs:
           fi
 
           # Only override IDE images when a tag is explicitly provided.
-          # Indices 0 (landing) and 1-11 (IDE + no-ls + langserver preload) are set above / here.
-          # Index 12 is oauth2-proxy (distroless); keep it only in values.yaml so it is never replaced by a string override.
+          # Indices 0 (landing) and 1-12 (IDE + no-ls + langserver preload) are set above / here.
+          # Index 13 is oauth2-proxy (distroless); keep it only in values.yaml so it is never replaced by a string override.
           if [ -n "${IDE_IMAGES_TAG}" ]; then
             HELM_CMD+=(
               --set "theia-cloud.preloading.images[1]=ghcr.io/eduide/eduide/java-17:${IDE_IMAGES_TAG}"
               --set "theia-cloud.preloading.images[2]=ghcr.io/eduide/eduide/java-17-templates:${IDE_IMAGES_TAG}"
               --set "theia-cloud.preloading.images[3]=ghcr.io/eduide/eduide/c:${IDE_IMAGES_TAG}"
-              --set "theia-cloud.preloading.images[4]=ghcr.io/eduide/eduide/javascript:${IDE_IMAGES_TAG}"
-              --set "theia-cloud.preloading.images[5]=ghcr.io/eduide/eduide/ocaml:${IDE_IMAGES_TAG}"
-              --set "theia-cloud.preloading.images[6]=ghcr.io/eduide/eduide/rust:${IDE_IMAGES_TAG}"
-              --set "theia-cloud.preloading.images[7]=ghcr.io/eduide/eduide/python:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[4]=ghcr.io/eduide/eduide/c-templates:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[5]=ghcr.io/eduide/eduide/javascript:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[6]=ghcr.io/eduide/eduide/ocaml:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[7]=ghcr.io/eduide/eduide/rust:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[8]=ghcr.io/eduide/eduide/python:${IDE_IMAGES_TAG}"
               # Intentionally override no-ls + langserver preload images globally when IDE tag is overridden.
-              --set "theia-cloud.preloading.images[8]=ghcr.io/eduide/eduide/java-17-no-ls:${IDE_IMAGES_TAG}"
-              --set "theia-cloud.preloading.images[9]=ghcr.io/eduide/eduide/rust-no-ls:${IDE_IMAGES_TAG}"
-              --set "theia-cloud.preloading.images[10]=ghcr.io/eduide/eduide/langserver-java:${IDE_IMAGES_TAG}"
-              --set "theia-cloud.preloading.images[11]=ghcr.io/eduide/eduide/langserver-rust:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[9]=ghcr.io/eduide/eduide/java-17-no-ls:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[10]=ghcr.io/eduide/eduide/rust-no-ls:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[11]=ghcr.io/eduide/eduide/langserver-java:${IDE_IMAGES_TAG}"
+              --set "theia-cloud.preloading.images[12]=ghcr.io/eduide/eduide/langserver-rust:${IDE_IMAGES_TAG}"
               --set theia-appdefinitions.defaultImageTag="${IDE_IMAGES_TAG}"
             )
           fi
