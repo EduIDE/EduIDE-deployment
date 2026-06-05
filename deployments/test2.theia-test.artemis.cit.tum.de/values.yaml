@@ -25,10 +25,6 @@ eduide-shared-cache:
     maxEntrySizeMB: 100
     verifyCASHash: true
 
-  tls:
-    enabled: false
-    secretName: cache-internal-cert-secret
-
   resources:
     requests:
       memory: "256Mi"
