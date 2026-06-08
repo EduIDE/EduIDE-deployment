@@ -25,6 +25,13 @@ eduide-shared-cache:
     maxEntrySizeMB: 100
     verifyCASHash: true
 
+  staticAnalysis:
+    enabled: true
+    checkNetwork: true
+    checkExec: true
+    checkReflection: true
+    checkFilesystem: true
+
   resources:
     requests:
       memory: "256Mi"
