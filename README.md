@@ -30,7 +30,7 @@ This repository serves as the infrastructure-as-code for deploying and managing 
 │   ├── theia-cloud-combined/    # Combined chart with all components
 │   ├── theia-shared-gateway/    # Shared Gateway API entrypoint
 │   ├── theia-appdefinitions/    # Custom IDE environments (images/configs)
-│   ├── theia-certificates/      # SSL certificate management (per-namespace)
+│   ├── theia-certificates/      # SSL certificate management
 │   └── theia-metrics/           # Prometheus/Grafana dashboards
 │
 ├── value-reference-files/  # Reference Helm values for different setups
