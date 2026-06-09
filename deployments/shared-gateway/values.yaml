@@ -76,10 +76,10 @@ gateway:
       hostname: "*.webview.instance.theia-staging.artemis.cit.tum.de"
       tlsSecretName: static-theia-cert
     - name: staging-cache
-      hostname: cache.staging.theia-test.artemis.cit.tum.de
+      hostname: cache.theia-staging.artemis.cit.tum.de
       tlsSecretName: shared-theia-cert
     - name: staging-repo
-      hostname: repo.staging.theia-test.artemis.cit.tum.de
+      hostname: repo.theia-staging.artemis.cit.tum.de
       tlsSecretName: shared-theia-cert
 
     # ACME HTTP-01 challenge listeners (required for cert-manager to re-issue shared-theia-cert)
@@ -154,11 +154,11 @@ gateway:
     - name: acme-staging-cache-http
       protocol: HTTP
       port: 80
-      hostname: cache.staging.theia-test.artemis.cit.tum.de
+      hostname: cache.theia-staging.artemis.cit.tum.de
     - name: acme-staging-repo-http
       protocol: HTTP
       port: 80
-      hostname: repo.staging.theia-test.artemis.cit.tum.de
+      hostname: repo.theia-staging.artemis.cit.tum.de
 
 gatewayAcmeIssuer:
   enabled: true
