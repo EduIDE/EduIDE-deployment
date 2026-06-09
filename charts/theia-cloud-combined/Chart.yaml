@@ -22,5 +22,5 @@ dependencies:
     repository: "oci://ghcr.io/eduide/charts"
 
   - name: eduide-shared-cache
-    version: 0.5.3-pr.37
+    version: 0.5.3
     repository: "oci://ghcr.io/eduide/charts"

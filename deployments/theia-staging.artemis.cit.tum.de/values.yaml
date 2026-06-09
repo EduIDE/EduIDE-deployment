@@ -16,6 +16,53 @@ theia-certificates:
   adminApiTokenSecret:
     enabled: true
 
+eduide-shared-cache:
+  enabled: true
+  auth:
+    enabled: false
+
+  cache:
+    maxEntrySizeMB: 100
+    verifyCASHash: true
+
+  staticAnalysis:
+    enabled: true
+    checkNetwork: true
+    checkExec: true
+    checkReflection: true
+    checkFilesystem: true
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+  monitoring:
+    enabled: true
+
+  reposilite:
+    fullnameOverride: eduide-shared-cache-reposilite
+
+  gateway:
+    enabled: true
+    parentRefs:
+      cache:
+        - name: theia-shared-gateway
+          namespace: gateway-system
+          sectionName: staging-cache
+      repo:
+        - name: theia-shared-gateway
+          namespace: gateway-system
+          sectionName: staging-repo
+    cache:
+      hostname: cache.staging.theia-test.artemis.cit.tum.de
+    repo:
+      hostname: repo.staging.theia-test.artemis.cit.tum.de
+
+
 theia-cloud:
   app:
     id: nJV3nKZmpxTD4wu2
@@ -64,6 +111,14 @@ theia-cloud:
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
+    buildCache:
+      enabled: true
+      gradleUrl: "https://cache.staging.theia-test.artemis.cit.tum.de/gradle/"
+      bazelUrl: "https://cache.staging.theia-test.artemis.cit.tum.de/bazel/"
+      enablePush: true
+    dependencyCache:
+      enabled: true
+      url: "https://repo.staging.theia-test.artemis.cit.tum.de/releases/"
 
   service:
     image: ghcr.io/eduide/eduide-cloud/service:latest
