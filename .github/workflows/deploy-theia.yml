@@ -97,7 +97,7 @@ jobs:
     permissions:
       contents: read
       packages: read
-    runs-on: ${{ inputs.execution_mode == 'github-runners' && 'ubuntu-latest' || 'arc-buildkit-eduide-amd64' }}
+    runs-on: ${{ inputs.execution_mode == 'github-runners' && 'ubuntu-latest' || 'arc-buildkit-eduide-stud-amd64' }}
     # Link to GitHub Environment for secrets and protection rules
     environment: ${{ inputs.environment }}
 
