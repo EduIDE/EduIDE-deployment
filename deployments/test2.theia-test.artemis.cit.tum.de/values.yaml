@@ -114,12 +114,12 @@ theia-cloud:
     storageClassName: csi-rbd-sc
     buildCache:
       enabled: true
-      gradleUrl: "https://cache.test2.theia-test.artemis.cit.tum.de/gradle/"
-      bazelUrl: "https://cache.test2.theia-test.artemis.cit.tum.de/bazel/"
+      gradleUrl: "http://eduide-shared-cache.test2.svc.cluster.local:8080/gradle/"
+      bazelUrl: "http://eduide-shared-cache.test2.svc.cluster.local:8080/bazel/"
       enablePush: true
     dependencyCache:
       enabled: true
-      url: "https://repo.test2.theia-test.artemis.cit.tum.de/releases/"
+      url: "http://eduide-shared-cache-reposilite.test2.svc.cluster.local:8080/releases/"
 
 
   # service:
