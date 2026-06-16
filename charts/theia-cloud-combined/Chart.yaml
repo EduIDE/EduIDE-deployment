@@ -23,4 +23,4 @@ dependencies:
 
   - name: theia-shared-cache
     version: 0.2.2
-    repository: "https://eduide.github.io/EduIDE-shared-cache"
+    repository: "file://../theia-shared-cache-minio"

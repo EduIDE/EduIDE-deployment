@@ -1,7 +1,7 @@
 dependencies:
 - name: theia-cloud
   repository: oci://ghcr.io/eduide/charts
-  version: 1.4.0-next.4
+  version: 1.4.0-next.7
 - name: theia-certificates
   repository: file://../theia-certificates
   version: 0.1.0
@@ -12,7 +12,7 @@ dependencies:
   repository: oci://ghcr.io/eduide/charts
   version: 0.1.0
 - name: theia-shared-cache
-  repository: oci://ghcr.io/eduide/charts
-  version: 0.3.1
-digest: sha256:6e4a40b1d37da98b940d589f9857e05ffdefaa34409bb852340189d663e33b83
-generated: "2026-04-20T12:19:26.108265+02:00"
+  repository: file://../theia-shared-cache-minio
+  version: 0.2.2
+digest: sha256:95a375c1e66fef91a5585b47456639b8f3ab3638e890c48547dcd41c079ebaf2
+generated: "2026-06-16T16:53:06.532203+02:00"
