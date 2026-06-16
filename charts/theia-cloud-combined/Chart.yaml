@@ -21,6 +21,6 @@ dependencies:
     version: 0.1.0
     repository: "oci://ghcr.io/eduide/charts"
 
-  - name: eduide-shared-cache
+  - name: theia-shared-cache
     version: 0.2.2
-    repository: "oci://ghcr.io/eduide/charts"
+    repository: "oci://ghcr.io/ls1intum/charts/theia-shared-cache"
