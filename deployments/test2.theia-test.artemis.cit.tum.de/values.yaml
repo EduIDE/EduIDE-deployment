@@ -17,23 +17,51 @@ theia-certificates:
     enabled: true
 
 eduide-shared-cache:
-  storage:
-    size: 50Gi
-    storageClass: "csi-rbd-sc"
-
-resources:
-  minio:
-    requests:
-      memory: "512Mi"
-      cpu: "250m"
-    limits:
-      memory: "2Gi"
-      cpu: "1000m"
-
+  enabled: true
   auth:
     enabled: false
-    username: "gradle"
-    password: "changeme"
+
+  cache:
+    maxEntrySizeMB: 100
+    verifyCASHash: true
+
+  staticAnalysis:
+    enabled: false
+    checkNetwork: true
+    checkExec: true
+    checkReflection: true
+    checkFilesystem: true
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+  monitoring:
+    enabled: true
+
+  reposilite:
+    fullnameOverride: eduide-shared-cache-reposilite
+
+  gateway:
+    enabled: true
+    parentRefs:
+      cache:
+        - name: theia-shared-gateway
+          namespace: gateway-system
+          sectionName: test2-cache
+      repo:
+        - name: theia-shared-gateway
+          namespace: gateway-system
+          sectionName: test2-repo
+    cache:
+      hostname: cache.test2.theia-test.artemis.cit.tum.de
+    repo:
+      hostname: repo.test2.theia-test.artemis.cit.tum.de
+
 
 theia-cloud:
   app:
