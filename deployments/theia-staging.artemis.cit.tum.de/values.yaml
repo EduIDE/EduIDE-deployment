@@ -26,7 +26,7 @@ eduide-shared-cache:
     verifyCASHash: true
 
   staticAnalysis:
-    enabled: true
+    enabled: false
     checkNetwork: true
     checkExec: true
     checkReflection: true

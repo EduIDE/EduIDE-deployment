@@ -114,12 +114,12 @@ theia-cloud:
     storageClassName: csi-rbd-sc
     buildCache:
       enabled: true
-      gradleUrl: "http://eduide-shared-cache.test2.svc.cluster.local:8080/gradle/"
-      bazelUrl: "http://eduide-shared-cache.test2.svc.cluster.local:8080/bazel/"
+      gradleUrl: "https://cache.test2.theia-test.artemis.cit.tum.de/gradle/"
+      bazelUrl: "https://cache.test2.theia-test.artemis.cit.tum.de/bazel/"
       enablePush: true
     dependencyCache:
       enabled: true
-      url: "http://eduide-shared-cache-reposilite.test2.svc.cluster.local:8080/releases/"
+      url: "https://repo.test2.theia-test.artemis.cit.tum.de/releases/"
 
 
   # service:
@@ -211,7 +211,7 @@ theia-cloud:
 
 
   keycloak:
-    enable: false
+    enable: true
 
     # -- Key cloak auth URL. Only has to be specified when enable: true
     authUrl: "https://keycloak.aet.cit.tum.de/"

@@ -28,6 +28,16 @@ gateway:
       port: 443
       hostname: "*.webview.instance.theia.artemis.cit.tum.de"
       tlsSecretName: static-theia-cert
+    - name: prod-cache
+      protocol: HTTPS
+      port: 443
+      hostname: cache.theia.artemis.cit.tum.de
+      tlsSecretName: cache-cert-secret
+    - name: prod-repo
+      protocol: HTTPS
+      port: 443
+      hostname: repo.theia.artemis.cit.tum.de
+      tlsSecretName: repo-cert-secret
     - name: acme-landing-http
       protocol: HTTP
       port: 80
@@ -40,6 +50,14 @@ gateway:
       protocol: HTTP
       port: 80
       hostname: instance.theia.artemis.cit.tum.de
+    - name: acme-cache-http
+      protocol: HTTP
+      port: 80
+      hostname: cache.theia.artemis.cit.tum.de
+    - name: acme-repo-http
+      protocol: HTTP
+      port: 80
+      hostname: repo.theia.artemis.cit.tum.de
 
 gatewayClass:
   create: true
@@ -78,6 +96,12 @@ managedCertificates:
     - name: instance-cert
       secretName: ws-cert-secret
       hostname: instance.theia.artemis.cit.tum.de
+    - name: cache-cert
+      secretName: cache-cert-secret
+      hostname: cache.theia.artemis.cit.tum.de
+    - name: repo-cert
+      secretName: repo-cert-secret
+      hostname: repo.theia.artemis.cit.tum.de
 
 gatewayAcmeIssuer:
   enabled: true
