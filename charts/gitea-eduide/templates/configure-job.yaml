@@ -1,0 +1,172 @@
+{{- if .Values.configure.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gitea-eduide.fullname" . }}-configure-script
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitea-eduide.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+data:
+  configure.sh: |
+    #!/bin/sh
+    set -eu
+
+    API="$GITEA_URL/api/v1"
+
+    api() {
+      curl -fsS -H 'Accept: application/json' -H 'Content-Type: application/json' \
+        -u "$ADMIN_USER:$ADMIN_PASS" "$@"
+    }
+
+    # 1. Wait for Gitea readiness (public, unauthenticated endpoint).
+    echo "Waiting for Gitea at $API/version ..."
+    deadline=$(( $(date +%s) + READINESS_TIMEOUT ))
+    until curl -fsS "$API/version" >/dev/null 2>&1; do
+      if [ "$(date +%s)" -ge "$deadline" ]; then
+        echo "ERROR: timed out waiting for Gitea readiness" >&2
+        exit 1
+      fi
+      sleep 5
+    done
+    echo "Gitea is ready: $(curl -fsS "$API/version")"
+
+    # 2. Read any previously stored credentials (idempotency).
+    EXISTING_CID=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" \
+      -o jsonpath='{.data.client_id}' 2>/dev/null | base64 -d 2>/dev/null || true)
+    EXISTING_CSECRET=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" \
+      -o jsonpath='{.data.client_secret}' 2>/dev/null | base64 -d 2>/dev/null || true)
+
+    # 3. Look up an existing OAuth2 app by name.
+    APPS=$(api "$API/user/applications/oauth2")
+    MATCH_ID=$(echo "$APPS" | jq -r --arg n "$APP_NAME" 'map(select(.name==$n)) | (.[0].id // empty)')
+    MATCH_CID=$(echo "$APPS" | jq -r --arg n "$APP_NAME" 'map(select(.name==$n)) | (.[0].client_id // empty)')
+
+    REUSE=false
+    if [ -n "$MATCH_ID" ] && [ "$MATCH_CID" = "$EXISTING_CID" ] && [ -n "$EXISTING_CSECRET" ]; then
+      echo "OAuth2 app '$APP_NAME' already registered and secret present; reusing."
+      CLIENT_ID="$EXISTING_CID"
+      CLIENT_SECRET="$EXISTING_CSECRET"
+      REUSE=true
+    fi
+
+    if [ "$REUSE" = "false" ]; then
+      # Gitea only returns client_secret at creation time. If a same-named app
+      # exists but we have no stored secret, delete it and recreate a fresh one.
+      for id in $(echo "$APPS" | jq -r --arg n "$APP_NAME" 'map(select(.name==$n)) | .[].id'); do
+        echo "Removing stale OAuth2 app id=$id"
+        api -X DELETE "$API/user/applications/oauth2/$id" || true
+      done
+      PAYLOAD=$(jq -n --arg name "$APP_NAME" --argjson uris "$REDIRECT_URIS" \
+        --argjson conf "$CONFIDENTIAL" \
+        '{name:$name, redirect_uris:$uris, confidential_client:$conf}')
+      echo "Creating OAuth2 app '$APP_NAME'"
+      RESP=$(api -X POST "$API/user/applications/oauth2" -d "$PAYLOAD")
+      CLIENT_ID=$(echo "$RESP" | jq -r '.client_id')
+      CLIENT_SECRET=$(echo "$RESP" | jq -r '.client_secret')
+      if [ -z "$CLIENT_ID" ] || [ "$CLIENT_ID" = "null" ]; then
+        echo "ERROR: failed to create OAuth2 app: $RESP" >&2
+        exit 1
+      fi
+    fi
+
+    # 4. Persist credentials to a Kubernetes Secret for EduIDE-Helm to consume.
+    ISSUER=$(printf '%s' "$ROOT_URL" | sed 's:/*$::')
+    kubectl create secret generic "$SECRET_NAME" -n "$NAMESPACE" \
+      --from-literal=client_id="$CLIENT_ID" \
+      --from-literal=client_secret="$CLIENT_SECRET" \
+      --from-literal=issuer="$ISSUER" \
+      --from-literal=redirect_uris="$REDIRECT_URIS" \
+      --dry-run=client -o yaml | kubectl apply -f -
+    echo "Secret '$SECRET_NAME' written (client_id, client_secret, issuer, redirect_uris)."
+
+    # 5. Optional: private test org + repo for e2e clone tests.
+    if [ "$CREATE_TEST_REPO" = "true" ]; then
+      if ! api "$API/orgs/$TEST_ORG" >/dev/null 2>&1; then
+        echo "Creating org $TEST_ORG"
+        api -X POST "$API/orgs" \
+          -d "$(jq -n --arg u "$TEST_ORG" '{username:$u, visibility:"private"}')" >/dev/null
+      fi
+      if ! api "$API/repos/$TEST_ORG/$TEST_REPO" >/dev/null 2>&1; then
+        echo "Creating private repo $TEST_ORG/$TEST_REPO"
+        api -X POST "$API/orgs/$TEST_ORG/repos" \
+          -d "$(jq -n --arg n "$TEST_REPO" '{name:$n, private:true, auto_init:true}')" >/dev/null
+      fi
+    fi
+
+    echo "EduIDE Gitea configuration complete."
+    echo "NOTE: the repo 'Open with' launch button is NOT configurable via the"
+    echo "      Gitea API/CLI (see chart README). Add it once via Site Administration."
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "gitea-eduide.fullname" . }}-configure
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitea-eduide.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ .Values.configure.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "gitea-eduide.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "gitea-eduide.serviceAccountName" . }}
+      containers:
+        - name: configure
+          image: {{ .Values.configure.image | quote }}
+          imagePullPolicy: {{ .Values.configure.imagePullPolicy }}
+          command: ["/bin/sh", "/scripts/configure.sh"]
+          resources:
+            {{- toYaml .Values.configure.resources | nindent 12 }}
+          env:
+            - name: GITEA_URL
+              value: {{ include "gitea-eduide.giteaHttpUrl" . | quote }}
+            - name: ROOT_URL
+              value: {{ .Values.gitea.gitea.config.server.ROOT_URL | quote }}
+            - name: NAMESPACE
+              value: {{ .Release.Namespace | quote }}
+            - name: SECRET_NAME
+              value: {{ .Values.eduide.oauthSecretName | quote }}
+            - name: APP_NAME
+              value: {{ .Values.eduide.oauthAppName | quote }}
+            - name: CONFIDENTIAL
+              value: {{ .Values.eduide.confidentialClient | toString | quote }}
+            - name: REDIRECT_URIS
+              value: {{ .Values.eduide.redirectUris | toJson | quote }}
+            - name: READINESS_TIMEOUT
+              value: {{ .Values.configure.readinessTimeoutSeconds | toString | quote }}
+            - name: CREATE_TEST_REPO
+              value: {{ .Values.eduide.createTestRepo | toString | quote }}
+            - name: TEST_ORG
+              value: {{ .Values.eduide.testOrg | quote }}
+            - name: TEST_REPO
+              value: {{ .Values.eduide.testRepo | quote }}
+            - name: ADMIN_USER
+              value: {{ .Values.gitea.gitea.admin.username | quote }}
+            - name: ADMIN_PASS
+              {{- if .Values.gitea.gitea.admin.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.gitea.gitea.admin.existingSecret }}
+                  key: password
+              {{- else }}
+              value: {{ .Values.gitea.gitea.admin.password | quote }}
+              {{- end }}
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+      volumes:
+        - name: script
+          configMap:
+            name: {{ include "gitea-eduide.fullname" . }}-configure-script
+{{- end }}

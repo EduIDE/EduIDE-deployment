@@ -1,0 +1,139 @@
+# Values for gitea-eduide.
+#
+# This chart wraps the official Gitea chart (dependency alias "gitea") and adds a
+# post-install/post-upgrade Job that configures the running Gitea for EduIDE:
+#   - registers an EduIDE OAuth2 application (confidential client)
+#   - writes its client_id/client_secret/issuer into a Kubernetes Secret
+#   - optionally creates a PRIVATE test org + repo for e2e clone tests
+#
+# The Gitea instance itself is configured through the `gitea:` block below, which
+# is passed verbatim to the official Gitea subchart. See its docs for all keys:
+#   https://gitea.com/gitea/helm-gitea
+
+# --------------------------------------------------------------------------- #
+# Global / shared
+# --------------------------------------------------------------------------- #
+
+# Base domain for this deployment. Used to build sensible defaults in this file
+# and referenced in the README. NOTE: values.yaml is not templated, so if you
+# change `domain` you must also update `gitea.config.server.ROOT_URL`,
+# `gitea.config.server.DOMAIN`, `eduide.landingPageUrl` and `eduide.redirectUris`.
+domain: eduide.example.com
+
+# --------------------------------------------------------------------------- #
+# EduIDE integration
+# --------------------------------------------------------------------------- #
+eduide:
+  # Landing page origin (EduIDE-Landing-Page). Used as the OAuth2 redirect target
+  # and as the base of the "Open with" clone URL template documented in the README.
+  landingPageUrl: "https://eduide.example.com"
+
+  # App definition the "Open with" launch button requests (passed as ?appDef=...).
+  appDef: "java-17-latest"
+
+  # OAuth2 application registered in Gitea.
+  oauthAppName: "EduIDE"
+  # Confidential (server-side) client. Keep true; the landing page also uses PKCE.
+  confidentialClient: true
+
+  # Redirect URIs for the OAuth2 application. The landing page redirect_uri is the
+  # origin + pathname WITHOUT query params (see EduIDE-Landing-Page src/gitea-oidc.ts),
+  # so both the bare origin and the trailing-slash form are included.
+  # For session guarding via an oauth2-proxy in front of each workspace session,
+  # add the session callback origin(s) as well. Gitea does NOT support wildcard
+  # redirect URIs, so every concrete session-proxy callback URL must be listed.
+  redirectUris:
+    - "https://eduide.example.com"
+    - "https://eduide.example.com/"
+    # Example session oauth2-proxy callback (uncomment / adjust, one entry per host):
+    # - "https://session-1.sessions.eduide.example.com/oauth2/callback"
+
+  # Kubernetes Secret that receives the OAuth2 credentials so EduIDE-Helm can
+  # consume them (keys: client_id, client_secret, issuer, redirect_uris).
+  oauthSecretName: "gitea-eduide-oauth"
+
+  # Create a PRIVATE test org + repo so e2e has something to clone. Optional.
+  createTestRepo: false
+  testOrg: "eduide-test"
+  testRepo: "sample-assignment"
+
+# --------------------------------------------------------------------------- #
+# Post-install configuration Job
+# --------------------------------------------------------------------------- #
+configure:
+  enabled: true
+  # Image must provide: kubectl, curl, jq, sh. alpine/k8s bundles all of them.
+  image: "alpine/k8s:1.30.13"
+  imagePullPolicy: IfNotPresent
+  backoffLimit: 6
+  # Seconds to wait for Gitea's /api/v1/version before giving up.
+  readinessTimeoutSeconds: 300
+  resources: {}
+  # RBAC (ServiceAccount + Role + RoleBinding for Secret management) is created
+  # automatically. Set to false to reuse an existing ServiceAccount named below.
+  rbac:
+    create: true
+  serviceAccountName: ""
+
+# --------------------------------------------------------------------------- #
+# Official Gitea chart values (subchart, alias "gitea")
+# --------------------------------------------------------------------------- #
+gitea:
+  # NOTE ON NESTING: the official Gitea chart keeps admin/config under its OWN
+  # `gitea:` values key, while service/persistence/replicaCount and the bundled
+  # database/cache sub-charts are top-level. Because we import that chart under
+  # the alias `gitea`, admin/config land at `gitea.gitea.*` (double "gitea") and
+  # everything else at `gitea.*`.
+  gitea:
+    # Admin user. Single source of truth: the configure Job authenticates to the
+    # Gitea API with these exact credentials via HTTP basic auth.
+    admin:
+      username: gitea_admin
+      password: "changeme-admin-pw"
+      email: "admin@eduide.example.com"
+      passwordMode: keepUpdated
+
+    # app.ini configuration. Each nested map becomes an [section] in app.ini.
+    config:
+      server:
+        # Stable external URL. This is also Gitea's OIDC issuer
+        # (discovery at ROOT_URL/.well-known/openid-configuration).
+        ROOT_URL: "https://gitea.eduide.example.com"
+        DOMAIN: "gitea.eduide.example.com"
+      # Lightweight DB for a test deployment.
+      database:
+        DB_TYPE: sqlite3
+      # OAuth2 provider (Gitea acting as an OIDC provider). On by default; pinned here.
+      oauth2:
+        ENABLE: true
+      # OpenID sign-in. On by default; pinned here.
+      openid:
+        ENABLE_OPENID_SIGNIN: true
+        ENABLE_OPENID_SIGNUP: false
+      service:
+        # Test instance: no open self-registration.
+        DISABLE_REGISTRATION: true
+
+  # Persist the sqlite DB and repos.
+  persistence:
+    enabled: true
+    size: 5Gi
+
+  # Single replica is enough for a test instance (sqlite is single-writer anyway).
+  replicaCount: 1
+
+  # Disable the bundled HA databases and cache so the lightweight sqlite config
+  # above is used. These are sub-charts of the Gitea chart, hence nested here
+  # under the `gitea` alias (NOT at the top level).
+  postgresql-ha:
+    enabled: false
+  postgresql:
+    enabled: false
+  valkey-cluster:
+    enabled: false
+  valkey:
+    enabled: false
+
+  # No need for the subchart's test-connection Pod in a test instance.
+  test:
+    enabled: false

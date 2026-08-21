@@ -1,0 +1,24 @@
+gitea-eduide has been installed.
+
+Gitea (external URL): {{ .Values.gitea.gitea.config.server.ROOT_URL }}
+OIDC issuer / discovery: {{ .Values.gitea.gitea.config.server.ROOT_URL }}/.well-known/openid-configuration
+
+1. The post-install Job "{{ include "gitea-eduide.fullname" . }}-configure" registers the
+   EduIDE OAuth2 application and writes credentials to Secret:
+     {{ .Values.eduide.oauthSecretName }}  (namespace {{ .Release.Namespace }})
+   Keys: client_id, client_secret, issuer, redirect_uris
+
+   Inspect it:
+     kubectl -n {{ .Release.Namespace }} get secret {{ .Values.eduide.oauthSecretName }} -o jsonpath='{.data.client_id}' | base64 -d ; echo
+
+2. Wire these into EduIDE-Helm gitea.* values (issuerUrl / clientId / clientSecret).
+   See the chart README section "Wiring into EduIDE-Helm".
+
+3. MANUAL one-time step: the repo "Open with" launch button cannot be set via the
+   Gitea API/CLI. Add it in Site Administration. Exact steps + URL template are in
+   the chart README section "Open with launch button (manual)".
+{{- if not .Values.eduide.createTestRepo }}
+
+4. No test repo was created (eduide.createTestRepo=false). Set it to true to get a
+   private test org/repo for e2e clone tests.
+{{- end }}
