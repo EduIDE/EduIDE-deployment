@@ -38,6 +38,14 @@ operator:
   replicas: 1
   sessionsPerUser: 10
   storageClassName: csi-rbd-sc
+  buildCache:
+    enabled: false
+    gradleUrl: ""
+    bazelUrl: ""
+    enablePush: false
+  dependencyCache:
+    enabled: false
+    url: ""
 
 service:
   adminApiTokenSecret:

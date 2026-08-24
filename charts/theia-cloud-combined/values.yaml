@@ -6,6 +6,9 @@ hosts:
     landing: theia
     instance: instance.theia
 
+eduide-shared-cache:
+  enabled: false
+
 theia-certificates:
   hosts:
     configuration: *hostsConfig
@@ -64,6 +67,14 @@ theia-cloud:
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
     eagerStart: true
+    buildCache:
+      enabled: false
+      gradleUrl: ""
+      bazelUrl: ""
+      enablePush: false
+    dependencyCache:
+      enabled: false
+      url: ""
 
   service:
     image: ghcr.io/eduide/eduide-cloud/service:latest

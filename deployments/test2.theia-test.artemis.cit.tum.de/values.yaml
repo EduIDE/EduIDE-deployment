@@ -16,6 +16,53 @@ theia-certificates:
   adminApiTokenSecret:
     enabled: true
 
+eduide-shared-cache:
+  enabled: true
+  auth:
+    enabled: false
+
+  cache:
+    maxEntrySizeMB: 100
+    verifyCASHash: true
+
+  staticAnalysis:
+    enabled: false
+    checkNetwork: true
+    checkExec: true
+    checkReflection: true
+    checkFilesystem: true
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "1Gi"
+      cpu: "500m"
+
+  monitoring:
+    enabled: true
+
+  reposilite:
+    fullnameOverride: eduide-shared-cache-reposilite
+
+  gateway:
+    enabled: true
+    parentRefs:
+      cache:
+        - name: theia-shared-gateway
+          namespace: gateway-system
+          sectionName: test2-cache
+      repo:
+        - name: theia-shared-gateway
+          namespace: gateway-system
+          sectionName: test2-repo
+    cache:
+      hostname: cache.test2.theia-test.artemis.cit.tum.de
+    repo:
+      hostname: repo.test2.theia-test.artemis.cit.tum.de
+
+
 theia-cloud:
   app:
     id: nJV3nKZmpxTD4wu2
@@ -65,6 +112,15 @@ theia-cloud:
     replicas: 1
     sessionsPerUser: 10
     storageClassName: csi-rbd-sc
+    buildCache:
+      enabled: true
+      gradleUrl: "https://cache.test2.theia-test.artemis.cit.tum.de/gradle/"
+      bazelUrl: "https://cache.test2.theia-test.artemis.cit.tum.de/bazel/"
+      enablePush: true
+    dependencyCache:
+      enabled: true
+      url: "https://repo.test2.theia-test.artemis.cit.tum.de/releases/"
+
 
   # service:
   #   image: ghcr.io/eduide/eduide-cloud/service:latest
@@ -113,10 +169,10 @@ theia-cloud:
       java-17-templates-latest:
         label: Java 17
         buildSystems:
-          - id: maven
-            label: Maven
           - id: gradle
             label: Gradle
+          - id: maven
+            label: Maven
       c-latest:
         label: C
         visible: false

@@ -21,6 +21,12 @@ gateway:
     - name: test1-webview
       hostname: "*.webview.instance.test1.theia-test.artemis.cit.tum.de"
       tlsSecretName: static-theia-cert
+    - name: test1-cache
+      hostname: cache.test1.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test1-repo
+      hostname: repo.test1.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
 
     # test2
     - name: test2-landing
@@ -35,6 +41,12 @@ gateway:
     - name: test2-webview
       hostname: "*.webview.instance.test2.theia-test.artemis.cit.tum.de"
       tlsSecretName: static-theia-cert
+    - name: test2-cache
+      hostname: cache.test2.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: test2-repo
+      hostname: repo.test2.theia-test.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
 
     # test3
     - name: test3-landing
@@ -63,3 +75,92 @@ gateway:
     - name: staging-webview
       hostname: "*.webview.instance.theia-staging.artemis.cit.tum.de"
       tlsSecretName: static-theia-cert
+    - name: staging-cache
+      hostname: cache.theia-staging.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+    - name: staging-repo
+      hostname: repo.theia-staging.artemis.cit.tum.de
+      tlsSecretName: shared-theia-cert
+
+    # ACME HTTP-01 challenge listeners (required for cert-manager to re-issue shared-theia-cert)
+    # test1
+    - name: acme-test1-landing-http
+      protocol: HTTP
+      port: 80
+      hostname: test1.theia-test.artemis.cit.tum.de
+    - name: acme-test1-service-http
+      protocol: HTTP
+      port: 80
+      hostname: service.test1.theia-test.artemis.cit.tum.de
+    - name: acme-test1-instance-http
+      protocol: HTTP
+      port: 80
+      hostname: instance.test1.theia-test.artemis.cit.tum.de
+    - name: acme-test1-cache-http
+      protocol: HTTP
+      port: 80
+      hostname: cache.test1.theia-test.artemis.cit.tum.de
+    - name: acme-test1-repo-http
+      protocol: HTTP
+      port: 80
+      hostname: repo.test1.theia-test.artemis.cit.tum.de
+    # test2
+    - name: acme-test2-landing-http
+      protocol: HTTP
+      port: 80
+      hostname: test2.theia-test.artemis.cit.tum.de
+    - name: acme-test2-service-http
+      protocol: HTTP
+      port: 80
+      hostname: service.test2.theia-test.artemis.cit.tum.de
+    - name: acme-test2-instance-http
+      protocol: HTTP
+      port: 80
+      hostname: instance.test2.theia-test.artemis.cit.tum.de
+    - name: acme-test2-cache-http
+      protocol: HTTP
+      port: 80
+      hostname: cache.test2.theia-test.artemis.cit.tum.de
+    - name: acme-test2-repo-http
+      protocol: HTTP
+      port: 80
+      hostname: repo.test2.theia-test.artemis.cit.tum.de
+    # test3
+    - name: acme-test3-landing-http
+      protocol: HTTP
+      port: 80
+      hostname: test3.theia-test.artemis.cit.tum.de
+    - name: acme-test3-service-http
+      protocol: HTTP
+      port: 80
+      hostname: service.test3.theia-test.artemis.cit.tum.de
+    - name: acme-test3-instance-http
+      protocol: HTTP
+      port: 80
+      hostname: instance.test3.theia-test.artemis.cit.tum.de
+    # theia-staging
+    - name: acme-staging-landing-http
+      protocol: HTTP
+      port: 80
+      hostname: theia-staging.artemis.cit.tum.de
+    - name: acme-staging-service-http
+      protocol: HTTP
+      port: 80
+      hostname: service.theia-staging.artemis.cit.tum.de
+    - name: acme-staging-instance-http
+      protocol: HTTP
+      port: 80
+      hostname: instance.theia-staging.artemis.cit.tum.de
+    - name: acme-staging-cache-http
+      protocol: HTTP
+      port: 80
+      hostname: cache.theia-staging.artemis.cit.tum.de
+    - name: acme-staging-repo-http
+      protocol: HTTP
+      port: 80
+      hostname: repo.theia-staging.artemis.cit.tum.de
+
+gatewayAcmeIssuer:
+  enabled: true
+  name: letsencrypt-prod-gateway
+  email: ls1.itg@in.tum.de
