@@ -238,7 +238,7 @@ kubectl get l2advertisements.metallb.io -n metallb-system
 kubectl get envoyproxy theia-shared-gateway -n envoy-gateway-system -o yaml
 kubectl get svc -n envoy-gateway-system -o wide
 kubectl get svc -n envoy-gateway-system \
-  -l gateway.envoyproxy.io/owning-gateway-name=theia-shared-gateway \
+  -l gateway.envoyproxy.io/owning-gateway-name=theia-shared-gateway,gateway.envoyproxy.io/owning-gateway-namespace=gateway-system \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.metallb\.io/address-pool}{"\t"}{.metadata.annotations.metallb\.io/loadBalancerIPs}{"\t"}{.status.loadBalancer.ingress[*].ip}{"\n"}{end}'
 dig +short theia.artemis.cit.tum.de A
 dig +short k8s-theia-lb1.aet.cit.tum.de A
