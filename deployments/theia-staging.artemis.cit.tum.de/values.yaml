@@ -170,9 +170,3 @@ theia-cloud:
 
 theia-appdefinitions:
   defaultImageTag: "latest"
-
-monitoring:
-  targetNamespaces:
-    - theia-staging
-  sessionNamespaces:
-    - theia-staging

@@ -160,9 +160,3 @@ theia-cloud:
 
 theia-appdefinitions:
   defaultImageTag: "1.1.0"
-
-monitoring:
-  targetNamespaces:
-    - theia
-  sessionNamespaces:
-    - theia

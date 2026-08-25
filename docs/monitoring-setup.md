@@ -47,3 +47,13 @@ Monitoring is essential for understanding system health, resource usage, and per
 - Admin access to the cluster
 
 ## Step 1: TBA
+
+> **Note:** this guide is unfinished. No workflow in this repository installs
+> kube-prometheus-stack, so the Prometheus/Grafana stack was installed manually
+> and out-of-band. The values used are preserved at
+> [`reference/kube-prometheus-stack-values.yaml`](reference/kube-prometheus-stack-values.yaml)
+> as the only surviving record of that install. They are not applied by any
+> automation and may have drifted from what is running.
+>
+> Only the `theia-monitoring` chart (PodMonitors and Grafana dashboard
+> ConfigMaps) is installed automatically, by `.github/workflows/deploy-theia.yml`.
