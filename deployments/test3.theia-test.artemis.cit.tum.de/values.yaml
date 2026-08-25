@@ -58,7 +58,7 @@ theia-cloud:
       interval: 3
 
   operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:pr-70
+    image: ghcr.io/eduide/eduide-cloud/operator:latest
     sentry:
       enable: true
     #eagerStart: false
@@ -73,7 +73,7 @@ theia-cloud:
         ephemeral-storage: "256Mi"
 
   service:
-    image: ghcr.io/eduide/eduide-cloud/service:pr-70
+    image: ghcr.io/eduide/eduide-cloud/service:latest
     sentry:
       enable: true
     adminApiTokenSecret:
@@ -93,10 +93,6 @@ theia-cloud:
       - ghcr.io/eduide/eduide/ocaml:latest
       - ghcr.io/eduide/eduide/rust:latest
       - ghcr.io/eduide/eduide/python:latest
-      - ghcr.io/eduide/eduide/java-17-no-ls:pr-70
-      - ghcr.io/eduide/eduide/rust-no-ls:pr-70
-      - ghcr.io/eduide/eduide/langserver-java:pr-70
-      - ghcr.io/eduide/eduide/langserver-rust:pr-70
       - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
         args: ["--version"]
 
@@ -120,18 +116,37 @@ theia-cloud:
     # 2. (Optional) If you removed the 'hardcoded png' logic in the template, 
     # you might need this. If you used my simplified template, this is ignored.
     logoFileExtension: "png"
-    appDefinition: "java-17-no-ls"
+    appDefinition: "java-17-templates-latest"
     ephemeralStorage: true
     additionalApps:
       java-17-latest:
         label: Java 17
         visible: false
-      java-17-no-ls:
-        label: Java 17 No-LS
-        image: "java-17"
-      rust-no-ls:
-        label: Rust No-LS
-        image: "rust"
+      java-17-templates-latest:
+        label: Java 17
+        buildSystems:
+          - id: maven
+            label: Maven
+          - id: gradle
+            label: Gradle
+      c-latest:
+        label: C
+        visible: false
+      c-templates-latest:
+        label: C
+        buildSystems:
+          - id: bazel
+            label: Bazel
+          - id: make
+            label: Make
+      javascript-latest:
+        label: Javascript
+      ocaml-latest:
+        label: Ocaml
+      python-latest:
+        label: Python
+      rust-latest:
+        label: Rust
     infoTitle: "🚀 Welcome to EduIDE Cloud (Test3)"
     infoText: " "
     loadingText: "⚡ Setting up your development workspace..."
@@ -161,25 +176,3 @@ theia-cloud:
 
     # -- The client-id. Only has to be specified when enable: true
     clientId: "theia-test"
-
-theia-appdefinitions:
-  defaultImageTag: pr-70
-  apps:
-    - name: java-17-no-ls
-      image: ghcr.io/eduide/eduide/java-17-no-ls
-      minInstances: 1
-      sidecars:
-        - name: langserver
-          image: ghcr.io/eduide/eduide/langserver-java
-          port: 5000
-          languages: [java]
-          mountWorkspace: true
-    - name: rust-no-ls
-      image: ghcr.io/eduide/eduide/rust-no-ls
-      minInstances: 1
-      sidecars:
-        - name: langserver
-          image: ghcr.io/eduide/eduide/langserver-rust
-          port: 5000
-          languages: [rust]
-          mountWorkspace: true
