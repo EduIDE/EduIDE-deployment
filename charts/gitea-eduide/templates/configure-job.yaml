@@ -1,4 +1,7 @@
 {{- if .Values.configure.enabled }}
+{{- if and (not .Values.configure.rbac.create) (not .Values.configure.serviceAccountName) }}
+{{- fail "gitea-eduide: configure.rbac.create is false but configure.serviceAccountName is empty. Set configure.serviceAccountName to an existing ServiceAccount that can manage the OAuth secret, or set configure.rbac.create=true." }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -44,13 +47,21 @@ data:
     APPS=$(api "$API/user/applications/oauth2")
     MATCH_ID=$(echo "$APPS" | jq -r --arg n "$APP_NAME" 'map(select(.name==$n)) | (.[0].id // empty)')
     MATCH_CID=$(echo "$APPS" | jq -r --arg n "$APP_NAME" 'map(select(.name==$n)) | (.[0].client_id // empty)')
+    # Registered settings, to detect drift from the desired configuration.
+    MATCH_URIS=$(echo "$APPS" | jq -c --arg n "$APP_NAME" 'map(select(.name==$n)) | (.[0].redirect_uris // []) | sort')
+    MATCH_CONF=$(echo "$APPS" | jq -r --arg n "$APP_NAME" 'map(select(.name==$n)) | (.[0].confidential_client // false)')
+    WANT_URIS=$(echo "$REDIRECT_URIS" | jq -c 'sort')
+    WANT_CONF=$(echo "$CONFIDENTIAL" | jq -r .)
 
     REUSE=false
-    if [ -n "$MATCH_ID" ] && [ "$MATCH_CID" = "$EXISTING_CID" ] && [ -n "$EXISTING_CSECRET" ]; then
-      echo "OAuth2 app '$APP_NAME' already registered and secret present; reusing."
+    if [ -n "$MATCH_ID" ] && [ "$MATCH_CID" = "$EXISTING_CID" ] && [ -n "$EXISTING_CSECRET" ] \
+        && [ "$MATCH_URIS" = "$WANT_URIS" ] && [ "$MATCH_CONF" = "$WANT_CONF" ]; then
+      echo "OAuth2 app '$APP_NAME' already registered with matching settings; reusing."
       CLIENT_ID="$EXISTING_CID"
       CLIENT_SECRET="$EXISTING_CSECRET"
       REUSE=true
+    elif [ -n "$MATCH_ID" ]; then
+      echo "OAuth2 app '$APP_NAME' exists but its settings or stored secret drifted; recreating."
     fi
 
     if [ "$REUSE" = "false" ]; then
@@ -152,7 +163,14 @@ spec:
             - name: TEST_REPO
               value: {{ .Values.eduide.testRepo | quote }}
             - name: ADMIN_USER
+              {{- if .Values.gitea.gitea.admin.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.gitea.gitea.admin.existingSecret }}
+                  key: username
+              {{- else }}
               value: {{ .Values.gitea.gitea.admin.username | quote }}
+              {{- end }}
             - name: ADMIN_PASS
               {{- if .Values.gitea.gitea.admin.existingSecret }}
               valueFrom:

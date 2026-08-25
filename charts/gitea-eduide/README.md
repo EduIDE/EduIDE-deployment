@@ -160,13 +160,13 @@ This is the only manual step. Do it once per Gitea instance.
 3. Under **"Open with" applications**, add a new entry. Paste this exact URL
    template (Gitea substitutes `{url}` with the repo clone URL):
 
-   ```
+   ```text
    https://eduide.example.com/?gitUri={url}&appDef=java-17-latest
    ```
 
    Generalized (substitute your `eduide.landingPageUrl` and `eduide.appDef`):
 
-   ```
+   ```text
    {landingPageUrl}/?gitUri={url}&appDef={appDef}
    ```
 

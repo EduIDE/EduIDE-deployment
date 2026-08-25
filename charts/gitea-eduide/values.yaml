@@ -16,8 +16,8 @@
 
 # Base domain for this deployment. Used to build sensible defaults in this file
 # and referenced in the README. NOTE: values.yaml is not templated, so if you
-# change `domain` you must also update `gitea.config.server.ROOT_URL`,
-# `gitea.config.server.DOMAIN`, `eduide.landingPageUrl` and `eduide.redirectUris`.
+# change `domain` you must also update `gitea.gitea.config.server.ROOT_URL`,
+# `gitea.gitea.config.server.DOMAIN`, `eduide.landingPageUrl` and `eduide.redirectUris`.
 domain: eduide.example.com
 
 # --------------------------------------------------------------------------- #

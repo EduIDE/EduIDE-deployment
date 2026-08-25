@@ -54,8 +54,10 @@ git clone -c "http.extraHeader=Authorization: Bearer <ACCESS_TOKEN>" \
 - `kubectl get pod <session> -o jsonpath=...` -> the `oauth2-proxy` sidecar container is present.
 
 ### T4 - in-IDE git operations
-- Make a commit and `git push` from the IDE terminal within the session. Expect success while the token is valid.
-- Note: Gitea OIDC access tokens are short-lived; after expiry, push/fetch will fail (documented limitation; clone at startup is the primary path).
+- `git fetch` in the session terminal succeeds: the `read:repository` scope the landing page requests (`openid email profile read:repository`) covers clone and fetch.
+- `git push` needs the `write:repository` scope. With the current landing-page scope (`read:repository`), push is expected to be DENIED. To allow in-IDE push, widen the landing-page OIDC scope to `write:repository`.
+- Requires Gitea >= 1.26.2 (earlier 1.26.x skipped repository-scoped token checks for Git Smart HTTP with `Authorization: Bearer`); the gitea-eduide chart pins Gitea 1.27.0.
+- Note: Gitea OIDC access tokens are short-lived; after expiry, clone/fetch/push stop working (clone at startup is the primary path).
 
 ### T5 - public repo sanity
 - Open the landing page with a public `gitUri` -> still clones (verbatim path unchanged).

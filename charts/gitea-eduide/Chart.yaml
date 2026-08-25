@@ -1,14 +1,16 @@
 apiVersion: v2
 name: gitea-eduide
-description: Wraps the official Gitea chart and configures a Gitea instance (>= 1.22) ready for EduIDE integration (OIDC provider, EduIDE OAuth2 app, test repo) for end-to-end testing.
+description: Wraps the official Gitea chart and configures a Gitea instance (>= 1.26.2) ready for EduIDE integration (OIDC provider, EduIDE OAuth2 app, test repo) for end-to-end testing.
 type: application
 version: 0.1.0
 # Tracks the Gitea version shipped by the pinned dependency below.
-appVersion: "1.26.1"
+appVersion: "1.27.0"
 
 dependencies:
   - name: gitea
-    # Chart 12.6.0 ships Gitea 1.26.1 (>= 1.22, which introduced the DB-stored
-    # customizable "Open with" clone applications, see README).
-    version: 12.6.0
+    # Chart 12.7.0 ships Gitea 1.27.0. We require >= 1.26.2: earlier 1.26.x
+    # skipped repository-scoped token checks for Git Smart HTTP requests using
+    # "Authorization: Bearer", which is exactly how EduIDE authenticates clones.
+    # (>= 1.22 also introduced the DB-stored "Open with" clone applications, see README.)
+    version: 12.7.0
     repository: https://dl.gitea.com/charts/
