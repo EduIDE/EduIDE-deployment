@@ -3,7 +3,7 @@
 This repository deploys Theia Cloud through Gateway API resources backed by Envoy Gateway. The setup is split across two repositories:
 
 - [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) renders the Theia Cloud `HTTPRoute` resources and, for simple installations, can also render a namespace-local `Gateway`.
-- [theia-deployment](https://github.com/EduIDE/EduIDE-deployment) uses those charts internally and adds the [`theia-shared-gateway`](https://github.com/EduIDE/EduIDE-deployment/tree/main/charts/theia-shared-gateway) chart, which owns one cluster-level Gateway shared by multiple Theia namespaces.
+- [EduIDE-deployment](https://github.com/EduIDE/EduIDE-deployment) uses those charts internally and adds the [`theia-shared-gateway`](https://github.com/EduIDE/EduIDE-deployment/tree/main/charts/theia-shared-gateway) chart, which owns one cluster-level Gateway shared by multiple Theia namespaces.
 
 For the Artemis/EduIDE deployments, the shared gateway model is the expected setup. Tenant releases should create only their namespace-local routes and workloads; the shared gateway release owns the edge Gateway, listener hostnames, GatewayClass customization, and TLS material.
 
