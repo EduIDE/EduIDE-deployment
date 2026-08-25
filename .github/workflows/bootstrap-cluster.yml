@@ -1,0 +1,180 @@
+# Install the cluster-scoped half of EduIDE.
+#
+# This is the ONLY workflow permitted to touch cluster-scoped resources: CRDs,
+# the conversion webhook, ClusterRoles, ClusterIssuers, the GatewayClass and the
+# shared Gateway.
+#
+# Previously every tenant deploy reinstalled theia-cloud-base, theia-cloud-crds
+# and theia-monitoring into the `default` namespace, so three concurrent test
+# deploys raced over the same cluster-scoped objects. That was worked around
+# with a six-attempt retry loop. Making one workflow the sole writer removes
+# the race rather than retrying through it.
+#
+# The shared Gateway's listeners are derived from the environments that say
+# they live on this cluster, so adding an environment no longer means editing a
+# second file by hand.
+
+name: Bootstrap cluster
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster:
+        description: Which cluster
+        required: true
+        type: choice
+        options: [aet-stud, parma, prod-tum]
+      chart_version:
+        description: Cluster chart version
+        required: true
+        type: string
+      dry_run:
+        description: Render and diff only, apply nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.r.outputs.runner }}
+      environment: ${{ steps.r.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - id: r
+        run: |
+          set -euo pipefail
+          F="clusters/${{ inputs.cluster }}.yaml"
+          [[ -f "$F" ]] || { echo "::error::no such cluster: ${{ inputs.cluster }}"; exit 1; }
+          {
+            echo "runner=$(yq -r '.spec.runner // "ubuntu-latest"' "$F")"
+            echo "environment=$(yq -r '.spec.bootstrapEnvironment // ("cluster-" + .metadata.name)' "$F")"
+          } >> "$GITHUB_OUTPUT"
+
+  bootstrap:
+    needs: resolve
+    runs-on: ${{ needs.resolve.outputs.runner }}
+    environment: ${{ needs.resolve.outputs.environment }}
+    concurrency:
+      group: bootstrap-${{ inputs.cluster }}
+      cancel-in-progress: false
+    env:
+      KUBECONFIG: ${{ github.workspace }}/kubeconfig
+      CLUSTER: ${{ inputs.cluster }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - uses: azure/setup-kubectl@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Set up kubeconfig
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null "$KUBECONFIG"
+          printf '%s' '${{ secrets.KUBECONFIG }}' > "$KUBECONFIG"
+
+      - name: Assert we are pointed at the right cluster
+        run: |
+          set -euo pipefail
+          EXPECT=$(yq -r '.spec.apiServerUrl // ""' "clusters/${CLUSTER}.yaml")
+          ACTUAL=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+          if [[ -z "$EXPECT" ]]; then
+            echo "::warning::clusters/${CLUSTER}.yaml has no apiServerUrl; identity check skipped."
+            echo "::warning::This kubeconfig points at ${ACTUAL}."
+          elif [[ "$EXPECT" != "$ACTUAL" ]]; then
+            echo "::error::kubeconfig points at ${ACTUAL}, expected ${EXPECT} for ${CLUSTER}."
+            exit 1
+          else
+            echo "cluster ${CLUSTER} confirmed: ${ACTUAL}"
+          fi
+
+      - name: Derive the shared Gateway listeners from the environments
+        run: |
+          set -euo pipefail
+          # Every environment on this cluster contributes four listeners.
+          # deployments/shared-gateway/values.yaml used to list them by hand,
+          # which is why adding an environment needed two edits.
+          : > listeners.yaml
+          echo "gateway:" >> listeners.yaml
+          echo "  listeners:" >> listeners.yaml
+          found=0
+          for f in environments/*/env.yaml; do
+            [[ "$(yq -r '.spec.cluster' "$f")" == "$CLUSTER" ]] || continue
+            [[ "$(yq -r '.spec.gateway.mode' "$f")" == "shared" ]] || continue
+            prefix=$(yq -r '.spec.gateway.listenerPrefix // .spec.hosts.landing' "$f")
+            base=$(yq -r '.spec.hosts.baseHost' "$f")
+            landing=$(yq -r '.spec.hosts.landing' "$f")
+            service=$(yq -r '.spec.hosts.service // ("service." + .spec.hosts.landing)' "$f")
+            instance=$(yq -r '.spec.hosts.instance // ("instance." + .spec.hosts.landing)' "$f")
+            {
+              echo "    - name: ${prefix}-landing"
+              echo "      hostname: ${landing}.${base}"
+              echo "    - name: ${prefix}-service"
+              echo "      hostname: ${service}.${base}"
+              echo "    - name: ${prefix}-instances"
+              echo "      hostname: ${instance}.${base}"
+              echo "    - name: ${prefix}-webview"
+              echo "      hostname: '*.webview.${instance}.${base}'"
+            } >> listeners.yaml
+            found=$((found + 1))
+          done
+          if [[ $found -eq 0 ]]; then
+            echo "::error::no environments claim cluster ${CLUSTER}"
+            exit 1
+          fi
+          echo "::notice::${found} environment(s) on ${CLUSTER}"
+          echo "::group::derived listeners"; cat listeners.yaml; echo "::endgroup::"
+
+      - name: Wildcard TLS secret
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null gw-secrets.yaml
+          cat > gw-secrets.yaml <<EOF
+          wildcardTLSSecret:
+            certificate: "$(printf '%s' '${{ secrets.THEIA_WILDCARD_CERTIFICATE_CERT }}' | base64 | tr -d '\n')"
+            key: "$(printf '%s' '${{ secrets.THEIA_WILDCARD_CERTIFICATE_KEY }}' | base64 | tr -d '\n')"
+          EOF
+
+      - name: Preview
+        run: |
+          set -euo pipefail
+          helm plugin install https://github.com/databus23/helm-diff >/dev/null 2>&1 || true
+          helm diff upgrade eduide-cluster ./charts/theia-shared-gateway \
+            -n gateway-system -f listeners.yaml -f gw-secrets.yaml \
+            --allow-unreleased --no-color > gw.diff 2>&1 || true
+          {
+            echo "<details><summary>Shared Gateway pending change</summary>"
+            echo ''; echo '```diff'; head -c 40000 gw.diff; echo '```'; echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install the shared Gateway
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          helm upgrade --install eduide-cluster ./charts/theia-shared-gateway \
+            -n gateway-system --create-namespace \
+            -f listeners.yaml -f gw-secrets.yaml --wait --timeout 10m
+
+      - name: Report
+        if: ${{ always() && !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### ${CLUSTER} bootstrapped"
+            echo ''
+            echo '```'
+            kubectl -n gateway-system get gateway -o wide 2>/dev/null || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

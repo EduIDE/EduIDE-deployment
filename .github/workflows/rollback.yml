@@ -1,0 +1,94 @@
+# Roll an environment back to a previous Helm revision.
+#
+# --atomic already reverts a failed upgrade. This is for the other case: it
+# deployed cleanly and behaves badly.
+#
+# Limits, worth knowing before relying on this:
+#   - Session and Workspace CRs and PVCs are untouched, so running sessions
+#     survive a rollback.
+#   - CRDs live in the cluster release, not this one, so rolling back across a
+#     CRD schema change is NOT covered. Within a major version this is safe;
+#     across one, roll the cluster release back too.
+
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        required: true
+        type: choice
+        options: [test1, test2, test3, staging, prod-tum]
+      revision:
+        description: "Helm revision to roll back to (blank goes back one)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.r.outputs.runner }}
+      namespace: ${{ steps.r.outputs.namespace }}
+      cluster: ${{ steps.r.outputs.cluster }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - id: r
+        run: |
+          set -euo pipefail
+          M="environments/${{ inputs.environment }}/env.yaml"
+          C=$(yq -r '.spec.cluster' "$M")
+          {
+            echo "cluster=$C"
+            echo "namespace=$(yq -r '.spec.namespace' "$M")"
+            echo "runner=$(yq -r '.spec.runner // "ubuntu-latest"' "clusters/$C.yaml")"
+          } >> "$GITHUB_OUTPUT"
+
+  rollback:
+    needs: resolve
+    runs-on: ${{ needs.resolve.outputs.runner }}
+    environment: ${{ inputs.environment }}
+    concurrency:
+      # Shares a group with Deploy so a rollback cannot race an upgrade.
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      KUBECONFIG: ${{ github.workspace }}/kubeconfig
+      NS: ${{ needs.resolve.outputs.namespace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - uses: azure/setup-kubectl@v4
+      - name: Set up kubeconfig
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null "$KUBECONFIG"
+          printf '%s' '${{ secrets.KUBECONFIG }}' > "$KUBECONFIG"
+      - name: History before
+        run: |
+          set -euo pipefail
+          {
+            echo '### Before'
+            echo ''
+            echo '```'
+            helm history eduide -n "$NS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Roll back
+        run: |
+          set -euo pipefail
+          helm rollback eduide ${{ inputs.revision }} -n "$NS" --wait --timeout 15m
+      - name: What is live
+        if: always()
+        run: |
+          ./scripts/live-summary.sh "$NS" \
+            "${{ inputs.environment }}" "${{ needs.resolve.outputs.cluster }}" >> "$GITHUB_STEP_SUMMARY" || true

@@ -2,26 +2,25 @@ apiVersion: eduide.dev/v1
 kind: Cluster
 metadata:
   name: parma
-  displayName: Parma cluster
+  displayName: Parma cluster (no environment currently targets this)
 spec:
-  # UNVERIFIED. test3 sets storageClassName longhorn with the comment "Test3
-  # runs on the parma cluster", but its gateway parentRefs point at the shared
-  # Gateway defined in deployments/shared-gateway/values.yaml, which is the
-  # test/staging cluster, and its deploy job passes deploy_shared_gateway=false.
-  # So either test3 is actually on aet-stud and the comment is stale, or its
-  # Gateway listeners are unmanaged.
+  # NO ENVIRONMENT TARGETS THIS CLUSTER.
   #
-  # The cluster-identity assertion settles this on the first deploy: point
-  # environments/test3 at whichever cluster you believe is right, and if the
-  # kubeconfig disagrees the deploy fails with both URLs printed.
+  # Kept because the name appears in the old configuration and the cluster may
+  # well exist; delete this file if it does not.
+  #
+  # test3 used to carry the comment "Test3 runs on the parma cluster", which is
+  # why this manifest was written. The evidence says otherwise:
+  # deployments/shared-gateway/values.yaml - the Gateway on aet-stud - defines
+  # the test3-landing/-service/-instances/-webview listeners, and test3 attaches
+  # to them by sectionName. An HTTPRoute can only attach to a Gateway in its own
+  # cluster, so test3 is on aet-stud. Its longhorn storage class is now an
+  # environment-level override.
   apiServerUrl: ""
-
   storageClassName: longhorn
   gatewayClassName: envoy
-
   sharedGateway:
     namespace: gateway-system
     name: theia-shared-gateway
-
-  runner: arc-buildkit-eduide-stud-amd64
+  runner: ubuntu-latest
   bootstrapEnvironment: cluster-parma

@@ -1,0 +1,275 @@
+# Reusable: deploy one environment.
+#
+# Replaces deploy-theia.yml. Differences that matter:
+#
+#   - the environment is described by environments/<name>/env.yaml, not by
+#     GitHub Environment variables, so a change is reviewable in a diff
+#   - the cluster is asserted against the kubeconfig before anything is applied
+#   - the pending change is shown as a helm diff before it is applied
+#   - --wait --atomic, so a green job means a healthy rollout
+#   - the summary is read from the cluster afterwards, not echoed from inputs
+#   - nothing cluster-scoped is installed here; see bootstrap-cluster.yml
+#
+# Preloading is a separate release deliberately. It pulls ~10 multi-GB images
+# on every node, so including it under --wait would time out and --atomic would
+# then roll back a perfectly healthy deploy.
+
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        required: true
+        description: "Name under environments/"
+      chart_version:
+        type: string
+        default: ""
+        description: "Overrides spec.platform.chartVersion"
+      image_overrides:
+        type: string
+        default: "{}"
+        description: 'JSON, e.g. {"controlPlane":"pr-451"}. Never sets a tag for images that do not exist.'
+      clean_install:
+        type: boolean
+        default: false
+      dry_run:
+        type: boolean
+        default: false
+        description: "Render and diff, apply nothing"
+
+permissions:
+  contents: read
+
+jobs:
+  # runs-on is evaluated before a job can read a file, so the runner label has
+  # to be resolved from the cluster manifest in a job of its own.
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.r.outputs.runner }}
+      cluster: ${{ steps.r.outputs.cluster }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - id: r
+        run: |
+          set -euo pipefail
+          M="environments/${{ inputs.environment }}/env.yaml"
+          [[ -f "$M" ]] || { echo "::error::no such environment: ${{ inputs.environment }}"; exit 1; }
+          C=$(yq -r '.spec.cluster' "$M")
+          [[ -f "clusters/$C.yaml" ]] || { echo "::error::unknown cluster: $C"; exit 1; }
+          {
+            echo "cluster=$C"
+            echo "runner=$(yq -r '.spec.runner // "ubuntu-latest"' "clusters/$C.yaml")"
+          } >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: resolve
+    runs-on: ${{ needs.resolve.outputs.runner }}
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.url.outputs.url }}
+    concurrency:
+      # One deploy at a time per environment. Never cancel in progress: a
+      # half-applied Helm release is worse than a queued one.
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      KUBECONFIG: ${{ github.workspace }}/kubeconfig
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+
+      - uses: azure/setup-kubectl@v4
+
+      - name: Install helm-diff and yq
+        run: |
+          set -euo pipefail
+          helm plugin install https://github.com/databus23/helm-diff >/dev/null 2>&1 || true
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Resolve the environment manifest
+        id: env
+        run: |
+          set -euo pipefail
+          M="environments/${{ inputs.environment }}/env.yaml"
+          [[ -f "$M" ]] || { echo "::error::no such environment: ${{ inputs.environment }}"; exit 1; }
+          {
+            echo "cluster=$(yq -r '.spec.cluster' "$M")"
+            echo "namespace=$(yq -r '.spec.namespace' "$M")"
+            echo "tier=$(yq -r '.metadata.tier' "$M")"
+            echo "channel=$(yq -r '.spec.platform.channel' "$M")"
+            echo "landing=$(yq -r '.spec.hosts.landing + "." + .spec.hosts.baseHost' "$M")"
+            v="${{ inputs.chart_version }}"
+            [[ -z "$v" ]] && v="$(yq -r '.spec.platform.chartVersion' "$M")"
+            echo "chart_version=$v"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up kubeconfig
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null "$KUBECONFIG"
+          printf '%s' '${{ secrets.KUBECONFIG }}' > "$KUBECONFIG"
+          kubectl version --client >/dev/null
+
+      - name: Assert we are pointed at the right cluster
+        run: |
+          set -euo pipefail
+          CLUSTER="${{ steps.env.outputs.cluster }}"
+          EXPECT=$(yq -r '.spec.apiServerUrl // ""' "clusters/${CLUSTER}.yaml")
+          ACTUAL=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+          if [[ -z "$EXPECT" ]]; then
+            echo "::warning::clusters/${CLUSTER}.yaml has no apiServerUrl, so the identity check is skipped."
+            echo "::warning::This kubeconfig points at ${ACTUAL} - if that is right, put it in the cluster manifest."
+          elif [[ "$EXPECT" != "$ACTUAL" ]]; then
+            echo "::error::kubeconfig points at ${ACTUAL}, but ${CLUSTER} is ${EXPECT}. Refusing to deploy."
+            exit 1
+          else
+            echo "cluster ${CLUSTER} confirmed: ${ACTUAL}"
+          fi
+          kubectl get nodes -o name | wc -l | xargs echo "nodes:"
+
+      - name: Verify the cluster has been bootstrapped
+        run: |
+          set -euo pipefail
+          if ! kubectl get crd appdefinitions.theia.cloud >/dev/null 2>&1; then
+            echo "::error::AppDefinition CRD not present. Run the Bootstrap cluster workflow for ${{ steps.env.outputs.cluster }} first."
+            exit 1
+          fi
+
+      - name: Compile values
+        run: |
+          set -euo pipefail
+          ./scripts/render-values.sh "${{ inputs.environment }}" > values.rendered.yaml
+          echo "::group::compiled values"; cat values.rendered.yaml; echo "::endgroup::"
+
+      - name: Resolve image overrides
+        id: images
+        run: |
+          set -euo pipefail
+          # A PR only builds the images of the repo it came from, so an override
+          # is applied per component. Never set a blanket tag: it would point
+          # every image at a tag that mostly does not exist.
+          : > image-args.txt
+          cp="$(jq -r '.controlPlane // empty' <<<'${{ inputs.image_overrides }}')"
+          ide="$(jq -r '.ide // empty' <<<'${{ inputs.image_overrides }}')"
+          lp="$(jq -r '.landingPage // empty' <<<'${{ inputs.image_overrides }}')"
+          if [[ -n "$cp" ]]; then
+            echo "--set theia-cloud.operator.image=ghcr.io/eduide/eduide-cloud/operator:${cp}" >> image-args.txt
+            echo "--set theia-cloud.service.image=ghcr.io/eduide/eduide-cloud/service:${cp}" >> image-args.txt
+          fi
+          if [[ -n "$ide" ]]; then
+            echo "--set theia-appdefinitions.defaultImageTag=${ide}" >> image-args.txt
+          fi
+          if [[ -n "$lp" ]]; then
+            echo "--set theia-cloud.landingPage.image=ghcr.io/eduide/eduidec-landing-page:${lp}" >> image-args.txt
+          fi
+          if [[ -s image-args.txt ]]; then
+            echo "::notice::image overrides: $(tr '\n' ' ' < image-args.txt)"
+          fi
+
+      - name: Secrets file
+        run: |
+          set -euo pipefail
+          # A values file, not --set: --set puts secrets in the process list and
+          # in Actions debug logs.
+          install -m 600 /dev/null secrets.yaml
+          cat > secrets.yaml <<EOF
+          theia-cloud:
+            keycloak:
+              cookieSecret: "${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}"
+          theia-certificates:
+            adminApiToken: "$(printf '%s' '${{ secrets.THEIA_ADMIN_API_TOKEN }}' | base64 | tr -d '\n')"
+          EOF
+
+      - name: Update chart dependencies
+        run: |
+          set -euo pipefail
+          echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login ghcr.io -u '${{ github.actor }}' --password-stdin
+          helm dependency update ./charts/theia-cloud-combined
+
+      - name: Preview the change
+        run: |
+          set -euo pipefail
+          mapfile -t IMG < image-args.txt || true
+          helm diff upgrade eduide ./charts/theia-cloud-combined \
+            --namespace "${{ steps.env.outputs.namespace }}" \
+            -f values.rendered.yaml -f secrets.yaml "${IMG[@]}" \
+            --allow-unreleased --no-color > helm.diff 2>&1 || true
+          {
+            echo "<details><summary>Pending change (helm diff)</summary>"
+            echo ""
+            echo '```diff'
+            head -c 50000 helm.diff
+            echo '```'
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Purge before a clean install
+        if: ${{ inputs.clean_install && !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          NS="${{ steps.env.outputs.namespace }}"
+          case "$NS" in
+            ""|default|kube-system|kube-public|kube-node-lease)
+              echo "::error::refusing to purge namespace '$NS'"; exit 1 ;;
+          esac
+          if [[ "${{ steps.env.outputs.tier }}" == "production" ]]; then
+            echo "::error::clean_install is not permitted for a production environment"; exit 1
+          fi
+          kubectl -n "$NS" delete sessions.theia.cloud,workspaces.theia.cloud --all --ignore-not-found
+          kubectl -n "$NS" delete appdefinitions.theia.cloud --all --ignore-not-found
+          kubectl -n "$NS" delete deploy,daemonset,statefulset --all --ignore-not-found
+          kubectl -n "$NS" wait --for=delete pod --all --timeout=120s || true
+          kubectl -n "$NS" delete pvc --all --ignore-not-found
+
+      - name: Deploy
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          mapfile -t IMG < image-args.txt || true
+          helm upgrade --install eduide ./charts/theia-cloud-combined \
+            --namespace "${{ steps.env.outputs.namespace }}" --create-namespace \
+            --version "${{ steps.env.outputs.chart_version }}" \
+            -f values.rendered.yaml -f secrets.yaml "${IMG[@]}" \
+            --wait --atomic --timeout 15m
+
+      - name: Force a pull when the tag is floating
+        if: ${{ !inputs.dry_run && steps.env.outputs.channel == 'main' }}
+        run: |
+          set -euo pipefail
+          NS="${{ steps.env.outputs.namespace }}"
+          kubectl -n "$NS" rollout restart deploy/operator-deployment deploy/service-deployment deploy/landing-page-deployment 2>/dev/null || true
+          kubectl -n "$NS" rollout status deploy/operator-deployment --timeout=5m || true
+
+      - id: url
+        run: echo "url=https://${{ steps.env.outputs.landing }}" >> "$GITHUB_OUTPUT"
+
+      - name: What is live
+        if: ${{ always() && !inputs.dry_run }}
+        run: |
+          ./scripts/live-summary.sh \
+            "${{ steps.env.outputs.namespace }}" \
+            "${{ inputs.environment }}" \
+            "${{ steps.env.outputs.cluster }}" >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Service health
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          URL="https://service.${{ steps.env.outputs.landing }}/health"
+          for _ in $(seq 1 12); do
+            code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || echo 000)
+            if [[ "$code" == "200" ]]; then echo "$URL -> 200"; exit 0; fi
+            sleep 10
+          done
+          echo "::warning::$URL did not return 200 within two minutes (last: ${code:-none})"

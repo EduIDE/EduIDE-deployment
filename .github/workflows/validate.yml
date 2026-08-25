@@ -75,6 +75,9 @@ jobs:
           done
           exit $fail
 
+      - name: Deploy logic tests
+        run: ./scripts/test-deploy-logic.sh
+
       - name: Compile every environment
         run: |
           set -euo pipefail
