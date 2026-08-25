@@ -206,7 +206,7 @@ kubectl -n gitea-eduide exec deploy/gitea-eduide -- \
 | `configure.image` | `alpine/k8s:1.30.13` | Image with `kubectl`, `curl`, `jq`. |
 | `configure.readinessTimeoutSeconds` | `300` | How long to wait for Gitea readiness. |
 | `configure.rbac.create` | `true` | Create ServiceAccount/Role/RoleBinding for Secret writes. |
-| `gitea.gitea.admin.username` / `gitea.gitea.admin.password` | `gitea_admin` / `changeme-admin-pw` | Admin creds (also used by the Job for API auth). |
+| `gitea.gitea.admin.username` / `gitea.gitea.admin.password` | `gitea_admin` / `""` (required) | Admin creds (also used by the Job for API auth). No password default is shipped; you must set it (or `gitea.gitea.admin.existingSecret`). |
 | `gitea.gitea.config.server.ROOT_URL` | `https://gitea.eduide.example.com` | External URL = OIDC issuer. |
 | `gitea.gitea.config.server.DOMAIN` | `gitea.eduide.example.com` | Gitea host. |
 | `gitea.gitea.config.oauth2.ENABLE` | `true` | OAuth2 provider on. |

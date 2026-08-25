@@ -2,6 +2,9 @@
 {{- if and (not .Values.configure.rbac.create) (not .Values.configure.serviceAccountName) }}
 {{- fail "gitea-eduide: configure.rbac.create is false but configure.serviceAccountName is empty. Set configure.serviceAccountName to an existing ServiceAccount that can manage the OAuth secret, or set configure.rbac.create=true." }}
 {{- end }}
+{{- if and (not .Values.gitea.gitea.admin.existingSecret) (not .Values.gitea.gitea.admin.password) }}
+{{- fail "gitea-eduide: set gitea.gitea.admin.password (or gitea.gitea.admin.existingSecret). No default admin password is shipped." }}
+{{- end }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

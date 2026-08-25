@@ -89,7 +89,10 @@ gitea:
     # Gitea API with these exact credentials via HTTP basic auth.
     admin:
       username: gitea_admin
-      password: "changeme-admin-pw"
+      # No usable default is shipped. You MUST supply the admin password (or set
+      # gitea.gitea.admin.existingSecret). The configure Job authenticates to the
+      # Gitea API with these exact credentials.
+      password: ""
       email: "admin@eduide.example.com"
       passwordMode: keepUpdated
 
