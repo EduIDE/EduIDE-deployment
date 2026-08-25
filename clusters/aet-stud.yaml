@@ -1,0 +1,27 @@
+apiVersion: eduide.dev/v1
+kind: Cluster
+metadata:
+  name: aet-stud
+  displayName: AET student cluster (test and staging)
+spec:
+  # Asserted against the kubeconfig before every deploy. If the two disagree the
+  # deploy stops, which is the only thing standing between a KUBECONFIG secret
+  # being wrong and a deploy landing on the wrong cluster.
+  # TODO: fill in from the KUBECONFIG currently used by test1/test2/staging.
+  apiServerUrl: ""
+
+  storageClassName: csi-rbd-sc
+  gatewayClassName: envoy
+
+  sharedGateway:
+    namespace: gateway-system
+    name: theia-shared-gateway
+
+  # Where deploy jobs for this cluster run. Building moved to GitHub-hosted
+  # runners unconditionally, but deploying needs to reach the API server, so
+  # this is per-cluster rather than one answer for all three.
+  runner: arc-buildkit-eduide-stud-amd64
+
+  # Name of the GitHub Environment holding this cluster's KUBECONFIG for
+  # cluster-scoped (bootstrap) operations.
+  bootstrapEnvironment: cluster-aet-stud

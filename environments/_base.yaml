@@ -1,0 +1,75 @@
+# Values identical in every environment.
+#
+# Derived mechanically: these are the keys that had the same value in all five
+# of the old deployments/*/values.yaml files. Anything that varied lives in an
+# environment's env.yaml instead. If you find yourself editing this file for one
+# environment, it belongs in that environment's `values:` block.
+#
+# Host names, gateway parentRefs and the preload list are NOT here: they are
+# derived per environment by scripts/render-values.sh.
+
+theia-certificates:
+  certificates:
+    enabled: false
+  wildcardTLSSecret:
+    enabled: false
+  adminApiTokenSecret:
+    enabled: true
+
+theia-cloud:
+  imagePullPolicy: Always
+
+  app:
+    # Public spam-mitigation token, not a secret. Same across environments.
+    id: nJV3nKZmpxTD4wu2
+
+  demoApplication:
+    install: false
+
+  issuer:
+    email: ls1.itg@in.tum.de
+
+  keycloak:
+    enable: true
+    authUrl: https://keycloak.aet.cit.tum.de/
+
+  gateway:
+    enabled: true
+    create: false
+    routes:
+      enabled: true
+    className: envoy
+    name: theia-cloud-gateway
+    serviceRouteRequestTimeout: 60s
+
+  monitor:
+    enable: true
+    activityTracker:
+      enable: true
+      interval: 3
+
+  operator:
+    sentry:
+      enable: true
+
+  landingPage:
+    ephemeralStorage: true
+    appDefinition: java-17-templates-latest
+    infoText: " "
+    loadingText: Preparing your personal Online IDE...
+    logoFileExtension: png
+    sentry:
+      enable: true
+    footerLinks:
+      attribution:
+        text: Built by TUM AET Research Group 👨‍💻
+        url: https://aet.cit.tum.de/
+      bugReport:
+        text: Report a bug 🐛
+        url: https://github.com/EduIDE/EduIDE/issues
+      featureRequest:
+        text: Request a feature ✨
+        url: https://github.com/EduIDE/EduIDE/issues
+      about:
+        text: About
+        url: https://aet.cit.tum.de/

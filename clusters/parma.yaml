@@ -1,0 +1,27 @@
+apiVersion: eduide.dev/v1
+kind: Cluster
+metadata:
+  name: parma
+  displayName: Parma cluster
+spec:
+  # UNVERIFIED. test3 sets storageClassName longhorn with the comment "Test3
+  # runs on the parma cluster", but its gateway parentRefs point at the shared
+  # Gateway defined in deployments/shared-gateway/values.yaml, which is the
+  # test/staging cluster, and its deploy job passes deploy_shared_gateway=false.
+  # So either test3 is actually on aet-stud and the comment is stale, or its
+  # Gateway listeners are unmanaged.
+  #
+  # The cluster-identity assertion settles this on the first deploy: point
+  # environments/test3 at whichever cluster you believe is right, and if the
+  # kubeconfig disagrees the deploy fails with both URLs printed.
+  apiServerUrl: ""
+
+  storageClassName: longhorn
+  gatewayClassName: envoy
+
+  sharedGateway:
+    namespace: gateway-system
+    name: theia-shared-gateway
+
+  runner: arc-buildkit-eduide-stud-amd64
+  bootstrapEnvironment: cluster-parma

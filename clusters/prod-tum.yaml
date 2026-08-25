@@ -1,0 +1,23 @@
+apiVersion: eduide.dev/v1
+kind: Cluster
+metadata:
+  name: prod-tum
+  displayName: TUM production cluster
+spec:
+  # TODO: fill in from the KUBECONFIG used by the theia-prod environment.
+  apiServerUrl: ""
+
+  storageClassName: csi-rbd-sc
+  gatewayClassName: envoy
+
+  sharedGateway:
+    namespace: gateway-system
+    name: theia-shared-gateway
+
+  # This cluster runs its own GatewayClass and EnvoyProxy with a MetalLB
+  # address, and issues certificates through letsencrypt-prod-gateway, unlike
+  # the test cluster where the wildcard secrets are managed by hand.
+  loadBalancerIP: 131.159.88.82
+
+  runner: arc-buildkit-eduide-stud-amd64
+  bootstrapEnvironment: cluster-prod-tum
