@@ -24,16 +24,18 @@ This repository serves as the infrastructure-as-code for deploying and managing 
 ├── deployments/            # Environment-specific Helm values
 │   ├── theia.artemis.cit.tum.de/              # Production config
 │   ├── theia-staging.artemis.cit.tum.de/      # Staging config
-│   └── test1.theia-test.artemis.cit.tum.de/   # Test environment config
+│   ├── test1.theia-test.artemis.cit.tum.de/   # Test environment config
+│   ├── test2.theia-test.artemis.cit.tum.de/   # Test environment config
+│   ├── test3.theia-test.artemis.cit.tum.de/   # Test environment config
+│   ├── shared-gateway/                        # Test/staging cluster Gateway
+│   └── shared-gateway-prod/                   # Production cluster Gateway
 │
 ├── charts/                 # Custom Helm charts
-│   ├── theia-cloud-combined/    # Combined chart with all components
+│   ├── theia-cloud-combined/    # Umbrella chart pulling in all components
 │   ├── theia-shared-gateway/    # Shared Gateway API entrypoint
 │   ├── theia-appdefinitions/    # Custom IDE environments (images/configs)
 │   ├── theia-certificates/      # SSL certificate management
-│   └── theia-metrics/           # Prometheus/Grafana dashboards
-│
-├── value-reference-files/  # Reference Helm values for different setups
+│   └── theia-monitoring/        # PodMonitors + Grafana dashboards
 │
 └── docs/                   # Detailed documentation
     ├── deployment-workflows.md  # How deployments work
@@ -41,7 +43,8 @@ This repository serves as the infrastructure-as-code for deploying and managing 
     ├── adding-environments.md   # Adding new environments
     ├── keycloak-setup.md        # Authentication configuration
     ├── tum-certificates.md      # TUM-specific SSL certificate process
-    └── monitoring-setup.md      # Prometheus & Grafana setup
+    ├── monitoring-setup.md      # Prometheus & Grafana setup
+    └── reference/               # Values for manually-installed components
 ```
 
 ## Deployment Architecture

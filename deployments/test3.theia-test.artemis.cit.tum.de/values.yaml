@@ -183,9 +183,3 @@ theia-appdefinitions:
           port: 5000
           languages: [rust]
           mountWorkspace: true
-
-monitoring:
-  targetNamespaces:
-    - test3
-  sessionNamespaces:
-    - test3
