@@ -1,6 +1,6 @@
 # Theia Deployment
 
-This repository manages automated deployments of [Theia Cloud](https://github.com/eclipse-theia/theia-cloud) to Kubernetes clusters using GitHub Actions. Theia Cloud provides browser-based development environments, allowing students and developers to work in containerized IDEs without local setup.
+This repository manages automated deployments of [EduIDE Cloud](https://github.com/EduIDE/EduIDE-Cloud) to Kubernetes clusters using GitHub Actions. EduIDE Cloud provides browser-based development environments, allowing students and developers to work in containerized IDEs without local setup.
 
 ## What is This Repository?
 
@@ -39,6 +39,7 @@ This repository serves as the infrastructure-as-code for deploying and managing 
 │
 └── docs/                   # Detailed documentation
     ├── deployment-workflows.md  # How deployments work
+    ├── envoy-gateway-setup.md   # Envoy Gateway and shared Gateway API setup
     ├── adding-environments.md   # Adding new environments
     ├── keycloak-setup.md        # Authentication configuration
     ├── tum-certificates.md      # TUM-specific SSL certificate process
@@ -131,15 +132,16 @@ Configuration files for each environment are located in the [deployments/](deplo
    # If cert-manager will solve HTTP-01 challenges through Gateway API, enable:
    #   --set config.enableGatewayAPI=true
    ```
+   See [Envoy Gateway Setup](docs/envoy-gateway-setup.md) for the full cluster bootstrap and shared Gateway configuration.
 
 2. **Install Theia Cloud base charts**:
    ```bash
    helm registry login ghcr.io
 
-   helm upgrade theia-cloud-base oci://ghcr.io/eduide/charts/theia-cloud-base --version 1.2.0-next.0 --install \
+   helm upgrade theia-cloud-base oci://ghcr.io/eduide/charts/theia-cloud-base --version 1.4.0-next.0 --install \
      -f deployments/your-environment/theia-base-helm-values.yml
 
-   helm upgrade theia-cloud-crds oci://ghcr.io/eduide/charts/theia-cloud-crds --version 1.2.0-next.0 --install \
+   helm upgrade theia-cloud-crds oci://ghcr.io/eduide/charts/theia-cloud-crds --version 1.2.0-next.1 --install \
      -f deployments/your-environment/theia-crds-helm-values.yml
    ```
 
@@ -161,8 +163,8 @@ Configuration files for each environment are located in the [deployments/](deplo
    ```
 
 Normal deployments consume released OCI charts from `ghcr.io/eduide/charts`.
-The `theia-cloud` dependency version in `charts/theia-cloud-combined/Chart.yaml` controls the main application chart, while `theia-cloud-base` and `theia-cloud-crds` are pinned separately in the workflow at `1.2.0-next.0` and `1.4.0-next.0`.
-For PR previews, you can set `helm_chart_tag` to a value like `pr-123` to pull preview OCI charts published from `theia-cloud-helm` pull requests as versions such as `<chart-version>.pr-123`.
+The `theia-cloud` dependency version in [`charts/theia-cloud-combined/Chart.yaml`](charts/theia-cloud-combined/Chart.yaml) controls the main application chart, while `theia-cloud-base` and `theia-cloud-crds` are pinned separately in the workflow at `1.4.0-next.0` and `1.2.0-next.1`.
+For PR previews, you can set `helm_chart_tag` to a value like `pr-123` to pull preview OCI charts published from [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) pull requests as versions such as `<chart-version>.pr-123`.
 
 When using GitHub Actions, shared-gateway settings are passed as hardcoded inputs
 by the caller workflows (`deploy-pr.yml`, `deploy-staging.yml`, `deploy-production.yml`):
@@ -203,13 +205,14 @@ See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinn
 - **Deploy a PR to test environment**: See [Deployment Workflows](docs/deployment-workflows.md#pull-request-deployments)
 - **Bump release image tags**: See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinned-image-tags)
 - **Add a new environment**: See [Adding Environments](docs/adding-environments.md)
+- **Set up Envoy Gateway**: See [Envoy Gateway Setup](docs/envoy-gateway-setup.md)
 - **Configure Keycloak authentication**: See [Keycloak Setup](docs/keycloak-setup.md)
 - **Request TUM wildcard certificates**: See [TUM Certificates](docs/tum-certificates.md)
 - **Set up monitoring**: See [Monitoring Setup](docs/monitoring-setup.md)
 
 ## AppDefinitions
 
-*AppDefinitions* define the IDE environments that users work in. Custom AppDefinitions are built in a three-stage pipeline at [artemis-theia-blueprints](https://github.com/ls1intum/artemis-theia-blueprints).
+*AppDefinitions* define the IDE environments that users work in. Custom AppDefinitions are built in a three-stage pipeline at [artemis-theia-blueprints](https://github.com/EduIDE/EduIDE).
 
 To install or update AppDefinitions:
 
@@ -237,6 +240,7 @@ The AppDefinitions chart configuration is documented in [charts/theia-appdefinit
 Detailed documentation is available in the [docs/](docs/) directory:
 
 - [Deployment Workflows](docs/deployment-workflows.md) - How automated deployments work
+- [Envoy Gateway Setup](docs/envoy-gateway-setup.md) - How to bootstrap Envoy Gateway and the shared Gateway API entrypoint
 - [Adding Environments](docs/adding-environments.md) - Step-by-step guide to add new environments
 - [Keycloak Setup](docs/keycloak-setup.md) - Authentication and authorization configuration
 - [TUM Certificates](docs/tum-certificates.md) - TUM-specific SSL certificate process
@@ -244,9 +248,9 @@ Detailed documentation is available in the [docs/](docs/) directory:
 
 ## Related Projects
 
-- [Theia Cloud](https://github.com/eclipse-theia/theia-cloud) - Main Theia Cloud project
-- [Theia Cloud Helm Charts](https://github.com/eclipse-theia/theia-cloud-helm) - Official Helm charts
-- [Artemis Theia Blueprints](https://github.com/ls1intum/artemis-theia-blueprints) - Custom IDE images and configurations
+- [EduIDE Cloud](https://github.com/EduIDE/EduIDE-Cloud) - The Theia Cloud fork deployed by this repository
+- [EduIDE Helm](https://github.com/EduIDE/EduIDE-Helm) - Helm charts consumed by this repository
+- [Artemis Theia Blueprints](https://github.com/EduIDE/EduIDE) - Custom IDE images and configurations
 - [Theia Cloud Observability](https://github.com/eclipsesource/theia-cloud-observability) - Monitoring and observability
 
 ## Support
