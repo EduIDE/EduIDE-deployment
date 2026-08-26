@@ -121,6 +121,27 @@ else
   echo "  SKIP  charts not available"
 fi
 
+# --- the dependency cache stays off in production --------------------------
+# Both keys matter. The umbrella declares theia-shared-cache without a
+# condition, so `enabled: false` only silences that chart's own templates; its
+# vendored reposilite subchart is gated separately by reposilite.enabled and
+# would otherwise still bring a Deployment and a 20Gi PVC.
+echo
+echo "=== dependency cache off in production ==="
+for f in "$ROOT"/environments/*/env.yaml; do
+  env=$(basename "$(dirname "$f")")
+  [[ "$(yq -r '.metadata.tier' "$f")" == "production" ]] || continue
+  v="$ROOT/environments/$env/values.yaml"
+  a=$(yq -r '.["theia-shared-cache"].enabled' "$v")
+  b=$(yq -r '.["theia-shared-cache"].reposilite.enabled' "$v")
+  if [[ "$a" == "false" && "$b" == "false" ]]; then
+    ok "$env cache and reposilite both off"
+  else
+    bad "$env must set theia-shared-cache.enabled and .reposilite.enabled to false" \
+        "enabled=$a reposilite.enabled=$b"
+  fi
+done
+
 echo
 [[ $FAILED -eq 0 ]] && echo "ALL PASS" || echo "SOME FAILED"
 exit $FAILED

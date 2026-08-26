@@ -80,6 +80,15 @@ error, just a PVC that never binds. Two subcharts claim storage independently
 key), so the deploy sets both; `test-deploy-logic.sh` renders every environment
 against a sentinel and fails if any storage key escapes the cluster default.
 
+**Switching off the dependency cache takes two keys.** The umbrella declares
+`theia-shared-cache` without a `condition:`, so `enabled: false` only silences
+that chart's own templates - its vendored reposilite subchart is gated by
+`reposilite.enabled` and would still bring a Deployment and a 20Gi PVC. Both are
+false in all three production installations, asserted by
+`test-deploy-logic.sh`. Nothing consumes the cache anywhere today regardless:
+the operator's `enableBuildCaching` and `enableDependencyCaching` default to
+false and no environment overrides them.
+
 **Never set a blanket image tag.** A pull request only builds the images of the
 repo it came from. `--set global.imageTag=pr-451` puts the whole namespace into
 `ImagePullBackOff` because `java-17:pr-451` does not exist. Overrides are per

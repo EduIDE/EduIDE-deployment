@@ -185,6 +185,33 @@ Four DNS records per environment, matching the hosts above. Certificates for
 each listener. Redirect URIs in Keycloak for every one of the four hosts, on a
 client matching `clientId`. See `docs/keycloak-setup.md`.
 
+## The dependency cache
+
+`theia-shared-cache` deploys a Gradle build cache, a Redis and a reposilite
+Maven proxy with a 20Gi PVC. It is **off in all three production
+installations** and on in test and staging.
+
+Switching it off needs two keys, not one:
+
+```yaml
+theia-shared-cache:
+  enabled: false
+  reposilite:
+    enabled: false
+```
+
+The umbrella declares `theia-shared-cache` without a `condition:`, so `enabled`
+only silences that chart's own templates; the vendored reposilite subchart is
+gated separately by `reposilite.enabled` and would otherwise still bring a
+Deployment and the PVC. `test-deploy-logic.sh` asserts both are false for every
+`tier: production` environment.
+
+Note that nothing consumes the cache today either way: the operator's
+`enableBuildCaching` and `enableDependencyCaching` both default to `false` and
+no environment overrides them, so sessions are not configured to reach it.
+Turning it back on for an environment means setting those two and the matching
+URLs as well, not just re-enabling the chart.
+
 ## What belongs in the cluster manifest
 
 `clusters/<name>.yaml` carries what is true of the whole cluster:

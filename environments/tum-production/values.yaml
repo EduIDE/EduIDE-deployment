@@ -76,3 +76,15 @@ theia-cloud:
       - --version
 theia-appdefinitions:
   defaultImageTag: 1.1.0
+
+# The Gradle/Maven dependency cache is not deployed here. The operator's
+# enableBuildCaching and enableDependencyCaching are false in every
+# environment, so no session ever reached it - on a production installation
+# that is a Redis, a cache server and a 20Gi reposilite PVC serving nobody.
+# Both keys are needed: the umbrella declares theia-shared-cache without a
+# condition, so `enabled` only silences the chart's own templates, and its
+# vendored reposilite subchart is gated separately by reposilite.enabled.
+theia-shared-cache:
+  enabled: false
+  reposilite:
+    enabled: false
