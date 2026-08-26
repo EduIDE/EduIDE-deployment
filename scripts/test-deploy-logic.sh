@@ -146,6 +146,34 @@ for f in "$ROOT"/environments/*/env.yaml; do
   fi
 done
 
+# --- manifests match their schemas -----------------------------------------
+# CI validates these, and this script did not, so a field added to a cluster
+# manifest without updating the schema passed locally and failed on push -
+# spec.tls did exactly that. Same check, run before the push instead of after.
+echo
+echo "=== manifests match their schemas ==="
+if command -v check-jsonschema >/dev/null 2>&1; then
+  for pair in "cluster:clusters" "environment:environments"; do
+    kind="${pair%%:*}"; dir="${pair##*:}"
+    files=()
+    if [[ "$kind" == cluster ]]; then
+      while IFS= read -r f; do files+=("$f"); done < <(find "$ROOT/$dir" -maxdepth 1 -name '*.yaml')
+    else
+      while IFS= read -r f; do files+=("$f"); done < <(find "$ROOT/$dir" -mindepth 2 -name 'env.yaml')
+    fi
+    for f in "${files[@]}"; do
+      if check-jsonschema --schemafile "$ROOT/schemas/${kind}.schema.json" "$f" >/dev/null 2>&1; then
+        ok "$(basename "$(dirname "$f")")/$(basename "$f")"
+      else
+        bad "$f does not match the $kind schema" \
+            "$(check-jsonschema --schemafile "$ROOT/schemas/${kind}.schema.json" "$f" 2>&1 | grep -m1 '\$\.' || true)"
+      fi
+    done
+  done
+else
+  echo "  SKIP  check-jsonschema not installed (pip install check-jsonschema)"
+fi
+
 # --- every derived HTTPS listener carries a TLS secret ---------------------
 # A listener without one renders certificateRefs with an empty name. Nothing
 # rejects that - the Gateway is accepted and simply never programs TLS for the
