@@ -31,6 +31,18 @@ monitor:
 operator:
   sentry:
     enable: true
+  # These three were defaults of the theia-cloud-combined umbrella, not of any
+  # environment values file, so deriving _base.yaml from the environments missed
+  # them and the new chart defaults them differently. Carried forward
+  # explicitly:
+  #
+  #   sessionsPerUser  the chart defaults to 1; every installation has run 10
+  #   eagerStart       pre-starts the minInstances warm pool. Without it the
+  #                    pool is not filled and the first student waits for a cold
+  #                    multi-gigabyte pull
+  sessionsPerUser: 10
+  eagerStart: true
+
 landingPage:
   ephemeralStorage: true
   appDefinition: java-17-templates-latest
@@ -53,5 +65,8 @@ landingPage:
       text: About
       url: https://aet.cit.tum.de/
 service:
+  # Public spam-mitigation token shared with the landing page, not a secret.
+  # Same value the installations have always used; changing it gains nothing.
+  authToken: nJV3nKZmpxTD4wu2
   adminApiTokenSecret:
     create: true

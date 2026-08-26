@@ -146,6 +146,24 @@ for f in "$ROOT"/environments/*/env.yaml; do
   fi
 done
 
+# --- no duplicate keys in a values file ------------------------------------
+# YAML keeps the LAST of two identical keys and says nothing. Writing a second
+# `service:` block silently dropped service.authToken from _base.yaml, and the
+# only symptom would have been the landing page and the REST service
+# disagreeing on the spam-mitigation token at runtime.
+echo
+echo "=== values files have no duplicate top-level keys ==="
+for f in "$ROOT"/environments/_base.yaml "$ROOT"/environments/*/values.yaml; do
+  [[ -f "$f" ]] || continue
+  dupes=$(grep -oE '^[a-zA-Z_][a-zA-Z0-9_.-]*:' "$f" | sort | uniq -d | tr -d ':' | tr '\n' ' ')
+  name="$(basename "$(dirname "$f")")/$(basename "$f")"
+  if [[ -z "$dupes" ]]; then
+    ok "$name"
+  else
+    bad "$name has duplicate top-level keys" "$dupes"
+  fi
+done
+
 # --- manifests match their schemas -----------------------------------------
 # CI validates these, and this script did not, so a field added to a cluster
 # manifest without updating the schema passed locally and failed on push -

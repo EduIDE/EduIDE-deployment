@@ -317,12 +317,18 @@ session PVCs and the shared cache's vendored reposilite chart, which has its own
 key and its own `csi-rbd-sc` default.
 
 An environment must not set it. It is a property of the cluster - `eduide` runs
-on local disks, both TUM clusters on Ceph - and a copy in an environment file is
-how `test3` ended up asking for `longhorn` on a cluster that only offers
-`csi-rbd-sc`: no error, just a PVC that never binds and a session that never
-starts. `test-deploy-logic.sh` renders every environment against a sentinel and
-fails if any storage key escapes the cluster default, so a new subchart with its
-own key cannot slip through either.
+on local disks, the TUM clusters on Ceph.
+
+Worth knowing about the test cluster: **both `csi-rbd-sc` and `longhorn` exist
+there and both are marked default**, so a PVC that omits the class gets an
+arbitrary one. test3 ran on `longhorn` and the others on `csi-rbd-sc`, for no
+reason anyone recorded; they are standardised on `csi-rbd-sc` now. Two default
+StorageClasses is a cluster misconfiguration worth raising with whoever owns the
+cluster - nothing in this repo can fix it.
+
+`test-deploy-logic.sh` renders every environment against a sentinel and fails if
+any storage key escapes the cluster default, so a new subchart with its own key
+cannot slip through either.
 
 `runner` is per cluster because deploying is not building. Builds all run on
 GitHub-hosted runners; a deploy has to reach the cluster's API server, and the

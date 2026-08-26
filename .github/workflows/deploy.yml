@@ -293,10 +293,16 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
-          URL="https://service.${{ steps.env.outputs.landing }}/health"
+          # The service has no /health endpoint - that probe returned 404 on
+          # every environment and warned on every deploy. /service is the real
+          # endpoint; it only accepts POST, so a GET returning 405 is the proof
+          # that the pod is up and the route resolves. 200 would do too.
+          URL="https://service.${{ steps.env.outputs.landing }}/service"
           for _ in $(seq 1 12); do
             code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || echo 000)
-            if [[ "$code" == "200" ]]; then echo "$URL -> 200"; exit 0; fi
+            case "$code" in
+              200|405) echo "$URL -> $code (service reachable)"; exit 0 ;;
+            esac
             sleep 10
           done
-          echo "::warning::$URL did not return 200 within two minutes (last: ${code:-none})"
+          echo "::warning::$URL answered ${code:-nothing} within two minutes; expected 200 or 405"

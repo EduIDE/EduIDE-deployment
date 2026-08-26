@@ -108,12 +108,18 @@ traffic does.
 
 **Storage class is a cluster property; an environment must not set it.**
 `clusters/<name>.yaml` states it once and the deploy renders it into a values
-file `-f`'d before `_base.yaml`. A copy in an environment file is how `test3`
-ended up asking for `longhorn` on a cluster that only offers `csi-rbd-sc` - no
-error, just a PVC that never binds. Two things claim storage independently (the
-operator, and the shared cache's vendored reposilite chart with its own key), so
-the deploy sets both; `test-deploy-logic.sh` renders every environment against a
-sentinel and fails if any storage key escapes the cluster default.
+file `-f`'d before `_base.yaml`.
+
+On the test cluster **both** `csi-rbd-sc` and `longhorn` exist and **both are
+marked default**, so a PVC that omits the class gets an arbitrary one. test3 ran
+on `longhorn` and the others on `csi-rbd-sc` for no reason anyone recorded; they
+are standardised on `csi-rbd-sc` now. Two default StorageClasses is a cluster
+misconfiguration worth raising separately - nothing in this repo can fix it.
+
+Two things claim storage independently (the operator, and the shared cache's
+vendored reposilite chart with its own key), so the deploy sets both;
+`test-deploy-logic.sh` renders every environment against a sentinel and fails if
+any storage key escapes the cluster default.
 
 **The dependency cache is off in production.** `eduide-shared-cache.enabled: false` in
 all three production installations, asserted by `test-deploy-logic.sh`. Nothing
