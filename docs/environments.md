@@ -180,7 +180,14 @@ Create one named exactly as the manifest, under **Settings → Environments**.
 |---|---|
 | `KUBECONFIG` | the whole kubeconfig file, pasted in |
 | `THEIA_KEYCLOAK_COOKIE_SECRET` | `dd if=/dev/urandom bs=32 count=1 \| base64 \| tr -d -- '\n' \| tr -- '+/' '-_'` |
-| `THEIA_ADMIN_API_TOKEN` | bearer token for the admin scaling API |
+
+`THEIA_ADMIN_API_TOKEN` is a **repository** secret, not an environment one, so
+every environment inherits it and there is nothing to set per environment.
+
+A cluster's bootstrap environment (`cluster-<name>`) holds a different set:
+`KUBECONFIG` for that cluster, plus `THEIA_WILDCARD_CERTIFICATE_CERT` and
+`THEIA_WILDCARD_CERTIFICATE_KEY` for the webview wildcard, which cert-manager
+cannot issue over HTTP-01.
 
 **Protection:** add required reviewers for anything `tier: production` or
 `staging`. The deploy job names the environment, so GitHub holds the run until

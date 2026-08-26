@@ -85,14 +85,15 @@ repositories.
 
 Per environment, in its GitHub Environment. Never in a file here.
 
-| Secret | What |
-|---|---|
-| `KUBECONFIG` | the whole kubeconfig, pasted in |
-| `THEIA_KEYCLOAK_COOKIE_SECRET` | `dd if=/dev/urandom bs=32 count=1 \| base64 \| tr -d -- '\n' \| tr -- '+/' '-_'` |
-| `THEIA_ADMIN_API_TOKEN` | bearer token for the admin scaling API |
+| Environment | Secret | What |
+|---|---|---|
+| each installation | `KUBECONFIG` | the whole kubeconfig, pasted in |
+| each installation | `THEIA_KEYCLOAK_COOKIE_SECRET` | `dd if=/dev/urandom bs=32 count=1 \| base64 \| tr -d -- '\n' \| tr -- '+/' '-_'` |
+| `cluster-<name>` | `KUBECONFIG` | that cluster's kubeconfig |
+| `cluster-<name>` | `THEIA_WILDCARD_CERTIFICATE_CERT` / `_KEY` | the webview wildcard, which HTTP-01 cannot issue |
 
-Bootstrap additionally needs `THEIA_WILDCARD_CERTIFICATE_CERT` and `_KEY` on the
-cluster's GitHub Environment.
+`THEIA_ADMIN_API_TOKEN` is a **repository** secret and is inherited by every
+environment, so there is nothing to set per environment.
 
 Anything `tier: production` or `staging` should have required reviewers set, so
 GitHub holds the run until someone approves and records the approval.
