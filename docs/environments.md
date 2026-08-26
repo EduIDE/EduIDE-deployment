@@ -56,9 +56,14 @@ installations under `eduide.aet.cit.tum.de`.
 | `test3` | `test3.eduide.student.k8s.aet.cit.tum.de` |
 | `e2e-test` | `e2e.eduide.student.k8s.aet.cit.tum.de` |
 | `staging` | `staging.eduide.student.k8s.aet.cit.tum.de` |
-| `tum-production` | `eduide.artemis.aet.cit.tum.de` |
+| `tum-production` | `eduide.artemis.aet.cit.tum.de` — see below |
 | `bonn` | `bonn.eduide.aet.cit.tum.de` |
 | `mannheim` | `mannheim.eduide.aet.cit.tum.de` |
+
+**TUM production is deliberately not under `eduide.aet.cit.tum.de`.** It runs
+behind a different load balancer, so it keeps `eduide.artemis.aet.cit.tum.de`.
+Bonn and Mannheim do sit under the shared base. This is recorded in the values
+file too, because it reads like a typo and is not one.
 
 Each landing host implies three more, all derived from the same block:
 
@@ -281,10 +286,30 @@ URLs as well, not just re-enabling the chart.
 spec:
   storageClassName: local          # applied to every environment on this cluster
   gatewayClassName: envoy          # used when the shared Gateway is installed
+  tls:                             # the Secret each listener role terminates with
+    landing: shared-theia-cert
+    service: shared-theia-cert
+    instances: shared-theia-cert
+    webview: static-theia-cert     # always its own - see below
+    acmeHttp: false                # true adds :80 listeners for HTTP-01
   sharedGateway: { namespace: eduide-system, name: theia-shared-gateway }
   runner: ubuntu-latest            # deploying needs to reach the API server
   bootstrapEnvironment: cluster-eduide
 ```
+
+`tls` names the Kubernetes Secret each listener role terminates with. It is per
+cluster because the clusters issue certificates differently: `tum-student`
+terminates everything with one pre-issued wildcard, `tum-production` has
+cert-manager issue one certificate per role and therefore also needs
+`acmeHttp: true`, which adds a plain `:80` listener per host for HTTP-01
+challenges. The webview secret is always separate — those hosts are two labels
+below the instance host, so no certificate covering the others covers them.
+
+A listener with no secret renders an empty `certificateRefs` entry. Nothing
+rejects it: the Gateway is accepted and simply never programs TLS for that
+hostname, so the first symptom is a browser connection failure. The chart fails
+the render instead, and `test-deploy-logic.sh` checks the policy is complete
+before it gets that far.
 
 `storageClassName` is rendered into a values file the deploy `-f`'s before
 `_base.yaml`, and it covers **both** things that claim storage: the operator's

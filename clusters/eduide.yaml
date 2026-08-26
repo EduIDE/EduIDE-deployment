@@ -14,6 +14,16 @@ spec:
   storageClassName: local
   gatewayClassName: envoy
 
+  # NOT CONFIRMED - this cluster does not exist yet. Copied from the student
+  # cluster's shape; settle it against however Bonn and Mannheim issue
+  # certificates before the first bootstrap.
+  tls:
+    landing: shared-theia-cert
+    service: shared-theia-cert
+    instances: shared-theia-cert
+    webview: static-theia-cert
+    acmeHttp: false
+
   sharedGateway:
     namespace: eduide-system
     name: theia-shared-gateway

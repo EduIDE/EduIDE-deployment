@@ -7,6 +7,23 @@ spec:
   storageClassName: csi-rbd-sc
   gatewayClassName: envoy
 
+  # TLS secrets the shared Gateway's listeners reference. Per cluster because
+  # the two clusters issue certificates differently: this one terminates
+  # everything with one shared certificate, production has cert-manager issue
+  # one per role. Bootstrap stamps these onto the listeners it derives.
+  #
+  # The webview secret is separate everywhere: those hosts are two labels below
+  # the instance host, so no certificate that covers the others covers them.
+  tls:
+    landing: shared-theia-cert
+    service: shared-theia-cert
+    instances: shared-theia-cert
+    webview: static-theia-cert
+    # cert-manager solves HTTP-01 challenges over plain :80, so a cluster using
+    # it needs an extra HTTP listener per host. This one uses a pre-issued
+    # wildcard instead and does not.
+    acmeHttp: false
+
   sharedGateway:
     namespace: eduide-system
     name: theia-shared-gateway

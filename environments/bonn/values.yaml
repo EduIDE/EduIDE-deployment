@@ -14,9 +14,8 @@
 # enableBuildCaching and enableDependencyCaching are false in every
 # environment, so no session ever reached it - on a production installation
 # that is a Redis, a cache server and a 20Gi reposilite PVC serving nobody.
-# Both keys are needed: the umbrella declares theia-shared-cache without a
-# condition, so `enabled` only silences the chart's own templates, and its
-# vendored reposilite subchart is gated separately by reposilite.enabled.
+# The chart declares it with `condition: eduide-shared-cache.enabled`, so the
+# one key switches off the subchart, its vendored reposilite and the PVC.
 
 app:
   name: EduIDE Bonn

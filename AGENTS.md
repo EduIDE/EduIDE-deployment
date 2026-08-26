@@ -85,6 +85,20 @@ manifest.
 work at it; a red build there should mean the code is broken, not that somebody
 was mid-experiment. `staging` is the manual one.
 
+**TUM production is on a different domain on purpose.** Every other production
+installation is under `eduide.aet.cit.tum.de`; `tum-production` is
+`eduide.artemis.aet.cit.tum.de` because it sits behind a different load
+balancer. It reads like a typo. It is not.
+
+**An HTTPS listener without a TLS secret fails silently.** It renders
+`certificateRefs` with an empty name; the Gateway is accepted and just never
+programs TLS for that hostname, so the first symptom is a browser connection
+failure. The secrets are per cluster in `spec.tls` - the clusters issue
+certificates differently, and `tum-production` also needs `acmeHttp: true` for
+the plain `:80` listeners cert-manager's HTTP-01 challenges arrive on. The chart
+fails the render on a missing secret and `test-deploy-logic.sh` checks the
+policy is complete.
+
 **The Gateway section prefix is not the landing host.** Production's landing
 host is `eduide` but its Gateway sections are `prod-*`; `e2e-test`'s are `e2e-*`.
 The shared Gateway's listeners are derived from the `sectionName`s an

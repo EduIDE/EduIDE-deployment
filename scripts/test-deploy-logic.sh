@@ -146,6 +146,29 @@ for f in "$ROOT"/environments/*/env.yaml; do
   fi
 done
 
+# --- every derived HTTPS listener carries a TLS secret ---------------------
+# A listener without one renders certificateRefs with an empty name. Nothing
+# rejects that - the Gateway is accepted and simply never programs TLS for the
+# hostname, so the first symptom is a browser connection failure. The chart
+# fails the render now, and this catches a cluster manifest missing the policy
+# before it gets that far.
+echo
+echo "=== derived listeners carry a TLS secret ==="
+for cf in "$ROOT"/clusters/*.yaml; do
+  cluster=$(yq -r '.metadata.name' "$cf")
+  missing=""
+  for role in landing service instances webview; do
+    v=$(yq -r ".spec.tls.${role} // \"\"" "$cf")
+    [[ -n "$v" ]] || missing+="$role "
+  done
+  if [[ -n "$missing" ]]; then
+    bad "$cluster is missing spec.tls entries" "$missing"
+    continue
+  fi
+  acme=$(yq -r '.spec.tls.acmeHttp // false' "$cf")
+  ok "$cluster: all four roles have a secret, acmeHttp=$acme"
+done
+
 # --- monitoring opt-out reaches the derived namespace list -----------------
 # The PodMonitors live in the cluster chart and watch a namespace list that
 # bootstrap derives. An environment opting out has to actually drop out of that

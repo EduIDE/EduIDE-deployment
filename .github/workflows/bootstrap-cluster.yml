@@ -117,6 +117,7 @@ jobs:
           # deployments/shared-gateway/values.yaml used to list them by hand,
           # which is why adding an environment needed two edits.
           CLASS=$(yq -r '.spec.gatewayClassName // "envoy"' "clusters/${CLUSTER}.yaml")
+          ACME_HTTP=$(yq -r '.spec.tls.acmeHttp // false' "clusters/${CLUSTER}.yaml")
           {
             echo "gateway:"
             echo "  className: ${CLASS}"
@@ -140,15 +141,38 @@ jobs:
 
             while read -r section; do
               [[ -n "$section" ]] || continue
+              # Each role maps to a host and to the TLS secret this cluster
+              # uses for it. The secret is not optional: a listener without one
+              # renders an empty certificateRef, and the Gateway then never
+              # programs TLS for that hostname.
               case "$section" in
-                *-landing)   host="${landing}.${base}" ;;
-                *-service)   host="${service}.${base}" ;;
-                *-instances) host="${instance}.${base}" ;;
-                *-webview)   host="*.webview.${instance}.${base}" ;;
+                *-landing)   host="${landing}.${base}";              role=landing ;;
+                *-service)   host="${service}.${base}";              role=service ;;
+                *-instances) host="${instance}.${base}";             role=instances ;;
+                *-webview)   host="*.webview.${instance}.${base}";   role=webview ;;
                 *) echo "::warning::${env}: unrecognised gateway section '${section}', skipping"; continue ;;
               esac
-              echo "    - name: ${section}" >> listeners.yaml
-              echo "      hostname: '${host}'" >> listeners.yaml
+              secret=$(yq -r ".spec.tls.${role} // \"\"" "clusters/${CLUSTER}.yaml")
+              if [[ -z "$secret" ]]; then
+                echo "::error::clusters/${CLUSTER}.yaml has no spec.tls.${role}"
+                exit 1
+              fi
+              {
+                echo "    - name: ${section}"
+                echo "      hostname: '${host}'"
+                echo "      tlsSecretName: ${secret}"
+              } >> listeners.yaml
+
+              # cert-manager answers HTTP-01 challenges on plain :80. Webview is
+              # a wildcard host and is never renewed that way.
+              if [[ "$ACME_HTTP" == "true" && "$role" != "webview" ]]; then
+                {
+                  echo "    - name: acme-${section%-*}-${role}-http"
+                  echo "      protocol: HTTP"
+                  echo "      port: 80"
+                  echo "      hostname: '${host}'"
+                } >> listeners.yaml
+              fi
             done < <(yq -r '.gateway.parentRefs[]?.sectionName' "$v")
             # An environment can opt out of being scraped with
             # monitoring.enabled: false in its values. Default is on.

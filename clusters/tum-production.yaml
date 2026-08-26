@@ -7,6 +7,19 @@ spec:
   storageClassName: csi-rbd-sc
   gatewayClassName: envoy
 
+  # cert-manager issues one certificate per role here, so each listener
+  # references its own secret. Carried over verbatim from the hand-written
+  # shared-gateway-prod values.
+  tls:
+    landing: landing-page-cert-secret
+    service: service-cert-secret
+    instances: ws-cert-secret
+    webview: static-theia-cert
+    # HTTP-01 challenges arrive on plain :80, so every host that cert-manager
+    # renews needs an HTTP listener alongside its HTTPS one. Dropping these
+    # does not break anything until a certificate comes up for renewal.
+    acmeHttp: true
+
   sharedGateway:
     namespace: eduide-system
     name: theia-shared-gateway
