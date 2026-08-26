@@ -11,64 +11,39 @@
 # is in env.yaml next door, because it configures the deploy rather than the
 # chart.
 
-theia-certificates:
-  hosts:
-    configuration:
-      baseHost: eduide.student.k8s.aet.cit.tum.de
-      service: service.test2
-      landing: test2
-      instance: instance.test2
-theia-cloud:
-  app:
-    name: Artemis Online IDE (Test2)
-  gateway:
-    parentRefs:
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: test2-landing
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: test2-service
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: test2-instances
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: test2-webview
-  operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:latest
-  landingPage:
-    footerLinks:
-      attribution:
-        version: Test2-v1.0.0
-    infoTitle: Welcome to EduIDE Cloud (Test2)
-    image: ghcr.io/eduide/eduidec-landing-page:latest
-  hosts:
-    configuration:
-      baseHost: eduide.student.k8s.aet.cit.tum.de
-      service: service.test2
-      landing: test2
-      instance: instance.test2
-    allWildcardInstances:
-    - '*.webview.'
-  keycloak:
-    enable: true
-    authUrl: https://keycloak-test.aet.cit.tum.de/
-    realm: tum
-    clientId: eduide
-  service:
-    image: ghcr.io/eduide/eduide-cloud/service:latest
-  preloading:
-    images:
-    - ghcr.io/eduide/eduidec-landing-page:latest
-    - ghcr.io/eduide/eduide/java-17:latest
-    - ghcr.io/eduide/eduide/java-17-templates:latest
-    - ghcr.io/eduide/eduide/c:latest
-    - ghcr.io/eduide/eduide/c-templates:latest
-    - ghcr.io/eduide/eduide/javascript:latest
-    - ghcr.io/eduide/eduide/ocaml:latest
-    - ghcr.io/eduide/eduide/rust:latest
-    - ghcr.io/eduide/eduide/python:latest
-    - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
-      args:
-      - --version
+app:
+  name: Artemis Online IDE (Test2)
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: test2-landing
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: test2-service
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: test2-instances
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: test2-webview
+landingPage:
+  footerLinks:
+    attribution:
+      version: Test2-v1.0.0
+  infoTitle: Welcome to EduIDE Cloud (Test2)
+hosts:
+  configuration:
+    baseHost: eduide.student.k8s.aet.cit.tum.de
+    service: service.test2
+    landing: test2
+    instance: instance.test2
+  allWildcardInstances:
+  - '*.webview.'
+keycloak:
+  enable: true
+  authUrl: https://keycloak-test.aet.cit.tum.de/
+  realm: tum
+  clientId: eduide
+sharedCache:
+  enabled: true

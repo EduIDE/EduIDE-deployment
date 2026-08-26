@@ -54,7 +54,7 @@ for cf in "$ROOT"/clusters/*.yaml; do
     env=$(basename "$(dirname "$f")")
     v="$ROOT/environments/$env/values.yaml"
     [[ -f "$v" ]] || continue
-    prefixes+="$(yq -r '[.["theia-cloud"].gateway.parentRefs[]?.sectionName | sub("-(landing|service|instances|webview)$"; "")] | unique | .[]' "$v" | tr '\n' ' ')" 
+    prefixes+="$(yq -r '[.gateway.parentRefs[]?.sectionName | sub("-(landing|service|instances|webview)$"; "")] | unique | .[]' "$v" | tr '\n' ' ')" 
     n=$((n + 1))
   done
   dupes=$(tr ' ' '\n' <<<"$prefixes" | grep -v '^$' | sort | uniq -d)
@@ -85,26 +85,35 @@ for f in "$ROOT"/environments/*/env.yaml; do
 done
 
 # --- storage class follows the cluster ------------------------------------
-# Two subcharts claim storage independently, and theia-shared-cache's vendored
-# reposilite chart hardcodes csi-rbd-sc. If a third one appears, a PVC on the
-# eduide cluster will ask for a class that does not exist there and simply
-# never bind - no error, just a Pending pod. This asserts the deploy sets every
-# storage key the rendered output contains.
+# The chart and its shared-cache dependency claim storage independently, and the
+# cache's vendored reposilite chart hardcodes csi-rbd-sc. If a third key
+# appears, a PVC on the eduide cluster will ask for a class that does not exist
+# there and simply never bind - no error, just a Pending pod. This asserts the
+# deploy sets every storage key the rendered output contains.
+#
+# Needs the chart. Set EDUIDE_CHART to a local checkout of EduIDE-Helm's
+# charts/eduide to run this before 2.0.0 is published.
 echo
 echo "=== storage class follows the cluster ==="
-CHARTS="$ROOT/charts/theia-cloud-combined"
-if [[ -d "$CHARTS" ]] && helm dependency list "$CHARTS" >/dev/null 2>&1; then
+CHART="${EDUIDE_CHART:-oci://ghcr.io/eduide/charts/eduide}"
+CHART_VERSION=$(yq -r '.spec.platform.chartVersion' "$ROOT/environments/test1/env.yaml")
+VER_ARG=()
+if [[ "$CHART" == oci://* ]]; then VER_ARG=(--version "$CHART_VERSION"); fi
+if helm show chart "$CHART" "${VER_ARG[@]}" >/dev/null 2>&1; then
   W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
-  cp -R "$ROOT/charts" "$W/charts"
-  if helm dependency update "$W/charts/theia-cloud-combined" >/dev/null 2>&1; then
+  {
     # The same two keys the Cluster defaults step in deploy.yml writes.
-    printf 'theia-cloud:\n  operator:\n    storageClassName: SENTINEL\ntheia-shared-cache:\n  reposilite:\n    persistence:\n      storageClass: SENTINEL\n' > "$W/cd.yaml"
+    printf 'operator:\n  storageClassName: SENTINEL\n'
+    printf 'sharedCache:\n  reposilite:\n    persistence:\n      storageClass: SENTINEL\n'
+  } > "$W/cd.yaml"
+  printf 'keycloak:\n  cookieSecret: x\nservice:\n  adminApiToken: dG9r\n' > "$W/sec.yaml"
+  {
     for f in "$ROOT"/environments/*/env.yaml; do
       env=$(basename "$(dirname "$f")")
       ns=$(yq -r '.spec.namespace' "$f")
-      out=$(helm template eduide "$W/charts/theia-cloud-combined" -n "$ns" \
+      out=$(helm template eduide "$CHART" "${VER_ARG[@]}" -n "$ns" \
               -f "$W/cd.yaml" -f "$ROOT/environments/_base.yaml" \
-              -f "$ROOT/environments/$env/values.yaml" 2>/dev/null) || {
+              -f "$ROOT/environments/$env/values.yaml" -f "$W/sec.yaml" 2>/dev/null) || {
         bad "$env does not render" ""; continue; }
       stray=$(grep -i 'storageclass' <<<"$out" | grep -v '\-\-storageClassName' | grep -vc 'SENTINEL' || true)
       if [[ "$stray" -gt 0 ]]; then
@@ -114,31 +123,26 @@ if [[ -d "$CHARTS" ]] && helm dependency list "$CHARTS" >/dev/null 2>&1; then
         ok "$env all storage keys follow the cluster"
       fi
     done
-  else
-    echo "  SKIP  helm dependency update failed (no GHCR login?)"
-  fi
+  }
 else
-  echo "  SKIP  charts not available"
+  echo "  SKIP  chart $CHART not reachable (set EDUIDE_CHART to a local checkout)"
 fi
 
 # --- the dependency cache stays off in production --------------------------
-# Both keys matter. The umbrella declares theia-shared-cache without a
-# condition, so `enabled: false` only silences that chart's own templates; its
-# vendored reposilite subchart is gated separately by reposilite.enabled and
-# would otherwise still bring a Deployment and a 20Gi PVC.
+# The chart declares the cache with `condition: sharedCache.enabled`, so one key
+# now switches it off cleanly - including its vendored reposilite subchart and
+# the 20Gi PVC that came with it.
 echo
 echo "=== dependency cache off in production ==="
 for f in "$ROOT"/environments/*/env.yaml; do
   env=$(basename "$(dirname "$f")")
   [[ "$(yq -r '.metadata.tier' "$f")" == "production" ]] || continue
   v="$ROOT/environments/$env/values.yaml"
-  a=$(yq -r '.["theia-shared-cache"].enabled' "$v")
-  b=$(yq -r '.["theia-shared-cache"].reposilite.enabled' "$v")
-  if [[ "$a" == "false" && "$b" == "false" ]]; then
-    ok "$env cache and reposilite both off"
+  a=$(yq -r '.sharedCache.enabled' "$v")
+  if [[ "$a" == "false" ]]; then
+    ok "$env dependency cache off"
   else
-    bad "$env must set theia-shared-cache.enabled and .reposilite.enabled to false" \
-        "enabled=$a reposilite.enabled=$b"
+    bad "$env must set sharedCache.enabled to false" "sharedCache.enabled=$a"
   fi
 done
 

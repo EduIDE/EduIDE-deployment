@@ -109,9 +109,9 @@ jobs:
             echo "tier=$(yq -r '.metadata.tier' "$M")"
             echo "channel=$(yq -r '.spec.platform.channel' "$M")"
             V="environments/${{ inputs.environment }}/values.yaml"
-            echo "landing=$(yq -r '.["theia-cloud"].hosts.configuration | .landing + "." + .baseHost' "$V")"
+            echo "landing=$(yq -r '.hosts.configuration | .landing + "." + .baseHost' "$V")"
             v="${{ inputs.chart_version }}"
-            [[ -z "$v" ]] && v="$(yq -r '.spec.platform.chartVersion' "$M")"
+              if [[ -z "$v" ]]; then v="$(yq -r '.spec.platform.chartVersion' "$M")"; fi
             echo "chart_version=$v"
           } >> "$GITHUB_OUTPUT"
 
@@ -131,10 +131,9 @@ jobs:
           # csi-rbd-sc, so setting only the operator's would leave a PVC that
           # never binds on a cluster that does not offer that class.
           cat > cluster-defaults.yaml <<EOF
-          theia-cloud:
-            operator:
-              storageClassName: ${SC}
-          theia-shared-cache:
+          operator:
+            storageClassName: ${SC}
+          sharedCache:
             reposilite:
               persistence:
                 storageClass: ${SC}
@@ -185,23 +184,21 @@ jobs:
         id: images
         run: |
           set -euo pipefail
-          # A PR only builds the images of the repo it came from, so an override
-          # is applied per component. Never set a blanket tag: it would point
-          # every image at a tag that mostly does not exist.
+          # A PR only builds the images of the repo it came from, so an
+          # override names one source repository. The chart carries one version
+          # knob per repository, so this is a straight mapping rather than a
+          # list of image strings that has to know every repository name.
+          # Never set a blanket tag: it would point every image at a tag that
+          # mostly does not exist.
           : > image-args.txt
           cp="$(jq -r '.controlPlane // empty' <<<'${{ inputs.image_overrides }}')"
           ide="$(jq -r '.ide // empty' <<<'${{ inputs.image_overrides }}')"
           lp="$(jq -r '.landingPage // empty' <<<'${{ inputs.image_overrides }}')"
-          if [[ -n "$cp" ]]; then
-            echo "--set theia-cloud.operator.image=ghcr.io/eduide/eduide-cloud/operator:${cp}" >> image-args.txt
-            echo "--set theia-cloud.service.image=ghcr.io/eduide/eduide-cloud/service:${cp}" >> image-args.txt
-          fi
-          if [[ -n "$ide" ]]; then
-            echo "--set theia-appdefinitions.defaultImageTag=${ide}" >> image-args.txt
-          fi
-          if [[ -n "$lp" ]]; then
-            echo "--set theia-cloud.landingPage.image=ghcr.io/eduide/eduidec-landing-page:${lp}" >> image-args.txt
-          fi
+          # if-blocks, not `A && B`: under set -e a trailing false test would
+          # fail the step when no override is given, which is the common case.
+          if [[ -n "$cp"  ]]; then echo "--set versions.cloud=${cp}"       >> image-args.txt; fi
+          if [[ -n "$ide" ]]; then echo "--set versions.ide=${ide}"        >> image-args.txt; fi
+          if [[ -n "$lp"  ]]; then echo "--set versions.landingPage=${lp}" >> image-args.txt; fi
           if [[ -s image-args.txt ]]; then
             echo "::notice::image overrides: $(tr '\n' ' ' < image-args.txt)"
           fi
@@ -213,25 +210,26 @@ jobs:
           # in Actions debug logs.
           install -m 600 /dev/null secrets.yaml
           cat > secrets.yaml <<EOF
-          theia-cloud:
-            keycloak:
-              cookieSecret: "${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}"
-          theia-certificates:
+          keycloak:
+            cookieSecret: "${{ secrets.THEIA_KEYCLOAK_COOKIE_SECRET }}"
+          service:
             adminApiToken: "$(printf '%s' '${{ secrets.THEIA_ADMIN_API_TOKEN }}' | base64 | tr -d '\n')"
           EOF
 
-      - name: Update chart dependencies
+      - name: Log in to GHCR
         run: |
           set -euo pipefail
+          # The chart is published, not vendored. helm resolves its own
+          # dependencies from the same registry when it pulls.
           echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login ghcr.io -u '${{ github.actor }}' --password-stdin
-          helm dependency update ./charts/theia-cloud-combined
 
       - name: Preview the change
         run: |
           set -euo pipefail
           mapfile -t IMG < image-args.txt || true
-          helm diff upgrade eduide ./charts/theia-cloud-combined \
+          helm diff upgrade eduide oci://ghcr.io/eduide/charts/eduide \
             --namespace "${{ steps.env.outputs.namespace }}" \
+            --version "${{ steps.env.outputs.chart_version }}" \
             -f cluster-defaults.yaml -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
             --allow-unreleased --no-color > helm.diff 2>&1 || true
           {
@@ -266,7 +264,7 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t IMG < image-args.txt || true
-          helm upgrade --install eduide ./charts/theia-cloud-combined \
+          helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide \
             --namespace "${{ steps.env.outputs.namespace }}" --create-namespace \
             --version "${{ steps.env.outputs.chart_version }}" \
             -f cluster-defaults.yaml -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \

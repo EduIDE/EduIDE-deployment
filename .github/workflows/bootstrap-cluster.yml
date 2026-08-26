@@ -126,10 +126,10 @@ jobs:
             # Section names come from the parentRefs the environment actually
             # declares, so a listener cannot disagree with the route that
             # attaches to it. Host names come from the same file.
-            base=$(yq -r '.["theia-cloud"].hosts.configuration.baseHost' "$v")
-            landing=$(yq -r '.["theia-cloud"].hosts.configuration.landing' "$v")
-            service=$(yq -r '.["theia-cloud"].hosts.configuration.service' "$v")
-            instance=$(yq -r '.["theia-cloud"].hosts.configuration.instance' "$v")
+            base=$(yq -r '.hosts.configuration.baseHost' "$v")
+            landing=$(yq -r '.hosts.configuration.landing' "$v")
+            service=$(yq -r '.hosts.configuration.service' "$v")
+            instance=$(yq -r '.hosts.configuration.instance' "$v")
 
             while read -r section; do
               [[ -n "$section" ]] || continue
@@ -142,7 +142,7 @@ jobs:
               esac
               echo "    - name: ${section}" >> listeners.yaml
               echo "      hostname: '${host}'" >> listeners.yaml
-            done < <(yq -r '.["theia-cloud"].gateway.parentRefs[]?.sectionName' "$v")
+            done < <(yq -r '.gateway.parentRefs[]?.sectionName' "$v")
             found=$((found + 1))
           done
           if [[ $found -eq 0 ]]; then

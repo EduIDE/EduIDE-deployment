@@ -8,68 +8,50 @@
 # Host names, gateway routing and the image set are per environment and live
 # in that environment's values.yaml.
 
-theia-certificates:
-  certificates:
-    enabled: false
-  wildcardTLSSecret:
-    enabled: false
-  adminApiTokenSecret:
+imagePullPolicy: Always
+app:
+  id: nJV3nKZmpxTD4wu2
+demoApplication:
+  install: false
+issuer:
+  email: ls1.itg@in.tum.de
+gateway:
+  enabled: true
+  create: false
+  routes:
     enabled: true
-
-theia-cloud:
-  imagePullPolicy: Always
-
-  app:
-    # Public spam-mitigation token, not a secret. Same across environments.
-    id: nJV3nKZmpxTD4wu2
-
-  demoApplication:
-    install: false
-
-  issuer:
-    email: ls1.itg@in.tum.de
-
-  # Keycloak is NOT here: realm, clientId and authUrl are per environment.
-  # TUM installations share a server and differ by realm; installations at
-  # other universities bring their own server entirely.
-
-  gateway:
-    enabled: true
-    create: false
-    routes:
-      enabled: true
-    className: envoy
-    name: theia-cloud-gateway
-    serviceRouteRequestTimeout: 60s
-
-  monitor:
+  className: envoy
+  name: theia-cloud-gateway
+  serviceRouteRequestTimeout: 60s
+monitor:
+  enable: true
+  activityTracker:
     enable: true
-    activityTracker:
-      enable: true
-      interval: 3
-
-  operator:
-    sentry:
-      enable: true
-
-  landingPage:
-    ephemeralStorage: true
-    appDefinition: java-17-templates-latest
-    infoText: " "
-    loadingText: Preparing your personal Online IDE...
-    logoFileExtension: png
-    sentry:
-      enable: true
-    footerLinks:
-      attribution:
-        text: Built by TUM AET Research Group 👨‍💻
-        url: https://aet.cit.tum.de/
-      bugReport:
-        text: Report a bug 🐛
-        url: https://github.com/EduIDE/EduIDE/issues
-      featureRequest:
-        text: Request a feature ✨
-        url: https://github.com/EduIDE/EduIDE/issues
-      about:
-        text: About
-        url: https://aet.cit.tum.de/
+    interval: 3
+operator:
+  sentry:
+    enable: true
+landingPage:
+  ephemeralStorage: true
+  appDefinition: java-17-templates-latest
+  infoText: ' '
+  loadingText: Preparing your personal Online IDE...
+  logoFileExtension: png
+  sentry:
+    enable: true
+  footerLinks:
+    attribution:
+      text: Built by TUM AET Research Group 👨‍💻
+      url: https://aet.cit.tum.de/
+    bugReport:
+      text: Report a bug 🐛
+      url: https://github.com/EduIDE/EduIDE/issues
+    featureRequest:
+      text: Request a feature ✨
+      url: https://github.com/EduIDE/EduIDE/issues
+    about:
+      text: About
+      url: https://aet.cit.tum.de/
+service:
+  adminApiTokenSecret:
+    create: true

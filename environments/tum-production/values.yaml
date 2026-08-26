@@ -10,73 +10,6 @@
 # Deployment metadata - which cluster, which namespace, which chart version -
 # is in env.yaml next door, because it configures the deploy rather than the
 # chart.
-
-theia-certificates:
-  hosts:
-    configuration:
-      baseHost: artemis.aet.cit.tum.de
-      service: service.eduide
-      landing: eduide
-      instance: instance.eduide
-theia-cloud:
-  app:
-    name: Artemis Online IDE
-  gateway:
-    parentRefs:
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: prod-landing
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: prod-service
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: prod-instances
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: prod-webview
-  operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:1.1.0
-    replicas: 3
-  landingPage:
-    sentry:
-      enable: false
-    footerLinks:
-      attribution:
-        version: v1.1.0
-    infoTitle: Welcome to EduIDE Cloud
-    image: ghcr.io/eduide/eduidec-landing-page:1.1.0
-  hosts:
-    configuration:
-      baseHost: artemis.aet.cit.tum.de
-      service: service.eduide
-      landing: eduide
-      instance: instance.eduide
-    allWildcardInstances:
-    - '*.webview.'
-  keycloak:
-    enable: true
-    authUrl: https://keycloak.aet.cit.tum.de/
-    realm: tum
-    clientId: eduide
-  service:
-    image: ghcr.io/eduide/eduide-cloud/service:1.1.0
-  preloading:
-    images:
-    - ghcr.io/eduide/eduidec-landing-page:1.1.0
-    - ghcr.io/eduide/eduide/java-17:1.1.0
-    - ghcr.io/eduide/eduide/java-17-templates:1.1.0
-    - ghcr.io/eduide/eduide/c:1.1.0
-    - ghcr.io/eduide/eduide/javascript:1.1.0
-    - ghcr.io/eduide/eduide/ocaml:1.1.0
-    - ghcr.io/eduide/eduide/rust:1.1.0
-    - ghcr.io/eduide/eduide/python:1.1.0
-    - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
-      args:
-      - --version
-theia-appdefinitions:
-  defaultImageTag: 1.1.0
-
 # The Gradle/Maven dependency cache is not deployed here. The operator's
 # enableBuildCaching and enableDependencyCaching are false in every
 # environment, so no session ever reached it - on a production installation
@@ -84,7 +17,44 @@ theia-appdefinitions:
 # Both keys are needed: the umbrella declares theia-shared-cache without a
 # condition, so `enabled` only silences the chart's own templates, and its
 # vendored reposilite subchart is gated separately by reposilite.enabled.
-theia-shared-cache:
+
+app:
+  name: Artemis Online IDE
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: prod-landing
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: prod-service
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: prod-instances
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: prod-webview
+operator:
+  replicas: 3
+landingPage:
+  sentry:
+    enable: false
+  footerLinks:
+    attribution:
+      version: v1.1.0
+  infoTitle: Welcome to EduIDE Cloud
+hosts:
+  configuration:
+    baseHost: artemis.aet.cit.tum.de
+    service: service.eduide
+    landing: eduide
+    instance: instance.eduide
+  allWildcardInstances:
+  - '*.webview.'
+keycloak:
+  enable: true
+  authUrl: https://keycloak.aet.cit.tum.de/
+  realm: tum
+  clientId: eduide
+sharedCache:
   enabled: false
-  reposilite:
-    enabled: false

@@ -10,69 +10,6 @@
 # Deployment metadata - which cluster, which namespace, which chart version -
 # is in env.yaml next door, because it configures the deploy rather than the
 # chart.
-
-theia-certificates:
-  hosts:
-    configuration:
-      baseHost: eduide.aet.cit.tum.de
-      service: service.bonn
-      landing: bonn
-      instance: instance.bonn
-theia-cloud:
-  app:
-    name: EduIDE Bonn
-  gateway:
-    parentRefs:
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: bonn-landing
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: bonn-service
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: bonn-instances
-    - name: theia-shared-gateway
-      namespace: gateway-system
-      sectionName: bonn-webview
-  operator:
-    image: ghcr.io/eduide/eduide-cloud/operator:1.0.0-rc0
-  landingPage:
-    infoTitle: Welcome to EduIDE (Bonn)
-    image: ghcr.io/eduide/eduidec-landing-page:1.0.0-rc0
-    footerLinks:
-      attribution:
-        version: Bonn-v1.0.0
-  hosts:
-    configuration:
-      baseHost: eduide.aet.cit.tum.de
-      service: service.bonn
-      landing: bonn
-      instance: instance.bonn
-    allWildcardInstances:
-    - '*.webview.'
-  keycloak:
-    enable: true
-    authUrl: https://keycloak.aet.cit.tum.de/
-    realm: REALM-TBD-bonn
-    clientId: eduide
-  service:
-    image: ghcr.io/eduide/eduide-cloud/service:1.0.0-rc0
-  preloading:
-    images:
-    - ghcr.io/eduide/eduidec-landing-page:1.0.0-rc0
-    - ghcr.io/eduide/eduide/java-17:1.0.0-rc0
-    - ghcr.io/eduide/eduide/java-17-templates:1.0.0-rc0
-    - ghcr.io/eduide/eduide/c:1.0.0-rc0
-    - ghcr.io/eduide/eduide/c-templates:1.0.0-rc0
-    - ghcr.io/eduide/eduide/javascript:1.0.0-rc0
-    - ghcr.io/eduide/eduide/ocaml:1.0.0-rc0
-    - ghcr.io/eduide/eduide/rust:1.0.0-rc0
-    - ghcr.io/eduide/eduide/python:1.0.0-rc0
-    - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
-      args:
-      - --version
-
 # The Gradle/Maven dependency cache is not deployed here. The operator's
 # enableBuildCaching and enableDependencyCaching are false in every
 # environment, so no session ever reached it - on a production installation
@@ -80,7 +17,40 @@ theia-cloud:
 # Both keys are needed: the umbrella declares theia-shared-cache without a
 # condition, so `enabled` only silences the chart's own templates, and its
 # vendored reposilite subchart is gated separately by reposilite.enabled.
-theia-shared-cache:
+
+app:
+  name: EduIDE Bonn
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: bonn-landing
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: bonn-service
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: bonn-instances
+  - name: theia-shared-gateway
+    namespace: gateway-system
+    sectionName: bonn-webview
+landingPage:
+  infoTitle: Welcome to EduIDE (Bonn)
+  footerLinks:
+    attribution:
+      version: Bonn-v1.0.0
+hosts:
+  configuration:
+    baseHost: eduide.aet.cit.tum.de
+    service: service.bonn
+    landing: bonn
+    instance: instance.bonn
+  allWildcardInstances:
+  - '*.webview.'
+keycloak:
+  enable: true
+  authUrl: https://keycloak.aet.cit.tum.de/
+  realm: REALM-TBD-bonn
+  clientId: eduide
+sharedCache:
   enabled: false
-  reposilite:
-    enabled: false

@@ -18,12 +18,16 @@ are looking for a chart setting it is in `values.yaml`, always.
 The deploy runs, in this order:
 
 ```bash
-helm upgrade --install eduide ./charts/theia-cloud-combined \
+helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide --version 2.0.0 \
   -f cluster-defaults.yaml \                     # generated from clusters/<name>.yaml
   -f environments/_base.yaml \                   # identical everywhere
   -f environments/<name>/values.yaml \           # this installation
   -f secrets.yaml                                # from the GitHub Environment
 ```
+
+Since 2.0.0 that is **one chart**, not an umbrella over five subcharts, so
+values files are keyed at the top level: `hosts:`, `keycloak:`, `operator:`,
+not `theia-cloud.hosts:`.
 
 Later files win, so an environment can override anything its cluster or the
 base sets.
@@ -121,9 +125,9 @@ metadata:
   tier: production           # test | staging | production
 spec:
   cluster: eduide            # must match a file in clusters/
-  namespace: bonn
+  namespace: eduide-bonn     # every namespace carries the eduide- prefix
   platform:
-    chartVersion: 1.0.0-rc0
+    chartVersion: 2.0.0
     channel: release         # release | main
 ```
 
@@ -185,26 +189,53 @@ Four DNS records per environment, matching the hosts above. Certificates for
 each listener. Redirect URIs in Keycloak for every one of the four hosts, on a
 client matching `clientId`. See `docs/keycloak-setup.md`.
 
+## Versions
+
+One number per source repository, and one chart version over the lot:
+
+| Value | Repository | Default |
+|---|---|---|
+| `versions.ide` | EduIDE (the IDE images) | empty → the chart's `appVersion` |
+| `versions.cloud` | EduIDE-Cloud (operator, service) | `1.2.0` |
+| `versions.landingPage` | EduIDE-Landing-Page | `1.2.0` |
+
+`helm install --version 2.0.0` with no overrides therefore pins every image to
+a tag that release published. Nothing floats, and no environment repeats an
+image string.
+
+A deploy override names one repository, never all of them: a pull request only
+builds the images of the repo it came from, so a blanket tag would put the rest
+of the namespace into `ImagePullBackOff`.
+
+```
+Actions -> Deploy -> image_overrides: {"controlPlane": "pr-451"}
+```
+
+## Applications and preloading
+
+`appDefinitions.apps` in the chart is the single source of truth for three
+things: the AppDefinition custom resources, the app list the landing page
+offers, and the images preloaded onto every node. **No environment lists any of
+them.** Adding a language is one entry in the chart.
+
+They used to be three hand-maintained lists across two repositories, the
+preload one addressed by array index. Production offered `c-templates` while
+preloading everything except `c-templates`, so students picking it waited for a
+cold multi-gigabyte pull. `test-app-consistency.sh` in EduIDE-Helm asserts the
+three agree.
+
 ## The dependency cache
 
-`theia-shared-cache` deploys a Gradle build cache, a Redis and a reposilite
+`sharedCache` deploys a Gradle build cache, a Redis and a reposilite
 Maven proxy with a 20Gi PVC. It is **off in all three production
 installations** and on in test and staging.
 
-Switching it off needs two keys, not one:
-
 ```yaml
-theia-shared-cache:
+sharedCache:
   enabled: false
-  reposilite:
-    enabled: false
 ```
 
-The umbrella declares `theia-shared-cache` without a `condition:`, so `enabled`
-only silences that chart's own templates; the vendored reposilite subchart is
-gated separately by `reposilite.enabled` and would otherwise still bring a
-Deployment and the PVC. `test-deploy-logic.sh` asserts both are false for every
-`tier: production` environment.
+`test-deploy-logic.sh` asserts this for every `tier: production` environment.
 
 Note that nothing consumes the cache today either way: the operator's
 `enableBuildCaching` and `enableDependencyCaching` both default to `false` and
@@ -226,9 +257,9 @@ spec:
 ```
 
 `storageClassName` is rendered into a values file the deploy `-f`'s before
-`_base.yaml`, and it covers **both** subcharts that claim storage: the
-operator's session PVCs and `theia-shared-cache`'s vendored reposilite chart,
-which has its own key and its own `csi-rbd-sc` default.
+`_base.yaml`, and it covers **both** things that claim storage: the operator's
+session PVCs and the shared cache's vendored reposilite chart, which has its own
+key and its own `csi-rbd-sc` default.
 
 An environment must not set it. It is a property of the cluster - `eduide` runs
 on local disks, both TUM clusters on Ceph - and a copy in an environment file is
@@ -279,26 +310,20 @@ fails until traffic does.
 against it automatically. Point manual work at `staging` instead, or a red build
 there stops meaning anything.
 
-**A top-level `hosts:` key in a values file does nothing.** The umbrella chart
-has one, but only as a YAML anchor feeding its own two subcharts, and anchors
-resolve within a single file. An override file has to set
-`theia-cloud.hosts.configuration` and `theia-certificates.hosts.configuration`
-explicitly. Both are set in every environment; do not add a third copy at the
-top level, it will be silently ignored.
-
 ## Checking a change
 
 ```bash
-helm template eduide ./charts/theia-cloud-combined \
+helm template eduide oci://ghcr.io/eduide/charts/eduide --version 2.0.0 \
   -f environments/_base.yaml -f environments/test1/values.yaml
-./scripts/test-deploy-logic.sh            # overrides, tags, listener collisions
-./scripts/legacy-diff.sh                  # what the cutover changes on a live env
+./scripts/test-deploy-logic.sh            # overrides, tags, listeners, storage, cache
 ```
 
-`legacy-diff.sh` is a report, not a gate. Hostnames, realms and client ids were
-changed deliberately, so it is expected to differ - read it before cutting an
-environment over rather than expecting it to be empty.
+To test against a chart that is not published yet, point at a local checkout:
+
+```bash
+EDUIDE_CHART=../EduIDE-Helm/charts/eduide ./scripts/test-deploy-logic.sh
+```
 
 CI runs schema validation, checks every environment points at a real cluster,
-checks no two environments on a cluster share a listener prefix, renders every
-environment, and posts the legacy diff to the run summary.
+checks no two environments on a cluster share a listener prefix, and renders
+every environment.
