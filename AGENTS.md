@@ -38,6 +38,13 @@ gate for cutting an environment over, and it can be deleted once
 
 ## Things that will catch you out
 
+**The cluster identifies itself; nothing is transcribed.** `Bootstrap cluster`
+writes the cluster name into `eduide-system/eduide-cluster-identity`, and every
+deploy reads it back and compares with the environment's `spec.cluster`. Do not
+add an API server URL to the cluster manifests: every cluster sits behind the
+same Rancher endpoint, so that URL is identical for all of them and comparing
+it would pass whichever cluster the kubeconfig reached.
+
 **`e2e-test` follows main and is tested automatically.** Do not point manual
 work at it; a red build there should mean the code is broken, not that somebody
 was mid-experiment. `staging` is the manual one.

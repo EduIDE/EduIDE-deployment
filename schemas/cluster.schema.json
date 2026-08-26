@@ -21,10 +21,6 @@
       "required": ["storageClassName", "runner"],
       "additionalProperties": false,
       "properties": {
-        "apiServerUrl": {
-          "type": "string",
-          "description": "Asserted against the kubeconfig before every deploy. Empty means the assertion is skipped, which should be temporary."
-        },
         "storageClassName": { "type": "string" },
         "gatewayClassName": { "type": "string" },
         "sharedGateway": {

@@ -125,17 +125,25 @@ jobs:
         run: |
           set -euo pipefail
           CLUSTER="${{ steps.env.outputs.cluster }}"
-          EXPECT=$(yq -r '.spec.apiServerUrl // ""' "clusters/${CLUSTER}.yaml")
-          ACTUAL=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
-          if [[ -z "$EXPECT" ]]; then
-            echo "::warning::clusters/${CLUSTER}.yaml has no apiServerUrl, so the identity check is skipped."
-            echo "::warning::This kubeconfig points at ${ACTUAL} - if that is right, put it in the cluster manifest."
-          elif [[ "$EXPECT" != "$ACTUAL" ]]; then
-            echo "::error::kubeconfig points at ${ACTUAL}, but ${CLUSTER} is ${EXPECT}. Refusing to deploy."
+          # The cluster tells us which one it is. Bootstrap stamped this, so
+          # nobody transcribes an identifier and there is nothing to keep in
+          # sync. Comparing the API server URL would not work here: every
+          # cluster sits behind the same Rancher endpoint, so that URL is
+          # identical for all of them and a comparison would always pass.
+          FOUND=$(kubectl -n eduide-system get configmap eduide-cluster-identity \
+                    -o jsonpath='{.data.clusterName}' 2>/dev/null || true)
+          if [[ -z "$FOUND" ]]; then
+            echo "::error::this cluster carries no identity, so it has not been bootstrapped."
+            echo "::error::Run the 'Bootstrap cluster' workflow for '${CLUSTER}' first."
             exit 1
-          else
-            echo "cluster ${CLUSTER} confirmed: ${ACTUAL}"
           fi
+          if [[ "$FOUND" != "$CLUSTER" ]]; then
+            echo "::error::environment '${{ inputs.environment }}' targets cluster '${CLUSTER}',"
+            echo "::error::but this KUBECONFIG reaches a cluster that calls itself '${FOUND}'."
+            echo "::error::Refusing to deploy. Check the KUBECONFIG secret on this GitHub Environment."
+            exit 1
+          fi
+          echo "cluster '${CLUSTER}' confirmed"
           kubectl get nodes -o name | wc -l | xargs echo "nodes:"
 
       - name: Verify the cluster has been bootstrapped

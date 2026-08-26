@@ -4,17 +4,6 @@ metadata:
   name: tum-student
   displayName: TUM student cluster (test, staging and e2e)
 spec:
-  # The `server:` field out of this cluster's kubeconfig. Not a secret, and not
-  # extra information: it is one line copied out of the KUBECONFIG secret into
-  # git, so that a human reviewing a pull request can see which cluster an
-  # environment claims, and the deploy can check the secret agrees.
-  #
-  #   ./scripts/cluster-url.sh ~/.kube/tum-student.yaml
-  #
-  # Leave it empty and the check degrades to a warning that prints what the
-  # kubeconfig actually points at, which is also how you discover the value.
-  apiServerUrl: ""
-
   storageClassName: csi-rbd-sc
   gatewayClassName: envoy
 

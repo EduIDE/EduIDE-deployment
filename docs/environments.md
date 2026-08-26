@@ -20,8 +20,8 @@ scripts/render-values.sh        compiles a manifest into Helm values
 | `eduide` | `bonn`, `mannheim` | other universities. **Not provisioned yet.** |
 
 `bonn` and `mannheim` exist as reviewable configuration before the cluster does.
-Deploying one stops at the cluster identity check until `clusters/eduide.yaml`
-has an `apiServerUrl` and the GitHub Environment holds a `KUBECONFIG`.
+Deploying one stops at the cluster identity check until that cluster has been
+bootstrapped and the GitHub Environment holds a `KUBECONFIG`.
 
 ## Why not just Helm values files?
 
@@ -111,28 +111,35 @@ the cluster, so a new environment needs no second file edited. Run it with
 Redirect URIs for the new hostnames, and a client matching `keycloak.clientId`.
 See `docs/keycloak-setup.md`.
 
-## `apiServerUrl`, and why it is not redundant
+## How a deploy knows it reached the right cluster
 
-It is the `server:` field out of the cluster's kubeconfig:
+The cluster tells it. `Bootstrap cluster` writes the cluster's name into a
+ConfigMap:
 
-```bash
-./scripts/cluster-url.sh ~/.kube/tum-student.yaml
+```
+eduide-system/eduide-cluster-identity   clusterName: tum-student
 ```
 
-It is not a credential and not extra information — it is one line copied out of
-the `KUBECONFIG` secret into git.
+Every deploy reads that back and compares it with the environment's
+`spec.cluster`. A mismatch stops the deploy and says which cluster it actually
+reached.
 
-The point is that the two must **agree**. The kubeconfig lives in a GitHub
-Environment secret that nobody reviews; the manifest lives in git where a pull
-request shows it. If the wrong kubeconfig is ever pasted into an environment's
-secret, the deploy compares it against the reviewed file and stops instead of
-quietly deploying to the wrong cluster. Reading the cluster's identity out of
-the same secret you are trying to check would prove nothing.
+Nobody transcribes anything and there is nothing to keep in sync — the
+bootstrap workflow already knows which cluster it was told to bootstrap, so it
+writes what it knows.
 
-Leaving it empty is allowed. The check then degrades to a **warning that prints
-what the kubeconfig actually points at** — which is also how you discover the
-value without having the file locally: run a deploy with `dry_run: true` and
-read the log.
+**Why not compare the API server URL?** Every cluster sits behind the same
+Rancher endpoint, so that URL is identical for all of them. Comparing it would
+pass whichever cluster the kubeconfig reached, which is worse than no check: it
+looks like protection and provides none.
+
+If a deploy reports the cluster carries no identity, it has not been
+bootstrapped — run `Bootstrap cluster` for it.
+
+Bootstrapping refuses to rename a cluster that already carries a different
+name, since that almost always means the `KUBECONFIG` for that GitHub
+Environment points somewhere unexpected. Delete the ConfigMap first if the
+rename is genuinely intended.
 
 ## Things that are not what they look like
 

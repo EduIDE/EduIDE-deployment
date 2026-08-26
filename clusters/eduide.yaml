@@ -5,11 +5,8 @@ metadata:
   displayName: EduIDE cluster (installations outside TUM)
 spec:
   # NOT YET PROVISIONED. Environments targeting this cluster exist so their
-  # configuration can be reviewed, but deploying one stops at the cluster
-  # identity check until this is filled in and a KUBECONFIG secret exists.
-  #
-  #   ./scripts/cluster-url.sh ~/.kube/eduide.yaml
-  apiServerUrl: ""
+  # configuration can be reviewed, but deploying one stops at the identity
+  # check until the cluster has been bootstrapped and a KUBECONFIG exists.
 
   # Carried over from the TUM clusters as a starting point; confirm once the
   # cluster exists. An environment can override it in spec.values.

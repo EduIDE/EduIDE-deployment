@@ -85,19 +85,23 @@ jobs:
           install -m 600 /dev/null "$KUBECONFIG"
           printf '%s' '${{ secrets.KUBECONFIG }}' > "$KUBECONFIG"
 
-      - name: Assert we are pointed at the right cluster
+      - name: Check what is already on this cluster
         run: |
           set -euo pipefail
-          EXPECT=$(yq -r '.spec.apiServerUrl // ""' "clusters/${CLUSTER}.yaml")
-          ACTUAL=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
-          if [[ -z "$EXPECT" ]]; then
-            echo "::warning::clusters/${CLUSTER}.yaml has no apiServerUrl; identity check skipped."
-            echo "::warning::This kubeconfig points at ${ACTUAL}."
-          elif [[ "$EXPECT" != "$ACTUAL" ]]; then
-            echo "::error::kubeconfig points at ${ACTUAL}, expected ${EXPECT} for ${CLUSTER}."
+          # If this cluster has been bootstrapped before, it carries its own
+          # name. Bootstrapping it as something else means the KUBECONFIG for
+          # this GitHub Environment points somewhere unexpected.
+          FOUND=$(kubectl -n eduide-system get configmap eduide-cluster-identity \
+                    -o jsonpath='{.data.clusterName}' 2>/dev/null || true)
+          if [[ -z "$FOUND" ]]; then
+            echo "::notice::this cluster carries no identity yet; it will be stamped as '${CLUSTER}'"
+          elif [[ "$FOUND" != "$CLUSTER" ]]; then
+            echo "::error::this cluster says it is '${FOUND}', but you asked to bootstrap '${CLUSTER}'."
+            echo "::error::The KUBECONFIG in this GitHub Environment probably points at the wrong cluster."
+            echo "::error::If the rename is deliberate, delete the configmap eduide-cluster-identity in eduide-system first."
             exit 1
           else
-            echo "cluster ${CLUSTER} confirmed: ${ACTUAL}"
+            echo "cluster '${CLUSTER}' confirmed"
           fi
 
       - name: Derive the shared Gateway listeners from the environments
@@ -166,6 +170,22 @@ jobs:
           helm upgrade --install eduide-cluster ./charts/theia-shared-gateway \
             -n gateway-system --create-namespace \
             -f listeners.yaml -f gw-secrets.yaml --wait --timeout 10m
+
+      - name: Stamp this cluster with its name
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          # This is how a tenant deploy knows which cluster it is talking to.
+          # Written here rather than typed into a manifest, because every
+          # cluster is behind the same Rancher endpoint - the API server URL
+          # is identical for all of them and so identifies nothing.
+          kubectl create namespace eduide-system --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n eduide-system create configmap eduide-cluster-identity \
+            --from-literal=clusterName="${CLUSTER}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n eduide-system label configmap eduide-cluster-identity \
+            app.kubernetes.io/part-of=eduide --overwrite
+          echo "stamped as '${CLUSTER}'"
 
       - name: Report
         if: ${{ always() && !inputs.dry_run }}

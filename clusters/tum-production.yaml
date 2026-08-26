@@ -4,10 +4,6 @@ metadata:
   name: tum-production
   displayName: TUM production cluster
 spec:
-  # The `server:` field out of this cluster's kubeconfig. Not a secret.
-  #   ./scripts/cluster-url.sh ~/.kube/tum-production.yaml
-  apiServerUrl: ""
-
   storageClassName: csi-rbd-sc
   gatewayClassName: envoy
 
