@@ -14,10 +14,10 @@
 theia-certificates:
   hosts:
     configuration:
-      baseHost: artemis.cit.tum.de
-      service: service.theia
-      landing: theia
-      instance: instance.theia
+      baseHost: artemis.aet.cit.tum.de
+      service: service.eduide
+      landing: eduide
+      instance: instance.eduide
 theia-cloud:
   app:
     name: Artemis Online IDE
@@ -36,7 +36,6 @@ theia-cloud:
       namespace: gateway-system
       sectionName: prod-webview
   operator:
-    storageClassName: csi-rbd-sc
     image: ghcr.io/eduide/eduide-cloud/operator:1.1.0
     replicas: 3
   landingPage:
@@ -49,17 +48,17 @@ theia-cloud:
     image: ghcr.io/eduide/eduidec-landing-page:1.1.0
   hosts:
     configuration:
-      baseHost: artemis.cit.tum.de
-      service: service.theia
-      landing: theia
-      instance: instance.theia
+      baseHost: artemis.aet.cit.tum.de
+      service: service.eduide
+      landing: eduide
+      instance: instance.eduide
     allWildcardInstances:
     - '*.webview.'
   keycloak:
     enable: true
     authUrl: https://keycloak.aet.cit.tum.de/
     realm: tum
-    clientId: theia
+    clientId: eduide
   service:
     image: ghcr.io/eduide/eduide-cloud/service:1.1.0
   preloading:
@@ -75,11 +74,5 @@ theia-cloud:
     - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
       args:
       - --version
-hosts:
-  configuration:
-    baseHost: artemis.cit.tum.de
-    service: service.theia
-    landing: theia
-    instance: instance.theia
 theia-appdefinitions:
   defaultImageTag: 1.1.0

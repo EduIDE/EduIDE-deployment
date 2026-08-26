@@ -115,6 +115,32 @@ jobs:
             echo "chart_version=$v"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Cluster defaults
+        run: |
+          set -euo pipefail
+          # Storage class is a property of the cluster, not of the environment,
+          # so it is stated once in clusters/<name>.yaml. An environment that
+          # sets its own is rejected by test-deploy-logic.sh: test3 used to ask
+          # for longhorn on a cluster that only offers csi-rbd-sc, which does
+          # not fail - the PVC simply never binds.
+          C="clusters/${{ steps.env.outputs.cluster }}.yaml"
+          SC=$(yq -r '.spec.storageClassName' "$C")
+          [[ -n "$SC" && "$SC" != "null" ]] || { echo "::error::${C} has no spec.storageClassName"; exit 1; }
+          # Two subcharts claim storage independently. theia-shared-cache's
+          # vendored reposilite chart has its own key and defaults to
+          # csi-rbd-sc, so setting only the operator's would leave a PVC that
+          # never binds on a cluster that does not offer that class.
+          cat > cluster-defaults.yaml <<EOF
+          theia-cloud:
+            operator:
+              storageClassName: ${SC}
+          theia-shared-cache:
+            reposilite:
+              persistence:
+                storageClass: ${SC}
+          EOF
+          echo "storageClassName: ${SC}"
+
       - name: Set up kubeconfig
         run: |
           set -euo pipefail
@@ -206,7 +232,7 @@ jobs:
           mapfile -t IMG < image-args.txt || true
           helm diff upgrade eduide ./charts/theia-cloud-combined \
             --namespace "${{ steps.env.outputs.namespace }}" \
-            -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
+            -f cluster-defaults.yaml -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
             --allow-unreleased --no-color > helm.diff 2>&1 || true
           {
             echo "<details><summary>Pending change (helm diff)</summary>"
@@ -243,7 +269,7 @@ jobs:
           helm upgrade --install eduide ./charts/theia-cloud-combined \
             --namespace "${{ steps.env.outputs.namespace }}" --create-namespace \
             --version "${{ steps.env.outputs.chart_version }}" \
-            -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
+            -f cluster-defaults.yaml -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
             --wait --atomic --timeout 15m
 
       - name: Force a pull when the tag is floating

@@ -29,11 +29,14 @@ The charts live in **EduIDE-Helm** and are pulled from
 ```bash
 helm template ... -f environments/_base.yaml -f environments/test1/values.yaml
 ./scripts/test-deploy-logic.sh          # override, tag and listener logic
-./scripts/verify-migration.sh           # compiled == legacy values (needs helm + GHCR)
+./scripts/legacy-diff.sh                # what the cutover changes on a live env
 ```
 
-`verify-migration.sh` must say `IDENTICAL` for every environment. It is the
-gate for cutting an environment over, and it can be deleted once
+`legacy-diff.sh` is a **report, not a gate**. It was a gate while the
+restructure was a pure refactor and every environment had to render
+`IDENTICAL`. Hostnames, Keycloak realms and client ids have since been changed
+deliberately, so it is expected to differ - read it before cutting an
+environment over rather than expecting it to be empty. It can be deleted once
 `deployments/` is gone.
 
 ## Things that will catch you out
@@ -54,10 +57,28 @@ manifest.
 work at it; a red build there should mean the code is broken, not that somebody
 was mid-experiment. `staging` is the manual one.
 
-**`gateway.listenerPrefix` is not the landing host.** Staging's landing host is
-`theia-staging` but its Gateway sections are `staging-*`; production's are
-`prod-*`, not `theia-*`. Getting this wrong attaches routes to sections that do
-not exist, and nothing fails until traffic does.
+**The Gateway section prefix is not the landing host.** Production's landing
+host is `eduide` but its Gateway sections are `prod-*`; `e2e-test`'s are `e2e-*`.
+The shared Gateway's listeners are derived from the `sectionName`s an
+environment declares, so those strings are load-bearing. Getting one wrong
+attaches a route to a section that does not exist, and nothing fails until
+traffic does.
+
+**A top-level `hosts:` key in a values file does nothing.** The umbrella chart
+has one, but only as a YAML anchor feeding its own two subcharts, and anchors
+resolve within a single file. An override file must set
+`theia-cloud.hosts.configuration` and `theia-certificates.hosts.configuration`
+separately. Every environment sets both; a third copy at the top level is
+silently ignored.
+
+**Storage class is a cluster property; an environment must not set it.**
+`clusters/<name>.yaml` states it once and the deploy renders it into a values
+file `-f`'d before `_base.yaml`. A copy in an environment file is how `test3`
+ended up asking for `longhorn` on a cluster that only offers `csi-rbd-sc` - no
+error, just a PVC that never binds. Two subcharts claim storage independently
+(the operator, and `theia-shared-cache`'s vendored reposilite chart with its own
+key), so the deploy sets both; `test-deploy-logic.sh` renders every environment
+against a sentinel and fails if any storage key escapes the cluster default.
 
 **Never set a blanket image tag.** A pull request only builds the images of the
 repo it came from. `--set global.imageTag=pr-451` puts the whole namespace into
@@ -87,7 +108,7 @@ healthy deploy.
 `theia-shared-cache` generates a Redis password when its lookup finds no
 existing Secret. Both are correct — they stop Helm resetting live state — but
 `lookup` returns empty under `helm template`, so both are masked in
-`render-envs.sh` and `verify-migration.sh`. **If you add a `lookup`, add it to
+`legacy-diff.sh`. **If you add a `lookup`, add it to
 the mask list too**, or the render diff becomes noise and stops being read.
 
 ## Adding an environment

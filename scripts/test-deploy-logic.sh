@@ -84,6 +84,43 @@ for f in "$ROOT"/environments/*/env.yaml; do
   ok "$env -> cluster $c"
 done
 
+# --- storage class follows the cluster ------------------------------------
+# Two subcharts claim storage independently, and theia-shared-cache's vendored
+# reposilite chart hardcodes csi-rbd-sc. If a third one appears, a PVC on the
+# eduide cluster will ask for a class that does not exist there and simply
+# never bind - no error, just a Pending pod. This asserts the deploy sets every
+# storage key the rendered output contains.
+echo
+echo "=== storage class follows the cluster ==="
+CHARTS="$ROOT/charts/theia-cloud-combined"
+if [[ -d "$CHARTS" ]] && helm dependency list "$CHARTS" >/dev/null 2>&1; then
+  W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
+  cp -R "$ROOT/charts" "$W/charts"
+  if helm dependency update "$W/charts/theia-cloud-combined" >/dev/null 2>&1; then
+    # The same two keys the Cluster defaults step in deploy.yml writes.
+    printf 'theia-cloud:\n  operator:\n    storageClassName: SENTINEL\ntheia-shared-cache:\n  reposilite:\n    persistence:\n      storageClass: SENTINEL\n' > "$W/cd.yaml"
+    for f in "$ROOT"/environments/*/env.yaml; do
+      env=$(basename "$(dirname "$f")")
+      ns=$(yq -r '.spec.namespace' "$f")
+      out=$(helm template eduide "$W/charts/theia-cloud-combined" -n "$ns" \
+              -f "$W/cd.yaml" -f "$ROOT/environments/_base.yaml" \
+              -f "$ROOT/environments/$env/values.yaml" 2>/dev/null) || {
+        bad "$env does not render" ""; continue; }
+      stray=$(grep -i 'storageclass' <<<"$out" | grep -v '\-\-storageClassName' | grep -vc 'SENTINEL' || true)
+      if [[ "$stray" -gt 0 ]]; then
+        bad "$env has $stray storage key(s) the cluster default does not reach" \
+            "$(grep -i 'storageclass' <<<"$out" | grep -v '\-\-storageClassName' | grep -v 'SENTINEL' | head -2 | tr -s ' ' | tr '\n' ';')"
+      else
+        ok "$env all storage keys follow the cluster"
+      fi
+    done
+  else
+    echo "  SKIP  helm dependency update failed (no GHCR login?)"
+  fi
+else
+  echo "  SKIP  charts not available"
+fi
+
 echo
 [[ $FAILED -eq 0 ]] && echo "ALL PASS" || echo "SOME FAILED"
 exit $FAILED

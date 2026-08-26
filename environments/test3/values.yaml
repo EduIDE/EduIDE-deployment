@@ -14,7 +14,7 @@
 theia-certificates:
   hosts:
     configuration:
-      baseHost: theia-test.artemis.cit.tum.de
+      baseHost: eduide.student.k8s.aet.cit.tum.de
       service: service.test3
       landing: test3
       instance: instance.test3
@@ -36,7 +36,6 @@ theia-cloud:
       namespace: gateway-system
       sectionName: test3-webview
   operator:
-    storageClassName: longhorn
     image: ghcr.io/eduide/eduide-cloud/operator:latest
   landingPage:
     loadingText: ⚡ Setting up your development workspace...
@@ -47,7 +46,7 @@ theia-cloud:
     image: ghcr.io/eduide/eduidec-landing-page:latest
   hosts:
     configuration:
-      baseHost: theia-test.artemis.cit.tum.de
+      baseHost: eduide.student.k8s.aet.cit.tum.de
       service: service.test3
       landing: test3
       instance: instance.test3
@@ -55,9 +54,9 @@ theia-cloud:
     - '*.webview.'
   keycloak:
     enable: true
-    authUrl: https://keycloak.aet.cit.tum.de/
-    realm: Test
-    clientId: theia-test
+    authUrl: https://keycloak-test.aet.cit.tum.de/
+    realm: tum
+    clientId: eduide
   service:
     image: ghcr.io/eduide/eduide-cloud/service:latest
   preloading:
@@ -74,9 +73,3 @@ theia-cloud:
     - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
       args:
       - --version
-hosts:
-  configuration:
-    baseHost: theia-test.artemis.cit.tum.de
-    service: service.test3
-    landing: test3
-    instance: instance.test3

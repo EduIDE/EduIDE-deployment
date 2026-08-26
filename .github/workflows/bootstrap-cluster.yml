@@ -110,9 +110,12 @@ jobs:
           # Every environment on this cluster contributes four listeners.
           # deployments/shared-gateway/values.yaml used to list them by hand,
           # which is why adding an environment needed two edits.
-          : > listeners.yaml
-          echo "gateway:" >> listeners.yaml
-          echo "  listeners:" >> listeners.yaml
+          CLASS=$(yq -r '.spec.gatewayClassName // "envoy"' "clusters/${CLUSTER}.yaml")
+          {
+            echo "gateway:"
+            echo "  className: ${CLASS}"
+            echo "  listeners:"
+          } > listeners.yaml
           found=0
           for f in environments/*/env.yaml; do
             env=$(basename "$(dirname "$f")")

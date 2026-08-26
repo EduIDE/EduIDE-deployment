@@ -99,9 +99,11 @@ jobs:
           done
           exit $fail
 
-  # Proves the manifests are equivalent to the values files they replace.
-  # Drop this job once deployments/ is deleted.
-  equivalence:
+  # Reports what the cutover will change on the environments that are already
+  # live. Not a gate: hostnames, Keycloak realms and client ids were changed
+  # deliberately, so a difference is the point. Drop this job once deployments/
+  # is deleted.
+  legacy-diff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -114,5 +116,13 @@ jobs:
           sudo chmod +x /usr/local/bin/yq
       - name: Log in to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
-      - name: Compiled values must render identically to the legacy values
-        run: ./scripts/verify-migration.sh
+      - name: What the cutover will change
+        run: |
+          set -uo pipefail
+          {
+            echo "### Pending change against what is live today"
+            echo ""
+            echo '```'
+            ./scripts/legacy-diff.sh 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

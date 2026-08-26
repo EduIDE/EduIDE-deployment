@@ -8,9 +8,10 @@ spec:
   # configuration can be reviewed, but deploying one stops at the identity
   # check until the cluster has been bootstrapped and a KUBECONFIG exists.
 
-  # Carried over from the TUM clusters as a starting point; confirm once the
-  # cluster exists. An environment can override it in spec.values.
-  storageClassName: csi-rbd-sc
+  # Bonn and Mannheim both run on local disks. Stated once here rather than in
+  # each environment, because it is a property of the cluster; an environment
+  # can still override it in its own values.yaml.
+  storageClassName: local
   gatewayClassName: envoy
 
   sharedGateway:

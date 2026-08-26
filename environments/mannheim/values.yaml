@@ -14,10 +14,10 @@
 theia-certificates:
   hosts:
     configuration:
-      baseHost: uni-mannheim.de
-      service: service.eduide
-      landing: eduide
-      instance: instance.eduide
+      baseHost: eduide.aet.cit.tum.de
+      service: service.mannheim
+      landing: mannheim
+      instance: instance.mannheim
 theia-cloud:
   app:
     name: EduIDE Mannheim
@@ -36,28 +36,26 @@ theia-cloud:
       namespace: gateway-system
       sectionName: mannheim-webview
   operator:
-    storageClassName: csi-rbd-sc
     image: ghcr.io/eduide/eduide-cloud/operator:1.0.0-rc0
   landingPage:
-    footerLinks:
-      attribution:
-        version: 'null'
     infoTitle: Welcome to EduIDE (Mannheim)
     image: ghcr.io/eduide/eduidec-landing-page:1.0.0-rc0
+    footerLinks:
+      attribution:
+        version: Mannheim-v1.0.0
   hosts:
     configuration:
-      baseHost: uni-mannheim.de
-      service: service.eduide
-      landing: eduide
-      instance: instance.eduide
+      baseHost: eduide.aet.cit.tum.de
+      service: service.mannheim
+      landing: mannheim
+      instance: instance.mannheim
     allWildcardInstances:
     - '*.webview.'
   keycloak:
     enable: true
-    authUrl: https://login.uni-mannheim.de/auth/
-    realm: eduide
-    clientId: eduide-mannheim
-    adminGroup: /eduide/admin
+    authUrl: https://keycloak.aet.cit.tum.de/
+    realm: REALM-TBD-mannheim
+    clientId: eduide
   service:
     image: ghcr.io/eduide/eduide-cloud/service:1.0.0-rc0
   preloading:
@@ -74,9 +72,3 @@ theia-cloud:
     - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
       args:
       - --version
-hosts:
-  configuration:
-    baseHost: uni-mannheim.de
-    service: service.eduide
-    landing: eduide
-    instance: instance.eduide
