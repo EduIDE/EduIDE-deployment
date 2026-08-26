@@ -124,6 +124,7 @@ jobs:
             echo "  listeners:"
           } > listeners.yaml
           : > namespaces.txt
+          : > certnames.txt
           found=0
           for f in environments/*/env.yaml; do
             env=$(basename "$(dirname "$f")")
@@ -162,6 +163,16 @@ jobs:
                 echo "      hostname: '${host}'"
                 echo "      tlsSecretName: ${secret}"
               } >> listeners.yaml
+
+              # Only names with a listener go on the certificate. cert-manager
+              # solves HTTP-01 by serving a token on port 80 per name; a name
+              # with no listener answers 404 and leaves the order pending, which
+              # blocks the certificate for every other name on it. The webview
+              # host is excluded because it is a wildcard, which HTTP-01 cannot
+              # do at all - it uses its own long-lived certificate.
+              case "$role" in
+                landing|service|instances) echo "$host" >> certnames.txt ;;
+              esac
 
               # cert-manager answers HTTP-01 challenges on plain :80. Webview is
               # a wildcard host and is never renewed that way.
@@ -205,6 +216,23 @@ jobs:
           else
             echo "::warning::no environment on ${CLUSTER} opts into monitoring"
             printf 'monitoring:\n  enabled: false\n' >> listeners.yaml
+          fi
+          # The certificate covering every environment on this cluster. Left to
+          # a human, this is the file nobody remembers to edit: test3 ran for
+          # 184 days on a certificate that covered test1, test2 and staging but
+          # not itself, so every browser rejected it and the landing page could
+          # not call its own REST service.
+          if [[ "$ACME_HTTP" == "true" && -s certnames.txt ]]; then
+            SHARED=$(yq -r '.spec.tls.landing' "clusters/${CLUSTER}.yaml")
+            {
+              echo "managedCertificates:"
+              echo "  enabled: true"
+              echo "  certificates:"
+              echo "    - name: ${SHARED}"
+              echo "      secretName: ${SHARED}"
+              echo "      dnsNames:"
+              sed 's/^/        - /' certnames.txt
+            } >> listeners.yaml
           fi
           echo "::notice::${found} environment(s) on ${CLUSTER}"
           echo "::group::derived cluster values"; cat listeners.yaml; echo "::endgroup::"

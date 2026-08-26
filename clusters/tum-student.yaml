@@ -19,10 +19,10 @@ spec:
     service: shared-theia-cert
     instances: shared-theia-cert
     webview: static-theia-cert
-    # cert-manager solves HTTP-01 challenges over plain :80, so a cluster using
-    # it needs an extra HTTP listener per host. This one uses a pre-issued
-    # wildcard instead and does not.
-    acmeHttp: false
+    # cert-manager solves HTTP-01 challenges over plain :80, so every host it
+    # renews needs an HTTP listener alongside its HTTPS one. Confirmed against
+    # the live cluster, which carries acme-*-http listeners per environment.
+    acmeHttp: true
 
   sharedGateway:
     namespace: eduide-system

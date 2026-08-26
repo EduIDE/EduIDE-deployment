@@ -90,6 +90,22 @@ installation is under `eduide.aet.cit.tum.de`; `tum-production` is
 `eduide.artemis.aet.cit.tum.de` because it sits behind a different load
 balancer. It reads like a typo. It is not.
 
+**A certificate that does not name a host fails silently too, and worse.** The
+Gateway reports `Programmed=True ResolvedRefs=True` for a listener whose secret
+holds a certificate for entirely different hostnames - Gateway API never
+compares the two. The only symptom is a browser warning, and then the landing
+page cannot call its own REST service, because the browser blocks that
+cross-origin XHR over an invalid certificate. test3 ran that way for 184 days.
+`bootstrap-cluster.yml` derives the certificate's names from the same pass that
+derives the listeners, so the two cannot disagree.
+
+**Only put names with a listener on a certificate.** cert-manager solves
+HTTP-01 by serving a token on port 80 for each name. A name with no listener
+answers 404, its challenge stays pending, and the pending order blocks the
+certificate for every other name on it. Adding `cache.test3` and `repo.test3`
+by hand - which no listener serves, because test3 runs no shared cache - stalled
+the whole reissue until they were removed.
+
 **An HTTPS listener without a TLS secret fails silently.** It renders
 `certificateRefs` with an empty name; the Gateway is accepted and just never
 programs TLS for that hostname, so the first symptom is a browser connection

@@ -305,6 +305,19 @@ cert-manager issue one certificate per role and therefore also needs
 challenges. The webview secret is always separate — those hosts are two labels
 below the instance host, so no certificate covering the others covers them.
 
+`Bootstrap cluster` also derives the certificate's `dnsNames` from the same
+pass, so an environment gets its certificate names when it gets its listeners.
+Only the landing, service and instance hosts go on it: cert-manager solves
+HTTP-01 by serving a token on port 80 per name, so a name with no listener stays
+pending and blocks the certificate for every other name on it. The webview host
+is a wildcard, which HTTP-01 cannot do at all, and keeps its own long-lived
+certificate.
+
+Nothing detects a certificate that omits a host. The Gateway reports the
+listener healthy either way - Gateway API never compares the certificate's names
+against the listener's hostname - so the first symptom is a browser warning, and
+the second is the landing page silently failing to reach its own REST service.
+
 A listener with no secret renders an empty `certificateRefs` entry. Nothing
 rejects it: the Gateway is accepted and simply never programs TLS for that
 hostname, so the first symptom is a browser connection failure. The chart fails
