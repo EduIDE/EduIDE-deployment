@@ -29,9 +29,9 @@ theia-cloud:
   issuer:
     email: ls1.itg@in.tum.de
 
-  keycloak:
-    enable: true
-    authUrl: https://keycloak.aet.cit.tum.de/
+  # Keycloak is NOT here: realm, clientId and authUrl are per environment.
+  # TUM installations share a server and differ by realm; installations at
+  # other universities bring their own server. See render-values.sh.
 
   gateway:
     enabled: true

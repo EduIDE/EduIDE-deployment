@@ -141,6 +141,63 @@ name, since that almost always means the `KUBECONFIG` for that GitHub
 Environment points somewhere unexpected. Delete the ConfigMap first if the
 rename is genuinely intended.
 
+## Identity provider
+
+Every environment configures its own. Nothing about Keycloak is shared.
+
+```yaml
+spec:
+  keycloak:
+    authUrl: https://sso.uni-bonn.de/auth/   # defaults to the TUM server
+    realm: eduide
+    clientId: eduide-bonn
+    adminGroup: /eduide/admin                # optional, admin scaling API
+    enabled: true                            # optional, see below
+```
+
+How it resolves today:
+
+| Environment | authUrl | realm | clientId |
+|---|---|---|---|
+| test1, test2, test3, e2e-test | TUM | `Test` | `theia-test` |
+| staging | TUM | `Test` | `theia-staging` |
+| tum-production | TUM | `tum` | `theia` |
+| bonn | `sso.uni-bonn.de` | `eduide` | `eduide-bonn` |
+| mannheim | `login.uni-mannheim.de` | `eduide` | `eduide-mannheim` |
+
+`authUrl` defaults to the TUM server because every TUM environment uses it and
+they differ only by realm. An installation elsewhere sets its own and then
+shares nothing with TUM's.
+
+The Bonn and Mannheim values are **placeholders**. A wrong `authUrl`, `realm` or
+`clientId` fails at login, not at deploy, so nothing in CI catches it. Confirm
+all of them with the university before the first deploy.
+
+**Secrets are not here.** `clientSecret` and `cookieSecret` come from the
+environment's GitHub Environment secrets, never from this file.
+
+### A different provider entirely
+
+The chart also supports a generic OIDC provider, added for Gitea and mutually
+exclusive with Keycloak. An environment needing it sets:
+
+```yaml
+spec:
+  keycloak:
+    enabled: false
+    realm: unused        # still required by the schema
+    clientId: unused
+  values:
+    theia-cloud:
+      gitea:
+        enable: true
+        issuerUrl: https://git.example.edu
+        clientId: eduide
+```
+
+Secrets again come from the GitHub Environment. The chart refuses to render if
+both providers are enabled at once.
+
 ## Things that are not what they look like
 
 **`gateway.listenerPrefix` is not the landing host.** Staging's landing host is

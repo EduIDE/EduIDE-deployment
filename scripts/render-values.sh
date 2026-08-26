@@ -38,6 +38,11 @@ GW_NS=$(yq -r '.spec.sharedGateway.namespace // "gateway-system"' "$CLUSTER_FILE
 STORAGE=$(yq -r '.spec.storageClassName' "$CLUSTER_FILE")
 IMAGE_TAG=$(yq -r '.spec.imageTag // "latest"' "$ENV_FILE")
 
+# Defaults to the TUM Keycloak, which is what every TUM environment uses.
+# Installations elsewhere set their own.
+KEYCLOAK_URL=$(yq -r '.spec.keycloak.authUrl // "https://keycloak.aet.cit.tum.de/"' "$ENV_FILE")
+KEYCLOAK_ADMIN_GROUP=$(yq -r '.spec.keycloak.adminGroup // ""' "$ENV_FILE")
+
 # The IDE images preloaded onto every node. Kept in step with the app set the
 # landing page offers; the old files listed these by hand per environment and
 # drifted apart as a result.
@@ -72,9 +77,17 @@ derived=$(mktemp); trap 'rm -f "$derived"' EXIT
   yq -r '.spec.hosts.wildcardPrefixes[]? // "*.webview."' "$ENV_FILE" | sed 's/^/      - "/;s/$/"/'
   echo "  app:"
   echo "    name: $(yq -r '.spec.branding.appName' "$ENV_FILE")"
+  # Keycloak is per environment, not per platform. TUM's installations share one
+  # server and differ only by realm; an installation at another university
+  # brings its own server entirely, so authUrl has to be settable here.
   echo "  keycloak:"
+  echo "    enable: $(yq -r '.spec.keycloak.enabled // true' "$ENV_FILE")"
+  echo "    authUrl: \"$KEYCLOAK_URL\""
   echo "    realm: \"$(yq -r '.spec.keycloak.realm' "$ENV_FILE")\""
   echo "    clientId: \"$(yq -r '.spec.keycloak.clientId' "$ENV_FILE")\""
+  if [[ -n "$KEYCLOAK_ADMIN_GROUP" ]]; then
+    echo "    adminGroup: \"$KEYCLOAK_ADMIN_GROUP\""
+  fi
   echo "  operator:"
   echo "    storageClassName: $STORAGE"
   echo "    image: ghcr.io/eduide/eduide-cloud/operator:$IMAGE_TAG"

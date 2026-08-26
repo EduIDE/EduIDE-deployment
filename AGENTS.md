@@ -45,6 +45,11 @@ add an API server URL to the cluster manifests: every cluster sits behind the
 same Rancher endpoint, so that URL is identical for all of them and comparing
 it would pass whichever cluster the kubeconfig reached.
 
+**Keycloak is per environment, including `authUrl`.** TUM installations share a
+server and differ only by realm; Bonn and Mannheim bring their own. Nothing
+about the identity provider belongs in `_base.yaml`, and secrets never go in a
+manifest.
+
 **`e2e-test` follows main and is tested automatically.** Do not point manual
 work at it; a red build there should mean the code is broken, not that somebody
 was mid-experiment. `staging` is the manual one.

@@ -2,40 +2,88 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "EduIDE Environment",
   "type": "object",
-  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
   "additionalProperties": false,
   "properties": {
-    "apiVersion": { "const": "eduide.dev/v1" },
-    "kind": { "const": "Environment" },
+    "apiVersion": {
+      "const": "eduide.dev/v1"
+    },
+    "kind": {
+      "const": "Environment"
+    },
     "metadata": {
       "type": "object",
-      "required": ["name", "tier"],
+      "required": [
+        "name",
+        "tier"
+      ],
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-        "displayName": { "type": "string" },
-        "tier": { "enum": ["test", "staging", "production"] },
-        "owners": { "type": "array", "items": { "type": "string" } }
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "test",
+            "staging",
+            "production"
+          ]
+        },
+        "owners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
       }
     },
     "spec": {
       "type": "object",
-      "required": ["cluster", "namespace", "platform", "hosts", "gateway", "keycloak", "branding"],
+      "required": [
+        "cluster",
+        "namespace",
+        "platform",
+        "hosts",
+        "gateway",
+        "keycloak",
+        "branding"
+      ],
       "additionalProperties": false,
       "properties": {
         "cluster": {
           "type": "string",
           "description": "Must match a file in clusters/. Asserted against the kubeconfig at deploy time."
         },
-        "namespace": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
         "platform": {
           "type": "object",
-          "required": ["chartVersion", "channel"],
+          "required": [
+            "chartVersion",
+            "channel"
+          ],
           "additionalProperties": false,
           "properties": {
-            "chartVersion": { "type": "string" },
+            "chartVersion": {
+              "type": "string"
+            },
             "channel": {
-              "enum": ["release", "main", "pinned"],
+              "enum": [
+                "release",
+                "main",
+                "pinned"
+              ],
               "description": "release pins images to the chart appVersion; main follows an immutable main-<sha> tag; pinned uses spec.imageTag."
             }
           }
@@ -46,22 +94,48 @@
         },
         "hosts": {
           "type": "object",
-          "required": ["baseHost", "landing"],
+          "required": [
+            "baseHost",
+            "landing"
+          ],
           "additionalProperties": false,
           "properties": {
-            "baseHost": { "type": "string" },
-            "landing": { "type": "string" },
-            "service": { "type": "string", "description": "Defaults to service.<landing>" },
-            "instance": { "type": "string", "description": "Defaults to instance.<landing>" },
-            "wildcardPrefixes": { "type": "array", "items": { "type": "string" } }
+            "baseHost": {
+              "type": "string"
+            },
+            "landing": {
+              "type": "string"
+            },
+            "service": {
+              "type": "string",
+              "description": "Defaults to service.<landing>"
+            },
+            "instance": {
+              "type": "string",
+              "description": "Defaults to instance.<landing>"
+            },
+            "wildcardPrefixes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         },
         "gateway": {
           "type": "object",
-          "required": ["mode"],
+          "required": [
+            "mode"
+          ],
           "additionalProperties": false,
           "properties": {
-            "mode": { "enum": ["shared", "local", "none"] },
+            "mode": {
+              "enum": [
+                "shared",
+                "local",
+                "none"
+              ]
+            },
             "listenerPrefix": {
               "type": "string",
               "description": "Derives the four sectionNames. NOT necessarily the landing host: staging uses 'staging' and production uses 'prod'."
@@ -70,34 +144,68 @@
         },
         "keycloak": {
           "type": "object",
-          "required": ["realm", "clientId"],
+          "required": [
+            "realm",
+            "clientId"
+          ],
           "additionalProperties": false,
           "properties": {
-            "realm": { "type": "string" },
-            "clientId": { "type": "string" }
+            "realm": {
+              "type": "string"
+            },
+            "clientId": {
+              "type": "string"
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "Defaults to true. Set false only when another OIDC provider is configured through spec.values."
+            },
+            "authUrl": {
+              "type": "string",
+              "description": "Keycloak base URL, with trailing slash. Defaults to the TUM server; installations elsewhere set their own."
+            },
+            "adminGroup": {
+              "type": "string",
+              "description": "Group whose members may use the admin scaling API, e.g. /eduide/admin."
+            }
           }
         },
         "branding": {
           "type": "object",
-          "required": ["appName", "infoTitle"],
+          "required": [
+            "appName",
+            "infoTitle"
+          ],
           "additionalProperties": false,
           "properties": {
-            "appName": { "type": "string" },
-            "infoTitle": { "type": "string" },
-            "footerVersion": { "type": "string" }
+            "appName": {
+              "type": "string"
+            },
+            "infoTitle": {
+              "type": "string"
+            },
+            "footerVersion": {
+              "type": "string"
+            }
           }
         },
         "preloadApps": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "IDE images to pre-pull on every node. Defaults to the standard app set."
         },
         "addons": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "sharedCache": { "type": "boolean" },
-            "garbageCollector": { "type": "boolean" }
+            "sharedCache": {
+              "type": "boolean"
+            },
+            "garbageCollector": {
+              "type": "boolean"
+            }
           }
         },
         "values": {
