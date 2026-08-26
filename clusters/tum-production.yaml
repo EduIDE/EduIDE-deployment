@@ -1,10 +1,11 @@
 apiVersion: eduide.dev/v1
 kind: Cluster
 metadata:
-  name: prod-tum
+  name: tum-production
   displayName: TUM production cluster
 spec:
-  # TODO: fill in from the KUBECONFIG used by the theia-prod environment.
+  # The `server:` field out of this cluster's kubeconfig. Not a secret.
+  #   ./scripts/cluster-url.sh ~/.kube/tum-production.yaml
   apiServerUrl: ""
 
   storageClassName: csi-rbd-sc
@@ -19,5 +20,5 @@ spec:
   # the test cluster where the wildcard secrets are managed by hand.
   loadBalancerIP: 131.159.88.82
 
-  runner: arc-buildkit-eduide-stud-amd64
-  bootstrapEnvironment: cluster-prod-tum
+  runner: ubuntu-latest
+  bootstrapEnvironment: cluster-tum-production

@@ -1,0 +1,92 @@
+# Deploy the e2e-test environment from main, then run the functional tests
+# against it.
+#
+# The environment exists so the suite has somewhere to run that nobody is using.
+# Running it against a shared test environment means a red build might only mean
+# a colleague was mid-experiment, which is how a suite stops being trusted.
+#
+# Only the functional tests run here. Load and benchmark runs stay manual: they
+# start real IDE sessions and take long enough that nobody would wait for them
+# on a merge.
+
+name: Deploy e2e and test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'environments/**'
+      - 'clusters/**'
+      - 'charts/**'
+      - 'scripts/**'
+      - '.github/workflows/deploy*.yml'
+  repository_dispatch:
+    types: [component-main-updated]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tags:
+    runs-on: ubuntu-latest
+    outputs:
+      json: ${{ steps.j.outputs.json }}
+    steps:
+      - id: j
+        env:
+          SHA: ${{ github.event.client_payload.sha }}
+          COMPONENT: ${{ github.event.client_payload.component }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${SHA:-}" || -z "${COMPONENT:-}" ]]; then
+            echo 'json={}' >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          case "$COMPONENT" in
+            EduIDE-Cloud)        key=controlPlane ;;
+            EduIDE)              key=ide ;;
+            EduIDE-Landing-Page) key=landingPage ;;
+            *)
+              echo "::warning::unknown component '${COMPONENT}'"
+              echo 'json={}' >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
+          echo "json=$(jq -cn --arg k "$key" --arg v "latest-${SHA:0:7}" '{($k): $v}')" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: tags
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: e2e-test
+      image_overrides: ${{ needs.tags.outputs.json }}
+    secrets: inherit
+
+  # Only meaningful because deploy.yml uses --wait --atomic: the deploy job
+  # going green means the rollout is actually healthy, so a test failure here
+  # is about the code rather than about a half-finished deploy.
+  e2e:
+    needs: deploy
+    uses: EduIDE/theia-scale-tests/.github/workflows/functional-tests.yml@main
+    with:
+      environment: e2e-test
+    secrets:
+      KEYCLOAK_USER: ${{ secrets.E2E_KEYCLOAK_USER }}
+      KEYCLOAK_PWD: ${{ secrets.E2E_KEYCLOAK_PWD }}
+
+  report:
+    needs: [deploy, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          {
+            echo "### e2e-test"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Deploy | ${{ needs.deploy.result }} |"
+            echo "| Functional tests | ${{ needs.e2e.result }} |"
+            echo ""
+            if [[ "${{ needs.e2e.result }}" != "success" ]]; then
+              echo "The deploy reached a healthy rollout but the tests did not pass, so this is a code problem rather than a deployment one."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

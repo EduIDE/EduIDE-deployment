@@ -18,7 +18,7 @@ on:
       environment:
         required: true
         type: choice
-        options: [test1, test2, test3, staging, prod-tum]
+        options: [test1, test2, test3, e2e-test, staging, tum-production, bonn, mannheim]
       revision:
         description: "Helm revision to roll back to (blank goes back one)"
         required: false

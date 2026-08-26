@@ -1,28 +1,32 @@
-# Staging follows main.
+# Deploy staging.
 #
-# Triggered by a push here, or by a repository_dispatch from a component repo
-# when its main moves. The component sends its commit SHA so staging runs an
-# immutable latest-<sha> tag rather than a floating one.
+# Deliberately NOT automatic. `e2e-test` is the environment that follows main
+# and gets tested; staging is where a human puts something to look at before it
+# goes near production. Two environments silently racing the same trigger is how
+# you end up trusting neither.
 #
-# That detail is load-bearing: with a floating tag the pod template never
-# changes between upgrades, so `helm --wait` sees no diff and returns
-# immediately without anything being pulled, and --atomic has nothing to roll
-# back if the new image is broken.
+# Image tags are immutable `latest-<sha>`, never a floating `latest`: with a
+# floating tag the pod template does not change between upgrades, so
+# `helm --wait` returns immediately without pulling anything and `--atomic` has
+# nothing to roll back if the new image is broken.
 
 name: Deploy staging
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'environments/**'
-      - 'clusters/**'
-      - 'charts/**'
-      - 'scripts/**'
-      - '.github/workflows/deploy*.yml'
-  repository_dispatch:
-    types: [component-main-updated]
   workflow_dispatch:
+    inputs:
+      component:
+        description: Pin one component, or "none" to use the chart defaults
+        required: false
+        type: choice
+        options: [none, EduIDE-Cloud, EduIDE, EduIDE-Landing-Page]
+        default: none
+      component_tag:
+        description: "Tag for that component, e.g. latest-abc1234 or pr-451"
+        required: false
+        type: string
+  repository_dispatch:
+    types: [staging-deploy-request]
 
 permissions:
   contents: read
@@ -36,22 +40,35 @@ jobs:
       - id: j
         env:
           SHA: ${{ github.event.client_payload.sha }}
-          COMPONENT: ${{ github.event.client_payload.component }}
+          COMPONENT: ${{ github.event.client_payload.component || inputs.component }}
+          TAG: ${{ inputs.component_tag }}
         run: |
           set -euo pipefail
-          if [[ -z "${SHA:-}" || -z "${COMPONENT:-}" ]]; then
+          # Either a tag typed into the form, or a SHA from a dispatch.
+          value="${TAG:-}"
+          if [[ -z "$value" && -n "${SHA:-}" ]]; then
+            value="latest-${SHA:0:7}"
+          fi
+          # "none" is the form's way of saying "no override"; the dispatch path
+          # simply sends nothing.
+          if [[ "${COMPONENT:-none}" == "none" ]]; then
+            COMPONENT=""
+          fi
+          if [[ -z "$value" || -z "$COMPONENT" ]]; then
             echo 'json={}' >> "$GITHUB_OUTPUT"
             exit 0
+          fi
+          if [[ ! "$value" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$ ]]; then
+            echo "::error::invalid image tag: ${value}"
+            exit 1
           fi
           case "$COMPONENT" in
             EduIDE-Cloud)        key=controlPlane ;;
             EduIDE)              key=ide ;;
             EduIDE-Landing-Page) key=landingPage ;;
-            *)
-              echo "::warning::unknown component '${COMPONENT}', deploying without an override"
-              echo 'json={}' >> "$GITHUB_OUTPUT"; exit 0 ;;
+            *) echo "::error::unknown component: ${COMPONENT}"; exit 1 ;;
           esac
-          echo "json=$(jq -cn --arg k "$key" --arg v "latest-${SHA:0:7}" '{($k): $v}')" >> "$GITHUB_OUTPUT"
+          echo "json=$(jq -cn --arg k "$key" --arg v "$value" '{($k): $v}')" >> "$GITHUB_OUTPUT"
 
   deploy:
     needs: tags

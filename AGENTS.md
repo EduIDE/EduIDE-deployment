@@ -13,8 +13,13 @@ environments/_base.yaml         settings identical in every environment
 scripts/render-values.sh        compiles a manifest into Helm values
 ```
 
-An environment is one namespace on one cluster. Five exist: `test1`, `test2`,
-`test3`, `staging`, `prod-tum`.
+An environment is one namespace on one cluster.
+
+| Cluster | Environments |
+|---|---|
+| `tum-student` | `test1`, `test2`, `test3`, `e2e-test`, `staging` |
+| `tum-production` | `tum-production` |
+| `eduide` | `bonn`, `mannheim` (cluster not provisioned yet) |
 
 The charts live in **EduIDE-Helm** and are pulled from
 `oci://ghcr.io/eduide/charts`. Chart templates are not edited here.
@@ -32,6 +37,10 @@ gate for cutting an environment over, and it can be deleted once
 `deployments/` is gone.
 
 ## Things that will catch you out
+
+**`e2e-test` follows main and is tested automatically.** Do not point manual
+work at it; a red build there should mean the code is broken, not that somebody
+was mid-experiment. `staging` is the manual one.
 
 **`gateway.listenerPrefix` is not the landing host.** Staging's landing host is
 `theia-staging` but its Gateway sections are `staging-*`; production's are

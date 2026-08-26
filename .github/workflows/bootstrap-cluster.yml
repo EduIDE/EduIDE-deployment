@@ -23,7 +23,7 @@ on:
         description: Which cluster
         required: true
         type: choice
-        options: [aet-stud, parma, prod-tum]
+        options: [tum-student, tum-production, eduide]
       chart_version:
         description: Cluster chart version
         required: true

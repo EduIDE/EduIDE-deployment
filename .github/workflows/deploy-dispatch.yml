@@ -12,7 +12,7 @@ on:
         description: Which environment
         required: true
         type: choice
-        options: [test1, test2, test3, staging, prod-tum]
+        options: [test1, test2, test3, e2e-test, staging, tum-production, bonn, mannheim]
       chart_version:
         description: "Chart version (blank uses the environment's own pin)"
         required: false

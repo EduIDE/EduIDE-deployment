@@ -21,7 +21,7 @@ legacy_dir() {
     test2)    echo "test2.theia-test.artemis.cit.tum.de" ;;
     test3)    echo "test3.theia-test.artemis.cit.tum.de" ;;
     staging)  echo "theia-staging.artemis.cit.tum.de" ;;
-    prod-tum) echo "theia.artemis.cit.tum.de" ;;
+    tum-production) echo "theia.artemis.cit.tum.de" ;;
   esac
 }
 
