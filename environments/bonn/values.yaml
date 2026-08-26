@@ -23,16 +23,16 @@ app:
 gateway:
   parentRefs:
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: bonn-landing
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: bonn-service
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: bonn-instances
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: bonn-webview
 landingPage:
   infoTitle: Welcome to EduIDE (Bonn)
@@ -52,5 +52,5 @@ keycloak:
   authUrl: https://keycloak.aet.cit.tum.de/
   realm: REALM-TBD-bonn
   clientId: eduide
-sharedCache:
+eduide-shared-cache:
   enabled: false

@@ -8,7 +8,7 @@ spec:
   gatewayClassName: envoy
 
   sharedGateway:
-    namespace: gateway-system
+    namespace: eduide-system
     name: theia-shared-gateway
 
   # Deploying needs to reach the API server, unlike building. Per-cluster

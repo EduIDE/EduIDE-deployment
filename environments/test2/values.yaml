@@ -16,16 +16,16 @@ app:
 gateway:
   parentRefs:
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: test2-landing
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: test2-service
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: test2-instances
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: test2-webview
 landingPage:
   footerLinks:
@@ -45,5 +45,5 @@ keycloak:
   authUrl: https://keycloak-test.aet.cit.tum.de/
   realm: tum
   clientId: eduide
-sharedCache:
+eduide-shared-cache:
   enabled: true

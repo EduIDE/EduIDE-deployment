@@ -23,16 +23,16 @@ app:
 gateway:
   parentRefs:
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: mannheim-landing
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: mannheim-service
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: mannheim-instances
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: mannheim-webview
 landingPage:
   infoTitle: Welcome to EduIDE (Mannheim)
@@ -52,5 +52,5 @@ keycloak:
   authUrl: https://keycloak.aet.cit.tum.de/
   realm: REALM-TBD-mannheim
   clientId: eduide
-sharedCache:
+eduide-shared-cache:
   enabled: false

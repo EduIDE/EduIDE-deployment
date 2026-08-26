@@ -56,4 +56,17 @@ Monitoring is essential for understanding system health, resource usage, and per
 > automation and may have drifted from what is running.
 >
 > Only the `theia-monitoring` chart (PodMonitors and Grafana dashboard
-> ConfigMaps) is installed automatically, by `.github/workflows/deploy-theia.yml`.
+> ConfigMaps) is part of the `eduide-cluster` chart and is installed by
+> `.github/workflows/bootstrap-cluster.yml`, once per cluster.
+
+## The watched namespaces are derived
+
+The two PodMonitors name every namespace they scrape. That list used to be
+written by hand in the chart's values and had gone stale — it still named
+`theia` and `theia-staging`, so some environments were scraped and others were
+not, silently.
+
+`Bootstrap cluster` now derives it from the environments that claim the
+cluster, the same way it derives the Gateway's listeners. Adding an environment
+picks up monitoring with no second edit. A PodMonitor rendered with an empty
+namespace list fails the template rather than watching nothing.

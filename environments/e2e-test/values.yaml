@@ -16,16 +16,16 @@ app:
 gateway:
   parentRefs:
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: e2e-landing
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: e2e-service
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: e2e-instances
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: e2e-webview
 operator:
   sessionsPerUser: 1000
@@ -47,5 +47,5 @@ keycloak:
   authUrl: https://keycloak-test.aet.cit.tum.de/
   realm: tum
   clientId: eduide
-sharedCache:
+eduide-shared-cache:
   enabled: true

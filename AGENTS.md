@@ -24,11 +24,17 @@ An environment is one namespace on one cluster.
 The charts live in **EduIDE-Helm** and are pulled from
 `oci://ghcr.io/eduide/charts`. Chart templates are not edited here.
 
-Since chart 2.0.0 there is **one tenant chart**, `eduide`, replacing the
-`theia-cloud-combined` umbrella and its five subcharts. Values files are keyed
-at the top level (`hosts:`, `keycloak:`, `operator:`), not under
-`theia-cloud:`. `charts/` and `deployments/` in this repo are the superseded
-setup, kept only until the fresh installations are up.
+Since 2.0.0 there are **two charts and no chart source in this repo**:
+
+| Chart | Installed by | Owns |
+|---|---|---|
+| `eduide-cluster` | `bootstrap-cluster.yml`, once per cluster | CRDs, conversion webhook, ClusterRoles, issuers, the shared Gateway, PodMonitors, dashboards |
+| `eduide` | `deploy.yml`, once per environment | operator, REST service, landing page, routes, app definitions, preloading |
+
+Values files are keyed at the top level (`hosts:`, `keycloak:`, `operator:`).
+The `theia-cloud-combined` umbrella, its five subcharts and the pre-restructure
+workflows are gone - the installations are being brought up fresh, so there was
+nothing to migrate.
 
 ## Before you change anything
 
@@ -80,7 +86,7 @@ operator, and the shared cache's vendored reposilite chart with its own key), so
 the deploy sets both; `test-deploy-logic.sh` renders every environment against a
 sentinel and fails if any storage key escapes the cluster default.
 
-**The dependency cache is off in production.** `sharedCache.enabled: false` in
+**The dependency cache is off in production.** `eduide-shared-cache.enabled: false` in
 all three production installations, asserted by `test-deploy-logic.sh`. Nothing
 consumes it anywhere today regardless: the operator's `enableBuildCaching` and
 `enableDependencyCaching` default to false and no environment overrides them,
@@ -109,9 +115,22 @@ roll back.
 list and in Actions debug logs.
 
 **Nothing cluster-scoped is installed by a tenant deploy.** CRDs, the conversion
-webhook and the shared Gateway belong to `bootstrap-cluster.yml`. Reinstalling
-them from every tenant deploy is what the old six-attempt retry loop was
-working around.
+webhook, the shared Gateway and the PodMonitors are all in `eduide-cluster`,
+installed once per cluster by `bootstrap-cluster.yml`. Reinstalling them from
+every tenant deploy is what the old six-attempt retry loop was working around.
+
+**Three things are derived from the environments on a cluster, not written
+down.** Gateway listeners come from each environment's `gateway.parentRefs`
+plus its hosts; the PodMonitors' watched namespaces come from
+`spec.namespace`. Both used to be hand-written lists in a second file, and both
+had gone stale - the monitoring one still named `theia` and `theia-staging`,
+so some environments were scraped and others silently were not. Adding an
+environment is one directory; do not add a second edit anywhere.
+
+**The shared Gateway is in `eduide-system`, not `gateway-system`.** All the
+cluster-scoped EduIDE resources sit in one namespace. `envoy-gateway-system` is
+a different thing entirely - Envoy Gateway's own operator namespace - and is
+not ours to move.
 
 **Preloading is a separate Helm release.** It pulls ~10 multi-GB images on every
 node; under `--wait` it would time out and `--atomic` would then roll back a

@@ -8,7 +8,7 @@ spec:
   gatewayClassName: envoy
 
   sharedGateway:
-    namespace: gateway-system
+    namespace: eduide-system
     name: theia-shared-gateway
 
   # This cluster runs its own GatewayClass and EnvoyProxy with a MetalLB

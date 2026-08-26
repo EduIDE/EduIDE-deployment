@@ -149,10 +149,10 @@ so their `sectionName`s are load-bearing:
 theia-cloud:
   gateway:
     parentRefs:
-      - { name: theia-shared-gateway, namespace: gateway-system, sectionName: bonn-landing }
-      - { name: theia-shared-gateway, namespace: gateway-system, sectionName: bonn-service }
-      - { name: theia-shared-gateway, namespace: gateway-system, sectionName: bonn-instances }
-      - { name: theia-shared-gateway, namespace: gateway-system, sectionName: bonn-webview }
+      - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-landing }
+      - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-service }
+      - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-instances }
+      - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-webview }
 ```
 
 The prefix (`bonn-`) must be unique on the cluster; CI rejects a collision.
@@ -226,12 +226,12 @@ three agree.
 
 ## The dependency cache
 
-`sharedCache` deploys a Gradle build cache, a Redis and a reposilite
+`eduide-shared-cache` deploys a Gradle build cache, a Redis and a reposilite
 Maven proxy with a 20Gi PVC. It is **off in all three production
 installations** and on in test and staging.
 
 ```yaml
-sharedCache:
+eduide-shared-cache:
   enabled: false
 ```
 
@@ -251,7 +251,7 @@ URLs as well, not just re-enabling the chart.
 spec:
   storageClassName: local          # applied to every environment on this cluster
   gatewayClassName: envoy          # used when the shared Gateway is installed
-  sharedGateway: { namespace: gateway-system, name: theia-shared-gateway }
+  sharedGateway: { namespace: eduide-system, name: theia-shared-gateway }
   runner: ubuntu-latest            # deploying needs to reach the API server
   bootstrapEnvironment: cluster-eduide
 ```

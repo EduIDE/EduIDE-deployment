@@ -104,7 +104,7 @@ if helm show chart "$CHART" "${VER_ARG[@]}" >/dev/null 2>&1; then
   {
     # The same two keys the Cluster defaults step in deploy.yml writes.
     printf 'operator:\n  storageClassName: SENTINEL\n'
-    printf 'sharedCache:\n  reposilite:\n    persistence:\n      storageClass: SENTINEL\n'
+    printf 'eduide-shared-cache:\n  reposilite:\n    persistence:\n      storageClass: SENTINEL\n'
   } > "$W/cd.yaml"
   printf 'keycloak:\n  cookieSecret: x\nservice:\n  adminApiToken: dG9r\n' > "$W/sec.yaml"
   {
@@ -129,7 +129,7 @@ else
 fi
 
 # --- the dependency cache stays off in production --------------------------
-# The chart declares the cache with `condition: sharedCache.enabled`, so one key
+# The chart declares the cache with `condition: eduide-shared-cache.enabled`, so one key
 # now switches it off cleanly - including its vendored reposilite subchart and
 # the 20Gi PVC that came with it.
 echo
@@ -138,11 +138,11 @@ for f in "$ROOT"/environments/*/env.yaml; do
   env=$(basename "$(dirname "$f")")
   [[ "$(yq -r '.metadata.tier' "$f")" == "production" ]] || continue
   v="$ROOT/environments/$env/values.yaml"
-  a=$(yq -r '.sharedCache.enabled' "$v")
+  a=$(yq -r '.["eduide-shared-cache"].enabled' "$v")
   if [[ "$a" == "false" ]]; then
     ok "$env dependency cache off"
   else
-    bad "$env must set sharedCache.enabled to false" "sharedCache.enabled=$a"
+    bad "$env must set eduide-shared-cache.enabled to false" "eduide-shared-cache.enabled=$a"
   fi
 done
 

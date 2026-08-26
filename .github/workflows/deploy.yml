@@ -133,7 +133,7 @@ jobs:
           cat > cluster-defaults.yaml <<EOF
           operator:
             storageClassName: ${SC}
-          sharedCache:
+          eduide-shared-cache:
             reposilite:
               persistence:
                 storageClass: ${SC}

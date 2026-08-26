@@ -23,16 +23,16 @@ app:
 gateway:
   parentRefs:
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: prod-landing
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: prod-service
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: prod-instances
   - name: theia-shared-gateway
-    namespace: gateway-system
+    namespace: eduide-system
     sectionName: prod-webview
 operator:
   replicas: 3
@@ -56,5 +56,5 @@ keycloak:
   authUrl: https://keycloak.aet.cit.tum.de/
   realm: tum
   clientId: eduide
-sharedCache:
+eduide-shared-cache:
   enabled: false

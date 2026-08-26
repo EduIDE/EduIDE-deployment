@@ -79,6 +79,12 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
+      - name: Log in to GHCR
+        run: |
+          set -euo pipefail
+          helm plugin install https://github.com/databus23/helm-diff >/dev/null 2>&1 || true
+          echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login ghcr.io -u '${{ github.actor }}' --password-stdin
+
       - name: Set up kubeconfig
         run: |
           set -euo pipefail
@@ -104,7 +110,7 @@ jobs:
             echo "cluster '${CLUSTER}' confirmed"
           fi
 
-      - name: Derive the shared Gateway listeners from the environments
+      - name: Derive listeners and monitored namespaces from the environments
         run: |
           set -euo pipefail
           # Every environment on this cluster contributes four listeners.
@@ -116,6 +122,7 @@ jobs:
             echo "  className: ${CLASS}"
             echo "  listeners:"
           } > listeners.yaml
+          : > namespaces.txt
           found=0
           for f in environments/*/env.yaml; do
             env=$(basename "$(dirname "$f")")
@@ -143,14 +150,26 @@ jobs:
               echo "    - name: ${section}" >> listeners.yaml
               echo "      hostname: '${host}'" >> listeners.yaml
             done < <(yq -r '.gateway.parentRefs[]?.sectionName' "$v")
+            yq -r '.spec.namespace' "$f" >> namespaces.txt
             found=$((found + 1))
           done
           if [[ $found -eq 0 ]]; then
             echo "::error::no environments claim cluster ${CLUSTER}"
             exit 1
           fi
+          # The PodMonitors name every namespace they watch. That list used to
+          # be written by hand in theia-monitoring's values and had gone stale -
+          # it still named `theia` and `theia-staging`, which no longer exist, so
+          # two environments were being scraped and the rest were not.
+          {
+            echo "monitoring:"
+            echo "  targetNamespaces:"
+            sed 's/^/    - /' namespaces.txt
+            echo "  sessionNamespaces:"
+            sed 's/^/    - /' namespaces.txt
+          } >> listeners.yaml
           echo "::notice::${found} environment(s) on ${CLUSTER}"
-          echo "::group::derived listeners"; cat listeners.yaml; echo "::endgroup::"
+          echo "::group::derived cluster values"; cat listeners.yaml; echo "::endgroup::"
 
       - name: Wildcard TLS secret
         run: |
@@ -165,21 +184,22 @@ jobs:
       - name: Preview
         run: |
           set -euo pipefail
-          helm plugin install https://github.com/databus23/helm-diff >/dev/null 2>&1 || true
-          helm diff upgrade eduide-cluster ./charts/theia-shared-gateway \
-            -n gateway-system -f listeners.yaml -f gw-secrets.yaml \
+          helm diff upgrade eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
+            --version "${{ inputs.chart_version }}" \
+            -n eduide-system -f listeners.yaml -f gw-secrets.yaml \
             --allow-unreleased --no-color > gw.diff 2>&1 || true
           {
-            echo "<details><summary>Shared Gateway pending change</summary>"
+            echo "<details><summary>Cluster chart pending change</summary>"
             echo ''; echo '```diff'; head -c 40000 gw.diff; echo '```'; echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Install the shared Gateway
+      - name: Install the cluster chart
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
-          helm upgrade --install eduide-cluster ./charts/theia-shared-gateway \
-            -n gateway-system --create-namespace \
+          helm upgrade --install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
+            --version "${{ inputs.chart_version }}" \
+            -n eduide-system --create-namespace \
             -f listeners.yaml -f gw-secrets.yaml --wait --timeout 10m
 
       - name: Stamp this cluster with its name
@@ -206,6 +226,7 @@ jobs:
             echo "### ${CLUSTER} bootstrapped"
             echo ''
             echo '```'
-            kubectl -n gateway-system get gateway -o wide 2>/dev/null || true
+            kubectl -n eduide-system get gateway -o wide 2>/dev/null || true
+            kubectl get crd -o name 2>/dev/null | grep theia.cloud || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

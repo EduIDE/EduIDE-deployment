@@ -1,261 +1,136 @@
-# Theia Deployment
+# EduIDE deployment
 
-This repository manages automated deployments of [EduIDE Cloud](https://github.com/EduIDE/EduIDE-Cloud) to Kubernetes clusters using GitHub Actions. EduIDE Cloud provides browser-based development environments, allowing students and developers to work in containerized IDEs without local setup.
-
-## What is This Repository?
-
-This repository serves as the infrastructure-as-code for deploying and managing Theia Cloud instances across multiple environments (production, staging, and testing). It provides:
-
-- **Automated CI/CD pipelines** for deploying Theia Cloud via GitHub Actions
-- **Environment-specific configurations** for production, staging, and test environments
-- **Custom Helm charts** for AppDefinitions, certificates, metrics, and combined deployments
-- **GitOps workflow** for managing deployments with approval gates and automated rollouts
-
-## Repository Structure
+Where the EduIDE installations are described. **No application code and no
+chart templates live here** — the charts are in
+[EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) and published to
+`ghcr.io/eduide/charts`.
 
 ```
-.
-├── .github/workflows/       # GitHub Actions workflows for automated deployment
-│   ├── deploy-theia.yml    # Reusable core deployment workflow
-│   ├── deploy-pr.yml       # PR-triggered test deployments
-│   ├── deploy-staging.yml  # Auto-deploy to staging on main push
-│   └── deploy-production.yml # Manual production deployments
-│
-├── deployments/            # Environment-specific Helm values
-│   ├── theia.artemis.cit.tum.de/              # Production config
-│   ├── theia-staging.artemis.cit.tum.de/      # Staging config
-│   ├── test1.theia-test.artemis.cit.tum.de/   # Test environment config
-│   ├── test2.theia-test.artemis.cit.tum.de/   # Test environment config
-│   ├── test3.theia-test.artemis.cit.tum.de/   # Test environment config
-│   ├── shared-gateway/                        # Test/staging cluster Gateway
-│   └── shared-gateway-prod/                   # Production cluster Gateway
-│
-├── charts/                 # Custom Helm charts
-│   ├── theia-cloud-combined/    # Umbrella chart pulling in all components
-│   ├── theia-shared-gateway/    # Shared Gateway API entrypoint
-│   ├── theia-appdefinitions/    # Custom IDE environments (images/configs)
-│   ├── theia-certificates/      # SSL certificate management
-│   └── theia-monitoring/        # PodMonitors + Grafana dashboards
-│
-└── docs/                   # Detailed documentation
-    ├── deployment-workflows.md  # How deployments work
-    ├── envoy-gateway-setup.md   # Envoy Gateway and shared Gateway API setup
-    ├── adding-environments.md   # Adding new environments
-    ├── keycloak-setup.md        # Authentication configuration
-    ├── tum-certificates.md      # TUM-specific SSL certificate process
-    ├── monitoring-setup.md      # Prometheus & Grafana setup
-    └── reference/               # Values for manually-installed components
+clusters/<name>.yaml             a cluster: storage, gateway class, runner
+environments/<name>/env.yaml     how an installation is deployed
+environments/<name>/values.yaml  how the chart is configured
+environments/_base.yaml          chart settings identical everywhere
+schemas/                         JSON schemas the manifests are validated against
 ```
 
-## Deployment Architecture
+An environment is one namespace on one cluster.
 
-```
-┌───────────────────────────────────────────────────────────────┐
-│                      GitHub Actions Workflows                 │
-├───────────────────────────────────────────────────────────────┤
-│                                                               │
-│  ┌─────────────┐    ┌──────────────┐    ┌─────────────────┐   │
-│  │   PR Push   │    │ Push to main │    │ Manual Trigger  │   │
-│  │             │    │              │    │  (GitHub UI)    │   │
-│  └──────┬──────┘    └──────┬───────┘    └────────┬────────┘   │
-│         │                  │                     │            │
-│         ▼                  ▼                     ▼            │
-│  ┌─────────────┐    ┌──────────────┐    ┌─────────────────┐   │
-│  │deploy-pr.yml│    │deploy-staging│    │deploy-production│   │
-│  │             │    │    .yml      │    │     .yml        │   │
-│  └──────┬──────┘    └──────┬───────┘    └────────┬────────┘   │
-│         │                  │                     │            │
-│         └──────────────────┴─────────────────────┘            │
-│                            │                                  │
-│                            ▼                                  │
-│                  ┌──────────────────┐                         │
-│                  │  deploy-theia.yml│                         │
-│                  │ (Reusable Core)  │                         │
-│                  └────────┬─────────┘                         │
-│                           │                                   │
-└───────────────────────────┼───────────────────────────────────┘
-                            │
-            ┌───────────────┴───────────────┐
-            │                               │
-            ▼                               ▼
-┌───────────────────────────┐   ┌───────────────────────────┐
-│   Production Cluster      │   │  Staging/Test Cluster     │
-│   (Separate Kubeconfig)   │   │  (Shared Kubeconfig)      │
-├───────────────────────────┤   ├───────────────────────────┤
-│                           │   │                           │
-│  ┌─────────────────────┐  │   │  ┌─────────────────────┐  │
-│  │  theia-prod         │  │   │  │  theia-staging      │  │
-│  │  Manual Deploy      │  │   │  │  Auto on main       │  │
-│  │  (Approval Req.)    │  │   │  │  (No Approval)      │  │
-│  └─────────────────────┘  │   │  └─────────────────────┘  │
-│                           │   │                           │
-└───────────────────────────┘   │  ┌─────────────────────┐  │
-                                │  │  theia-test1        │  │
-                                │  │  Auto on PR         │  │
-                                │  │  (Approval Req.)    │  │
-                                │  └─────────────────────┘  │
-                                │                           │
-                                └───────────────────────────┘
-```
+| Cluster | Environments |
+|---|---|
+| `tum-student` | `test1`, `test2`, `test3`, `e2e-test`, `staging` |
+| `tum-production` | `tum-production` |
+| `eduide` | `bonn`, `mannheim` — **cluster not provisioned yet** |
 
-**Deployment Triggers:**
-- **theia-prod**: Manual via GitHub UI with approval required
-- **theia-staging**: Automatic on push to `main` branch (no approval)
-- **test1**: Automatic on PR push with approval gate (configurable)
+Every namespace is `eduide-<environment>`.
 
-## Environments
+## Installing
 
-| Environment | Namespace | Domain | Deployment Trigger | Approval Required |
-|------------|-----------|--------|-------------------|-------------------|
-| **Production** | `theia-prod` | `theia.artemis.cit.tum.de` | Manual (GitHub UI) | Yes |
-| **Staging** | `theia-staging` | `theia-staging.artemis.cit.tum.de` | Push to `main` | No |
-| **Test1** | `test1` | `test1.theia-test.artemis.cit.tum.de` | PR push | Yes (configurable) |
-
-Configuration files for each environment are located in the [deployments/](deployments/) directory.
-
-## Quick Start
-
-### Prerequisites
-
-- Kubernetes cluster with Envoy Gateway (Gateway API) installed
-- cert-manager installed and a ClusterIssuer available for certificate issuance
-- Helm 3.x installed
-- kubectl configured for your cluster
-- GitHub repository with appropriate secrets configured
-
-### Basic Installation
-
-1. **Prepare your cluster** (install Envoy Gateway and Gateway API CRDs):
-   ```bash
-   # Install Envoy Gateway and Gateway API CRDs according to your cluster provider.
-   # Ensure the GatewayClass name matches `theia-cloud.gateway.className` (default: "envoy").
-   # If cert-manager will solve HTTP-01 challenges through Gateway API, enable:
-   #   --set config.enableGatewayAPI=true
-   ```
-   See [Envoy Gateway Setup](docs/envoy-gateway-setup.md) for the full cluster bootstrap and shared Gateway configuration.
-
-2. **Install Theia Cloud base charts**:
-   ```bash
-   helm registry login ghcr.io
-
-   helm upgrade theia-cloud-base oci://ghcr.io/eduide/charts/theia-cloud-base --version 1.4.0-next.0 --install \
-     -f deployments/your-environment/theia-base-helm-values.yml
-
-   helm upgrade theia-cloud-crds oci://ghcr.io/eduide/charts/theia-cloud-crds --version 1.2.0-next.1 --install \
-     -f deployments/your-environment/theia-crds-helm-values.yml
-   ```
-
-3. **Install the shared Gateway chart (once per cluster)**:
-   ```bash
-   helm upgrade --install theia-shared-gateway ./charts/theia-shared-gateway \
-     --namespace gateway-system --create-namespace \
-     -f deployments/shared-gateway/values.yaml
-   ```
-   For the dedicated production cluster, use:
-   `deployments/shared-gateway-prod/values.yaml`.
-
-4. **Install the combined Theia Cloud chart**:
-   ```bash
-   helm registry login ghcr.io
-   helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined \
-     --namespace your-namespace --create-namespace \
-     -f deployments/your-environment/values.yaml
-   ```
-
-Normal deployments consume released OCI charts from `ghcr.io/eduide/charts`.
-The `theia-cloud` dependency version in [`charts/theia-cloud-combined/Chart.yaml`](charts/theia-cloud-combined/Chart.yaml) controls the main application chart, while `theia-cloud-base` and `theia-cloud-crds` are pinned separately in the workflow at `1.4.0-next.0` and `1.2.0-next.1`.
-For PR previews, you can set `helm_chart_tag` to a value like `pr-123` to pull preview OCI charts published from [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) pull requests as versions such as `<chart-version>.pr-123`.
-
-When using GitHub Actions, shared-gateway settings are passed as hardcoded inputs
-by the caller workflows (`deploy-pr.yml`, `deploy-staging.yml`, `deploy-production.yml`):
-- `deploy_shared_gateway` (`true`/`false`)
-- `shared_gateway_values_file` (e.g. `deployments/shared-gateway/values.yaml`)
-- `shared_gateway_namespace` (optional, defaults to `gateway-system`)
-
-### Using GitHub Actions for Deployment
-
-The recommended approach is to use the automated GitHub Actions workflows:
-
-1. **Configure GitHub Environment** with required secrets and variables (see [Adding Environments](docs/adding-environments.md))
-2. **Push to main** to deploy to staging automatically
-3. **Create a PR** to deploy to test environment with approval
-4. **Manually trigger production** deployment from GitHub Actions UI
-
-See [Deployment Workflows](docs/deployment-workflows.md) for detailed instructions.
-
-### Updating pinned release tags
-
-Staging and production intentionally pin several images to SHA-suffixed tags such as `latest-dfe0d09`, `latest-2c6f8ac`, and `latest-0c8eec9`.
-
-When a new release is published, you must update the short SHA suffix in the environment values files instead of relying on plain `latest`. In practice this means bumping:
-
-- `theia-cloud.operator.image`
-- `theia-cloud.service.image`
-- `theia-cloud.preloading.images`
-- `theia-cloud.landingPage.image`
-- `theia-appdefinitions.defaultImageTag`
-- `conversion.image` in `theia-crds-helm-values.yml`
-
-The landing page can use a different SHA suffix from the IDE images, so keep `theia-cloud.landingPage.image` and `theia-cloud.preloading.images[0]` aligned with each other, and keep the IDE preload/appdefinition tags aligned separately.
-
-See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinned-image-tags) for the full release checklist.
-
-## Common Tasks
-
-- **Deploy a PR to test environment**: See [Deployment Workflows](docs/deployment-workflows.md#pull-request-deployments)
-- **Bump release image tags**: See [Deployment Workflows](docs/deployment-workflows.md#release-process-for-pinned-image-tags)
-- **Add a new environment**: See [Adding Environments](docs/adding-environments.md)
-- **Set up Envoy Gateway**: See [Envoy Gateway Setup](docs/envoy-gateway-setup.md)
-- **Configure Keycloak authentication**: See [Keycloak Setup](docs/keycloak-setup.md)
-- **Request TUM wildcard certificates**: See [TUM Certificates](docs/tum-certificates.md)
-- **Set up monitoring**: See [Monitoring Setup](docs/monitoring-setup.md)
-
-## AppDefinitions
-
-*AppDefinitions* define the IDE environments that users work in. Custom AppDefinitions are built in a three-stage pipeline at [artemis-theia-blueprints](https://github.com/EduIDE/EduIDE).
-
-To install or update AppDefinitions:
+Two charts, always at the same version. The cluster one first.
 
 ```bash
-helm dependency update ./charts/theia-cloud-combined
-helm upgrade --install theia-cloud-combined ./charts/theia-cloud-combined \
-  --namespace your-namespace --create-namespace \
-  -f deployments/your-environment/values.yaml
+# once per cluster — CRDs, conversion webhook, ClusterRoles, issuers,
+# the shared Gateway, PodMonitors and dashboards
+helm install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
+  --version 2.0.0 -n eduide-system --create-namespace -f cluster-values.yaml
+
+# once per environment
+helm install eduide oci://ghcr.io/eduide/charts/eduide \
+  --version 2.0.0 -n eduide-test1 \
+  -f environments/_base.yaml -f environments/test1/values.yaml
 ```
 
-The AppDefinitions chart configuration is documented in [charts/theia-appdefinitions/templates/appdefinition.yaml](charts/theia-appdefinitions/templates/appdefinition.yaml).
+In practice neither is run by hand. `Bootstrap cluster` does the first and
+derives its Gateway listeners and monitored namespaces from the environments
+that claim the cluster, so adding an environment never means editing a second
+file. `Deploy` does the second.
 
-### Scaling API and Helm behavior
+## Deploying
 
-- Runtime scaling values are managed through Theia Cloud admin API endpoints:
-  - `GET /service/admin/appdefinition`
-  - `GET /service/admin/appdefinition/{appDefinitionName}`
-  - `PATCH /service/admin/appdefinition/{appDefinitionName}`
-- Access requires the `X-Admin-Api-Token` header with the token from `theia.cloud.admin.api.token`.
-- The `theia-appdefinitions` chart always uses Helm `lookup` to preserve live `spec.minInstances` and `spec.maxInstances` from existing `AppDefinition` resources during upgrades.
-- Values from Helm values files are only used when an `AppDefinition` does not exist yet.
+| I want to | Do this |
+|---|---|
+| Put a PR's images on a test environment | Comment `/deploy test2` on the PR |
+| Deploy any environment by hand | Actions → **Deploy (dispatch)** |
+| Move staging | Actions → **Deploy staging** |
+| Move production | Bump `chartVersion` in `environments/tum-production/env.yaml`, open a PR |
+| Undo a bad deploy | Actions → **Rollback** |
+| Bring up a new cluster | Actions → **Bootstrap cluster** |
+
+`e2e-test` deploys from `main` automatically and the functional tests run
+against it. Do not point manual work at it — use `staging`.
+
+Every deploy asserts which cluster it reached before touching anything, shows a
+`helm diff` before applying, runs `--wait --atomic`, and prints a summary read
+back from the cluster rather than echoed from its inputs.
+
+## What an environment does and does not configure
+
+An environment file carries **hosts, gateway routing, Keycloak and branding**.
+That is all. Everything else is derived or shared:
+
+| | Where it comes from |
+|---|---|
+| Image tags | `versions.ide` / `versions.cloud` / `versions.landingPage` in the chart |
+| App definitions | `appDefinitions.apps` in the chart |
+| Images to preload | derived from `appDefinitions.apps` |
+| The landing page's app list | derived from `appDefinitions.apps` |
+| Storage class | `clusters/<name>.yaml` |
+| Gateway listeners | derived from each environment's `parentRefs` |
+| Monitored namespaces | derived from the environments on the cluster |
+| Everything identical everywhere | `environments/_base.yaml` |
+
+Adding a language is one entry in the chart, not three edits across two
+repositories.
+
+## Secrets
+
+Per environment, in its GitHub Environment. Never in a file here.
+
+| Secret | What |
+|---|---|
+| `KUBECONFIG` | the whole kubeconfig, pasted in |
+| `THEIA_KEYCLOAK_COOKIE_SECRET` | `dd if=/dev/urandom bs=32 count=1 \| base64 \| tr -d -- '\n' \| tr -- '+/' '-_'` |
+| `THEIA_ADMIN_API_TOKEN` | bearer token for the admin scaling API |
+
+Bootstrap additionally needs `THEIA_WILDCARD_CERTIFICATE_CERT` and `_KEY` on the
+cluster's GitHub Environment.
+
+Anything `tier: production` or `staging` should have required reviewers set, so
+GitHub holds the run until someone approves and records the approval.
+
+## Checking a change
+
+```bash
+./scripts/test-deploy-logic.sh            # overrides, tags, listeners, storage, cache
+
+helm template eduide oci://ghcr.io/eduide/charts/eduide --version 2.0.0 \
+  -f environments/_base.yaml -f environments/test1/values.yaml
+```
+
+To test against a chart that is not published yet:
+
+```bash
+EDUIDE_CHART=../EduIDE-Helm/charts/eduide ./scripts/test-deploy-logic.sh
+```
+
+CI validates both schemas, checks every environment points at a real cluster,
+rejects two environments on one cluster sharing a Gateway listener prefix, and
+renders every environment.
 
 ## Documentation
 
-Detailed documentation is available in the [docs/](docs/) directory:
+| | |
+|---|---|
+| [Environments](docs/environments.md) | the model, adding one, what is derived |
+| [Keycloak](docs/keycloak-setup.md) | clients, scopes, redirect URIs |
+| [Envoy Gateway](docs/envoy-gateway-setup.md) | the Gateway API layer |
+| [Monitoring](docs/monitoring-setup.md) | PodMonitors and dashboards |
+| [TUM certificates](docs/tum-certificates.md) | the wildcard certificate |
+| [AGENTS.md](AGENTS.md) | conventions, and the traps worth knowing |
 
-- [Deployment Workflows](docs/deployment-workflows.md) - How automated deployments work
-- [Envoy Gateway Setup](docs/envoy-gateway-setup.md) - How to bootstrap Envoy Gateway and the shared Gateway API entrypoint
-- [Adding Environments](docs/adding-environments.md) - Step-by-step guide to add new environments
-- [Keycloak Setup](docs/keycloak-setup.md) - Authentication and authorization configuration
-- [TUM Certificates](docs/tum-certificates.md) - TUM-specific SSL certificate process
-- [Monitoring Setup](docs/monitoring-setup.md) - Prometheus and Grafana installation
+## Related
 
-## Related Projects
-
-- [EduIDE Cloud](https://github.com/EduIDE/EduIDE-Cloud) - The Theia Cloud fork deployed by this repository
-- [EduIDE Helm](https://github.com/EduIDE/EduIDE-Helm) - Helm charts consumed by this repository
-- [Artemis Theia Blueprints](https://github.com/EduIDE/EduIDE) - Custom IDE images and configurations
-- [Theia Cloud Observability](https://github.com/eclipsesource/theia-cloud-observability) - Monitoring and observability
-
-## Support
-
-For issues or questions:
-- Check the [documentation](docs/)
-- Review existing [GitHub Issues](../../issues)
-- Consult the [Theia Cloud documentation](https://theia-cloud.io/)
+- [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) — the charts
+- [EduIDE](https://github.com/EduIDE/EduIDE) — the IDE and its images
+- [EduIDE-Cloud](https://github.com/EduIDE/EduIDE-Cloud) — operator and REST service
+- [EduIDE-Landing-Page](https://github.com/EduIDE/EduIDE-Landing-Page)
+- [theia-scale-tests](https://github.com/EduIDE/theia-scale-tests) — the test suite
