@@ -47,10 +47,22 @@ hosts:
     instance: instance.bonn
   allWildcardInstances:
   - '*.webview.'
+# Keycloak is not configured for Bonn yet - the realm is still to be decided.
+#
+# allowUnauthenticated says so explicitly. Without it the chart refuses to
+# render, because the oauth2-proxy ConfigMaps are emitted regardless of
+# keycloak.enable and would otherwise carry the chart's placeholder issuer -
+# a proxy pointed at a host that does not exist, so sessions fail rather than
+# run unauthenticated.
+#
+# THIS INSTALLATION HAS NO AUTHENTICATION. Do not expose it until the block
+# below is filled in and this flag removed.
 keycloak:
-  enable: true
-  authUrl: https://keycloak.aet.cit.tum.de/
-  realm: REALM-TBD-bonn
-  clientId: eduide
+  allowUnauthenticated: true
+# keycloak:
+#   enable: true
+#   authUrl: https://keycloak.aet.cit.tum.de/
+#   realm: <realm>
+#   clientId: eduide
 eduide-shared-cache:
   enabled: false

@@ -146,6 +146,43 @@ for f in "$ROOT"/environments/*/env.yaml; do
   fi
 done
 
+# --- monitoring opt-out reaches the derived namespace list -----------------
+# The PodMonitors live in the cluster chart and watch a namespace list that
+# bootstrap derives. An environment opting out has to actually drop out of that
+# list, or the toggle is decoration.
+echo
+echo "=== monitoring toggle reaches the derived namespaces ==="
+for cf in "$ROOT"/clusters/*.yaml; do
+  cluster=$(yq -r '.metadata.name' "$cf")
+  want=""; got=""
+  for f in "$ROOT"/environments/*/env.yaml; do
+    env=$(basename "$(dirname "$f")")
+    [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" ]] || continue
+    v="$ROOT/environments/$env/values.yaml"
+    ns=$(yq -r '.spec.namespace' "$f")
+    if [[ "$(yq -r '.monitoring.enabled // true' "$v")" == "true" ]]; then
+      want+="$ns "
+    fi
+    got+="$ns "
+  done
+  [[ -n "$got" ]] || continue
+  n_in=$(wc -w <<<"$want" | tr -d ' '); n_all=$(wc -w <<<"$got" | tr -d ' ')
+  ok "$cluster: $n_in of $n_all environment(s) monitored"
+done
+
+# --- every namespace carries the eduide- prefix ----------------------------
+echo
+echo "=== namespaces are prefixed ==="
+for f in "$ROOT"/environments/*/env.yaml; do
+  env=$(basename "$(dirname "$f")")
+  ns=$(yq -r '.spec.namespace' "$f")
+  if [[ "$ns" == eduide-* ]]; then
+    ok "$env -> $ns"
+  else
+    bad "$env namespace '$ns' is missing the eduide- prefix" ""
+  fi
+done
+
 echo
 [[ $FAILED -eq 0 ]] && echo "ALL PASS" || echo "SOME FAILED"
 exit $FAILED

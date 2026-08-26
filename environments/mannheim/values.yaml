@@ -50,7 +50,7 @@ hosts:
 keycloak:
   enable: true
   authUrl: https://keycloak.aet.cit.tum.de/
-  realm: REALM-TBD-mannheim
+  realm: external_register
   clientId: eduide
 eduide-shared-cache:
   enabled: false

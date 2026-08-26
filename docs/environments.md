@@ -83,12 +83,22 @@ installations elsewhere may bring their own entirely.
 |---|---|---|---|
 | test1, test2, test3, e2e-test, staging | `keycloak-test.aet.cit.tum.de` | `tum` | `eduide` |
 | tum-production | `keycloak.aet.cit.tum.de` | `tum` | `eduide` |
-| bonn | `keycloak.aet.cit.tum.de` | **TBD** | `eduide` |
-| mannheim | `keycloak.aet.cit.tum.de` | **TBD** | `eduide` |
+| mannheim | `keycloak.aet.cit.tum.de` | `external_register` | `eduide` |
+| bonn | **not configured** | — | — |
 
-Bonn's and Mannheim's realms are placeholders (`REALM-TBD-*`). A wrong
-`authUrl`, `realm` or `clientId` fails at login, not at deploy, so nothing in CI
-catches it. Confirm both with the university before the first deploy.
+**Bonn has no authentication.** Its realm has not been decided, so the block is
+commented out and it sets `keycloak.allowUnauthenticated: true`. Do not expose
+that installation until the block is filled in and the flag removed.
+
+That flag exists because the oauth2-proxy ConfigMaps are rendered regardless of
+`keycloak.enable` — the operator mounts them into every session pod by literal
+name, so they cannot be gated. Left at the chart's defaults they carry
+`https://keycloak.url/auth/realms/TheiaCloud`, a host that does not exist, so
+sessions fail at the proxy instead of running unauthenticated. The chart now
+refuses to render on the placeholder values unless the flag says otherwise.
+
+A wrong `authUrl`, `realm` or `clientId` still fails at login rather than at
+deploy, so confirm them with the university before the first deploy.
 
 **Secrets are not here.** `clientSecret` and `cookieSecret` come from the
 environment's GitHub Environment secrets, never from a file in this repo.
@@ -223,6 +233,26 @@ preload one addressed by array index. Production offered `c-templates` while
 preloading everything except `c-templates`, so students picking it waited for a
 cold multi-gigabyte pull. `test-app-consistency.sh` in EduIDE-Helm asserts the
 three agree.
+
+## Monitoring
+
+On by default. An environment opts out with:
+
+```yaml
+monitoring:
+  enabled: false
+```
+
+The PodMonitor objects are in `eduide-cluster`, not the tenant chart: they have
+to be created in Rancher's own namespace to be discovered, and one per tenant
+writing into a shared namespace would collide on names. So the cluster chart
+owns them and this flag decides whether the environment's namespace appears in
+the list they watch — `Bootstrap cluster` reads it when deriving that list. A
+cluster where everything has opted out gets monitoring switched off rather than
+PodMonitors watching nothing.
+
+Not to be confused with `monitor.enable`, which is the operator's own session
+activity tracker and unrelated.
 
 ## The dependency cache
 

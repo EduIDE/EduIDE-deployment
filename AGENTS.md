@@ -61,6 +61,21 @@ add an API server URL to the cluster manifests: every cluster sits behind the
 same Rancher endpoint, so that URL is identical for all of them and comparing
 it would pass whichever cluster the kubeconfig reached.
 
+**Placeholder Keycloak values fail the render, deliberately.** The oauth2-proxy
+ConfigMaps are emitted regardless of `keycloak.enable`, because the operator
+mounts them into every session pod by literal name. Left at the chart's
+defaults they point the proxy at `https://keycloak.url/auth/realms/TheiaCloud`,
+so sessions fail at the proxy rather than running unauthenticated - the worst of
+both, with no clue why. An installation with no identity provider yet sets
+`keycloak.allowUnauthenticated: true` and says so; Bonn does.
+
+**Monitoring is on by default and opted out per environment** with
+`monitoring.enabled: false`. The PodMonitors themselves are in the cluster
+chart - they must be created in Rancher's namespace to be discovered, and one
+per tenant would collide on names - so the flag decides whether the
+environment's namespace is in the list they watch. Do not confuse it with
+`monitor.enable`, the operator's session activity tracker.
+
 **Keycloak is per environment, including `authUrl`.** TUM installations share a
 server and differ only by realm; Bonn and Mannheim bring their own. Nothing
 about the identity provider belongs in `_base.yaml`, and secrets never go in a

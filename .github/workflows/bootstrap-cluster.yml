@@ -150,7 +150,13 @@ jobs:
               echo "    - name: ${section}" >> listeners.yaml
               echo "      hostname: '${host}'" >> listeners.yaml
             done < <(yq -r '.gateway.parentRefs[]?.sectionName' "$v")
-            yq -r '.spec.namespace' "$f" >> namespaces.txt
+            # An environment can opt out of being scraped with
+            # monitoring.enabled: false in its values. Default is on.
+            if [[ "$(yq -r '.monitoring.enabled // true' "$v")" == "true" ]]; then
+              yq -r '.spec.namespace' "$f" >> namespaces.txt
+            else
+              echo "::notice::${env} opted out of monitoring"
+            fi
             found=$((found + 1))
           done
           if [[ $found -eq 0 ]]; then
@@ -161,13 +167,21 @@ jobs:
           # be written by hand in theia-monitoring's values and had gone stale -
           # it still named `theia` and `theia-staging`, which no longer exist, so
           # two environments were being scraped and the rest were not.
-          {
-            echo "monitoring:"
-            echo "  targetNamespaces:"
-            sed 's/^/    - /' namespaces.txt
-            echo "  sessionNamespaces:"
-            sed 's/^/    - /' namespaces.txt
-          } >> listeners.yaml
+          # A cluster where every environment opted out gets monitoring
+          # switched off, rather than PodMonitors that watch nothing.
+          if [[ -s namespaces.txt ]]; then
+            {
+              echo "monitoring:"
+              echo "  enabled: true"
+              echo "  targetNamespaces:"
+              sed 's/^/    - /' namespaces.txt
+              echo "  sessionNamespaces:"
+              sed 's/^/    - /' namespaces.txt
+            } >> listeners.yaml
+          else
+            echo "::warning::no environment on ${CLUSTER} opts into monitoring"
+            printf 'monitoring:\n  enabled: false\n' >> listeners.yaml
+          fi
           echo "::notice::${found} environment(s) on ${CLUSTER}"
           echo "::group::derived cluster values"; cat listeners.yaml; echo "::endgroup::"
 
