@@ -1,0 +1,32 @@
+apiVersion: eduide.dev/v1
+kind: Cluster
+metadata:
+  name: eduide
+  displayName: EduIDE cluster (installations outside TUM)
+spec:
+  # NOT YET PROVISIONED. Environments targeting this cluster exist so their
+  # configuration can be reviewed, but deploying one stops at the identity
+  # check until the cluster has been bootstrapped and a KUBECONFIG exists.
+
+  # Bonn and Mannheim both run on local disks. Stated once here rather than in
+  # each environment, because it is a property of the cluster; an environment
+  # can still override it in its own values.yaml.
+  storageClassName: local
+  gatewayClassName: envoy
+
+  # NOT CONFIRMED - this cluster does not exist yet. Copied from the student
+  # cluster's shape; settle it against however Bonn and Mannheim issue
+  # certificates before the first bootstrap.
+  tls:
+    landing: shared-theia-cert
+    service: shared-theia-cert
+    instances: shared-theia-cert
+    webview: static-theia-cert
+    acmeHttp: false
+
+  sharedGateway:
+    namespace: eduide-system
+    name: theia-shared-gateway
+
+  runner: ubuntu-latest
+  bootstrapEnvironment: cluster-eduide

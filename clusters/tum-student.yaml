@@ -1,0 +1,35 @@
+apiVersion: eduide.dev/v1
+kind: Cluster
+metadata:
+  name: tum-student
+  displayName: TUM student cluster (test, staging and e2e)
+spec:
+  storageClassName: csi-rbd-sc
+  gatewayClassName: envoy
+
+  # TLS secrets the shared Gateway's listeners reference. Per cluster because
+  # the two clusters issue certificates differently: this one terminates
+  # everything with one shared certificate, production has cert-manager issue
+  # one per role. Bootstrap stamps these onto the listeners it derives.
+  #
+  # The webview secret is separate everywhere: those hosts are two labels below
+  # the instance host, so no certificate that covers the others covers them.
+  tls:
+    landing: shared-theia-cert
+    service: shared-theia-cert
+    instances: shared-theia-cert
+    webview: static-theia-cert
+    # cert-manager solves HTTP-01 challenges over plain :80, so every host it
+    # renews needs an HTTP listener alongside its HTTPS one. Confirmed against
+    # the live cluster, which carries acme-*-http listeners per environment.
+    acmeHttp: true
+
+  sharedGateway:
+    namespace: eduide-system
+    name: theia-shared-gateway
+
+  # Deploying needs to reach the API server, unlike building. Per-cluster
+  # because the three clusters differ in how they are reachable.
+  runner: ubuntu-latest
+
+  bootstrapEnvironment: cluster-tum-student

@@ -1,0 +1,49 @@
+# Helm values for the staging environment.
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#
+# _base.yaml carries what is identical everywhere; this file carries what is
+# not. Anything appearing here for more than one environment belongs in
+# _base.yaml instead.
+#
+# Deployment metadata - which cluster, which namespace, which chart version -
+# is in env.yaml next door, because it configures the deploy rather than the
+# chart.
+
+app:
+  name: Artemis Online IDE (Staging)
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: staging-landing
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: staging-service
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: staging-instances
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: staging-webview
+landingPage:
+  footerLinks:
+    attribution:
+      version: Staging-v1.0.0
+  infoTitle: Welcome to EduIDE Cloud (Staging)
+hosts:
+  configuration:
+    baseHost: eduide.student.k8s.aet.cit.tum.de
+    service: service.staging
+    landing: staging
+    instance: instance.staging
+  allWildcardInstances:
+  - '*.webview.'
+keycloak:
+  enable: true
+  authUrl: https://keycloak-test.aet.cit.tum.de/
+  realm: tum
+  clientId: eduide
+eduide-shared-cache:
+  enabled: true

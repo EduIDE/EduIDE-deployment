@@ -1,0 +1,55 @@
+# Helm values for the mannheim environment.
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#
+# _base.yaml carries what is identical everywhere; this file carries what is
+# not. Anything appearing here for more than one environment belongs in
+# _base.yaml instead.
+#
+# Deployment metadata - which cluster, which namespace, which chart version -
+# is in env.yaml next door, because it configures the deploy rather than the
+# chart.
+# The Gradle/Maven dependency cache is not deployed here. The operator's
+# enableBuildCaching and enableDependencyCaching are false in every
+# environment, so no session ever reached it - on a production installation
+# that is a Redis, a cache server and a 20Gi reposilite PVC serving nobody.
+# The chart declares it with `condition: eduide-shared-cache.enabled`, so the
+# one key switches off the subchart, its vendored reposilite and the PVC.
+
+app:
+  name: EduIDE Mannheim
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: mannheim-landing
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: mannheim-service
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: mannheim-instances
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: mannheim-webview
+landingPage:
+  infoTitle: Welcome to EduIDE (Mannheim)
+  footerLinks:
+    attribution:
+      version: Mannheim-v1.0.0
+hosts:
+  configuration:
+    baseHost: eduide.aet.cit.tum.de
+    service: service.mannheim
+    landing: mannheim
+    instance: instance.mannheim
+  allWildcardInstances:
+  - '*.webview.'
+keycloak:
+  enable: true
+  authUrl: https://keycloak.aet.cit.tum.de/
+  realm: external_register
+  clientId: eduide
+eduide-shared-cache:
+  enabled: false

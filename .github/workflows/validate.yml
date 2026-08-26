@@ -1,0 +1,100 @@
+name: Validate environments
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          set -euo pipefail
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          pipx install check-jsonschema
+
+      - name: Schema-validate clusters and environments
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in clusters/*.yaml; do
+            yq -o=json "$f" > /tmp/c.json
+            if check-jsonschema --schemafile schemas/cluster.schema.json /tmp/c.json; then
+              echo "  OK   $f"
+            else
+              echo "::error file=$f::does not match cluster schema"; fail=1
+            fi
+          done
+          for f in environments/*/env.yaml; do
+            yq -o=json "$f" > /tmp/e.json
+            if check-jsonschema --schemafile schemas/environment.schema.json /tmp/e.json; then
+              echo "  OK   $f"
+            else
+              echo "::error file=$f::does not match environment schema"; fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Every environment references a cluster that exists
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in environments/*/env.yaml; do
+            c=$(yq -r '.spec.cluster' "$f")
+            if [[ ! -f "clusters/$c.yaml" ]]; then
+              echo "::error file=$f::references unknown cluster '$c'"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: Gateway listener prefixes are unique per cluster
+        run: |
+          set -euo pipefail
+          # Two environments on one cluster sharing a listener prefix would
+          # attach to the same Gateway sections and fight over them.
+          fail=0
+          for cluster in $(yq -r '.metadata.name' clusters/*.yaml); do
+            dupes=$(for f in environments/*/env.yaml; do
+              [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" ]] || continue
+              env=$(basename "$(dirname "$f")")
+              yq -r '[.gateway.parentRefs[]?.sectionName | sub("-(landing|service|instances|webview)$"; "")] | unique | .[]' "environments/$env/values.yaml" 
+            done | sort | uniq -d)
+            if [[ -n "$dupes" ]]; then
+              echo "::error::cluster $cluster has duplicate gateway listener prefixes: $dupes"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: AGENTS.md does not reference missing paths
+        run: ./scripts/check-agents-md.sh
+
+      - name: Deploy logic tests
+        run: ./scripts/test-deploy-logic.sh
+
+      - name: Every environment has a values file and it parses
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in environments/*/env.yaml; do
+            env=$(basename "$(dirname "$f")")
+            v="environments/$env/values.yaml"
+            if [[ ! -f "$v" ]]; then
+              echo "::error::$env has no values.yaml"; fail=1; continue
+            fi
+            if ! yq -e '.' "$v" >/dev/null 2>&1; then
+              echo "::error file=$v::is not valid YAML"; fail=1; continue
+            fi
+            echo "  OK   $env"
+          done
+          exit $fail

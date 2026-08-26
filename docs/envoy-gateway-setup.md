@@ -3,7 +3,7 @@
 This repository deploys Theia Cloud through Gateway API resources backed by Envoy Gateway. The setup is split across two repositories:
 
 - [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) renders the Theia Cloud `HTTPRoute` resources and, for simple installations, can also render a namespace-local `Gateway`.
-- [EduIDE-deployment](https://github.com/EduIDE/EduIDE-deployment) uses those charts internally and adds the [`theia-shared-gateway`](https://github.com/EduIDE/EduIDE-deployment/tree/main/charts/theia-shared-gateway) chart, which owns one cluster-level Gateway shared by multiple Theia namespaces.
+- [EduIDE-deployment](https://github.com/EduIDE/EduIDE-deployment) uses those charts internally and adds the [`eduide-cluster`](https://github.com/EduIDE/EduIDE-Helm/tree/main/charts/eduide-cluster/templates/gateway) chart, which owns one cluster-level Gateway shared by multiple Theia namespaces.
 
 For the Artemis/EduIDE deployments, the shared gateway model is the expected setup. Tenant releases should create only their namespace-local routes and workloads; the shared gateway release owns the edge Gateway, listener hostnames, GatewayClass customization, and TLS material.
 
@@ -13,7 +13,7 @@ The traffic path is:
 
 1. DNS points Theia hostnames to the Envoy Gateway load balancer address.
 2. Envoy Gateway watches Gateway API resources and programs Envoy.
-3. The `theia-shared-gateway` release creates the shared `Gateway` in `gateway-system`.
+3. The `eduide-cluster` release creates the shared `Gateway` in `eduide-system`.
 4. Each Theia tenant release creates `HTTPRoute` resources in its own namespace.
 5. Those `HTTPRoute` resources attach to the shared Gateway through `theia-cloud.gateway.parentRefs`.
 6. The Theia Cloud operator later edits the instances `HTTPRoute` to attach newly created IDE sessions.
@@ -94,22 +94,22 @@ kubectl rollout restart deployment/cert-manager-cainjector -n cert-manager
 
 ## Deploy the Shared Gateway
 
-The shared Gateway is deployed from the [`theia-shared-gateway`](https://github.com/EduIDE/EduIDE-deployment/tree/main/charts/theia-shared-gateway) chart in this repository:
+The shared Gateway is deployed from the [`eduide-cluster`](https://github.com/EduIDE/EduIDE-Helm/tree/main/charts/eduide-cluster/templates/gateway) chart's gateway templates, in EduIDE-Helm:
 
 ```bash
-helm upgrade --install theia-shared-gateway ./charts/theia-shared-gateway \
-  --namespace gateway-system \
+helm upgrade --install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
+  --namespace eduide-system \
   --create-namespace \
-  -f deployments/shared-gateway/values.yaml
+  --version 2.0.0 -n eduide-system -f listeners.yaml
 ```
 
 For the dedicated production cluster, use:
 
 ```bash
-helm upgrade --install theia-shared-gateway ./charts/theia-shared-gateway \
-  --namespace gateway-system \
+helm upgrade --install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
+  --namespace eduide-system \
   --create-namespace \
-  -f deployments/shared-gateway-prod/values.yaml
+  --version 2.0.0 -n eduide-system -f listeners.yaml
 ```
 
 The deployment workflow can also install this release automatically when the caller workflow passes:
@@ -117,8 +117,8 @@ The deployment workflow can also install this release automatically when the cal
 ```yaml
 with:
   deploy_shared_gateway: true
-  shared_gateway_values_file: deployments/shared-gateway/values.yaml
-  shared_gateway_namespace: gateway-system
+  (listeners are derived by the workflow; there is no values file to name)
+  shared_gateway_namespace: eduide-system
 ```
 
 The workflow injects `THEIA_WILDCARD_CERTIFICATE_CERT` and `THEIA_WILDCARD_CERTIFICATE_KEY` into the shared gateway chart as `wildcardTLSSecret.certificate` and `wildcardTLSSecret.key`.
@@ -134,9 +134,13 @@ The shared gateway chart can create:
 - an optional Gateway API ACME `ClusterIssuer`
 - an optional static wildcard TLS secret
 
-For shared test/staging clusters, [`deployments/shared-gateway/values.yaml`](https://github.com/EduIDE/EduIDE-deployment/blob/main/deployments/shared-gateway/values.yaml) mainly defines HTTPS listeners for all test and staging hostnames. It assumes the required TLS secrets already exist or are supplied through the workflow.
+Listeners are no longer written by hand. `Bootstrap cluster` derives them from
+the `gateway.parentRefs` each environment declares, so a listener cannot
+disagree with the route that attaches to it and adding an environment needs no
+second file. The TLS secrets are assumed to exist or are supplied through the
+workflow.
 
-For production, [`deployments/shared-gateway-prod/values.yaml`](https://github.com/EduIDE/EduIDE-deployment/blob/main/deployments/shared-gateway-prod/values.yaml) additionally creates:
+On the production cluster the same chart additionally creates:
 
 - a `GatewayClass` named `envoy`
 - an `EnvoyProxy` that customizes the Envoy data-plane service
@@ -173,7 +177,7 @@ In the current Artemis cluster, MetalLB exposes two single-address pools:
 
 The production Theia DNS names in this cluster resolve to `k8s-theia-lb1.aet.cit.tum.de`, which resolves to `131.159.88.82`. Therefore this deployment's Envoy Gateway data-plane service must receive `131.159.88.82`, not the other MetalLB address.
 
-The general procedure is to choose the MetalLB pool and external address that DNS points to, then encode that choice in the shared gateway values. In this production setup, that is enforced through the shared gateway production values, not by manually editing the generated service. The `theia-shared-gateway` chart creates an Envoy Gateway `EnvoyProxy` resource with:
+The general procedure is to choose the MetalLB pool and external address that DNS points to, then encode that choice in the shared gateway values. In this production setup, that is enforced through the shared gateway production values, not by manually editing the generated service. The `eduide-cluster` chart creates an Envoy Gateway `EnvoyProxy` resource with:
 
 ```yaml
 envoyProxy:
@@ -238,7 +242,7 @@ kubectl get l2advertisements.metallb.io -n metallb-system
 kubectl get envoyproxy theia-shared-gateway -n envoy-gateway-system -o yaml
 kubectl get svc -n envoy-gateway-system -o wide
 kubectl get svc -n envoy-gateway-system \
-  -l gateway.envoyproxy.io/owning-gateway-name=theia-shared-gateway,gateway.envoyproxy.io/owning-gateway-namespace=gateway-system \
+  -l gateway.envoyproxy.io/owning-gateway-name=theia-shared-gateway,gateway.envoyproxy.io/owning-gateway-namespace=eduide-system \
   -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.metadata.annotations.metallb\.io/address-pool}{"\t"}{.metadata.annotations.metallb\.io/loadBalancerIPs}{"\t"}{.status.loadBalancer.ingress[*].ip}{"\n"}{end}'
 dig +short theia.artemis.cit.tum.de A
 dig +short k8s-theia-lb1.aet.cit.tum.de A
@@ -259,16 +263,16 @@ theia-cloud:
       enabled: true
     parentRefs:
       - name: theia-shared-gateway
-        namespace: gateway-system
+        namespace: eduide-system
         sectionName: test1-landing
       - name: theia-shared-gateway
-        namespace: gateway-system
+        namespace: eduide-system
         sectionName: test1-service
       - name: theia-shared-gateway
-        namespace: gateway-system
+        namespace: eduide-system
         sectionName: test1-instances
       - name: theia-shared-gateway
-        namespace: gateway-system
+        namespace: eduide-system
         sectionName: test1-webview
 ```
 
@@ -286,7 +290,7 @@ theia-certificates:
     enabled: true
 ```
 
-Do not set `theia-cloud.gateway.instancesWildcardSecretNames` in tenant values when `gateway.create: false`. That map is only used when the Theia Cloud chart renders its own `Gateway`. In the shared-gateway setup, wildcard TLS secrets are owned by the shared gateway release in `gateway-system`.
+Do not set `theia-cloud.gateway.instancesWildcardSecretNames` in tenant values when `gateway.create: false`. That map is only used when the Theia Cloud chart renders its own `Gateway`. In the shared-gateway setup, wildcard TLS secrets are owned by the shared gateway release in `eduide-system`.
 
 ## Add or Change Hostnames
 
@@ -331,9 +335,9 @@ After deploying the shared gateway and a tenant release, check:
 
 ```bash
 kubectl get gatewayclass
-kubectl get gateway -n gateway-system
+kubectl get gateway -n eduide-system
 kubectl get httproute -A
-kubectl describe gateway theia-shared-gateway -n gateway-system
+kubectl describe gateway theia-shared-gateway -n eduide-system
 kubectl describe httproute landing-route -n <tenant-namespace>
 kubectl describe httproute service-route -n <tenant-namespace>
 kubectl describe httproute theia-cloud-demo-ws-route -n <tenant-namespace>
@@ -345,7 +349,7 @@ The important conditions are:
 - tenant `HTTPRoute` resources are accepted
 - each route has a resolved parent reference
 - the Envoy data-plane service has an external address
-- TLS secrets referenced by HTTPS listeners exist in `gateway-system`
+- TLS secrets referenced by HTTPS listeners exist in `eduide-system`
 
 For a quick end-to-end check, open the landing hostname and then start an IDE session. The operator should add a rule to the instances route, and the generated session URL should resolve through the shared Gateway.
 
@@ -360,7 +364,7 @@ For a quick end-to-end check, open the landing hostname and then start an IDE se
 
 TLS fails:
 
-- the listener references a secret that does not exist in `gateway-system`
+- the listener references a secret that does not exist in `eduide-system`
 - the certificate does not cover the concrete or wildcard hostname
 - cert-manager Gateway API support is not enabled for HTTP-01 challenges
 
@@ -378,8 +382,7 @@ The Theia Cloud chart renders a duplicate Gateway:
 ## References
 
 - [`charts/theia-shared-gateway/README.md`](https://github.com/EduIDE/EduIDE-deployment/blob/main/charts/theia-shared-gateway/README.md)
-- [`deployments/shared-gateway/values.yaml`](https://github.com/EduIDE/EduIDE-deployment/blob/main/deployments/shared-gateway/values.yaml)
-- [`deployments/shared-gateway-prod/values.yaml`](https://github.com/EduIDE/EduIDE-deployment/blob/main/deployments/shared-gateway-prod/values.yaml)
-- [`docs/adding-environments.md`](https://github.com/EduIDE/EduIDE-deployment/blob/main/docs/adding-environments.md)
-- [`docs/deployment-workflows.md`](https://github.com/EduIDE/EduIDE-deployment/blob/main/docs/deployment-workflows.md)
+- [`charts/eduide-cluster/templates/gateway/`](https://github.com/EduIDE/EduIDE-Helm/tree/main/charts/eduide-cluster/templates/gateway) in EduIDE-Helm
+- [`.github/workflows/bootstrap-cluster.yml`](https://github.com/EduIDE/EduIDE-deployment/blob/main/.github/workflows/bootstrap-cluster.yml)
+- [`docs/environments.md`](https://github.com/EduIDE/EduIDE-deployment/blob/main/docs/environments.md)
 - [`charts/theia-cloud/values.yaml`](https://github.com/EduIDE/EduIDE-Helm/blob/main/charts/theia-cloud/values.yaml)

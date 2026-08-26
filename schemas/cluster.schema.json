@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EduIDE Cluster",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "eduide.dev/v1"
+    },
+    "kind": {
+      "const": "Cluster"
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "displayName": {
+          "type": "string"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "storageClassName",
+        "runner",
+        "tls"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "storageClassName": {
+          "type": "string"
+        },
+        "gatewayClassName": {
+          "type": "string"
+        },
+        "sharedGateway": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            }
+          }
+        },
+        "loadBalancerIP": {
+          "type": "string"
+        },
+        "runner": {
+          "type": "string",
+          "description": "Runner label for deploy jobs. Deploying needs to reach the API server, so this is per-cluster rather than one answer for all."
+        },
+        "bootstrapEnvironment": {
+          "type": "string"
+        },
+        "tls": {
+          "type": "object",
+          "description": "TLS Secret each shared-Gateway listener role terminates with. Per cluster because the clusters issue certificates differently. A listener without a secret renders an empty certificateRef: the Gateway is accepted and simply never programs TLS for that hostname.",
+          "required": [
+            "landing",
+            "service",
+            "instances",
+            "webview"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "landing": {
+              "type": "string"
+            },
+            "service": {
+              "type": "string"
+            },
+            "instances": {
+              "type": "string"
+            },
+            "webview": {
+              "type": "string",
+              "description": "Always its own Secret: webview hosts sit two labels below the instance host, so no certificate covering the others covers them."
+            },
+            "acmeHttp": {
+              "type": "boolean",
+              "description": "Add a plain :80 listener per host for cert-manager HTTP-01 challenges. Only needed where cert-manager issues the certificates."
+            }
+          }
+        }
+      }
+    }
+  }
+}

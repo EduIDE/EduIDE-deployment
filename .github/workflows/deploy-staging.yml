@@ -1,64 +1,79 @@
-# ==============================================================================
-# Staging Auto-Deployment Workflow
-# ==============================================================================
-# This workflow automatically deploys to the staging environment whenever
-# changes are pushed to the main branch.
+# Deploy staging.
 #
-# Purpose:
-#   - Provide continuous deployment of main branch to staging
-#   - Enable rapid testing of merged changes before production
-#   - Maintain staging environment in sync with main branch
+# Deliberately NOT automatic. `e2e-test` is the environment that follows main
+# and gets tested; staging is where a human puts something to look at before it
+# goes near production. Two environments silently racing the same trigger is how
+# you end up trusting neither.
 #
-# Trigger:
-#   Automatically runs on every push to the 'main' branch
-#
-# Target:
-#   - Environment: staging
-#   - Cluster: Shared staging/test cluster
-#   - Namespace: theia-staging (configured via NAMESPACE environment variable)
-#
-# Protection:
-#   No approval required (set to auto-deploy for fast iteration)
-#   Configure approval gates in GitHub Environment settings if needed
-#
-# Note:
-#   This workflow shares the same Kubernetes cluster as test1 but uses
-#   a separate namespace for isolation. Production uses a different cluster.
-# ==============================================================================
+# Image tags are immutable `latest-<sha>`, never a floating `latest`: with a
+# floating tag the pod template does not change between upgrades, so
+# `helm --wait` returns immediately without pulling anything and `--atomic` has
+# nothing to roll back if the new image is broken.
 
-name: Deploy Staging
+name: Deploy staging
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
-      execution_mode:
-        description: 'Runner backend to use (self-hosted-buildkit or github-runners)'
+      component:
+        description: Pin one component, or "none" to use the chart defaults
         required: false
-        default: 'self-hosted-buildkit'
         type: choice
-        options:
-          - self-hosted-buildkit
-          - github-runners
-      clean_install:
-        description: 'Clean Install: If true, perform namespace-scoped cleanup before install (delete sessions/workspaces, appdefinitions, deployments, daemonsets, statefulsets, PVCs).'
+        options: [none, EduIDE-Cloud, EduIDE, EduIDE-Landing-Page]
+        default: none
+      component_tag:
+        description: "Tag for that component, e.g. latest-abc1234 or pr-451"
         required: false
-        default: false
-        type: boolean
+        type: string
+  repository_dispatch:
+    types: [staging-deploy-request]
+
+permissions:
+  contents: read
 
 jobs:
+  tags:
+    runs-on: ubuntu-latest
+    outputs:
+      json: ${{ steps.j.outputs.json }}
+    steps:
+      - id: j
+        env:
+          SHA: ${{ github.event.client_payload.sha }}
+          COMPONENT: ${{ github.event.client_payload.component || inputs.component }}
+          TAG: ${{ inputs.component_tag }}
+        run: |
+          set -euo pipefail
+          # Either a tag typed into the form, or a SHA from a dispatch.
+          value="${TAG:-}"
+          if [[ -z "$value" && -n "${SHA:-}" ]]; then
+            value="latest-${SHA:0:7}"
+          fi
+          # "none" is the form's way of saying "no override"; the dispatch path
+          # simply sends nothing.
+          if [[ "${COMPONENT:-none}" == "none" ]]; then
+            COMPONENT=""
+          fi
+          if [[ -z "$value" || -z "$COMPONENT" ]]; then
+            echo 'json={}' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ ! "$value" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$ ]]; then
+            echo "::error::invalid image tag: ${value}"
+            exit 1
+          fi
+          case "$COMPONENT" in
+            EduIDE-Cloud)        key=controlPlane ;;
+            EduIDE)              key=ide ;;
+            EduIDE-Landing-Page) key=landingPage ;;
+            *) echo "::error::unknown component: ${COMPONENT}"; exit 1 ;;
+          esac
+          echo "json=$(jq -cn --arg k "$key" --arg v "$value" '{($k): $v}')" >> "$GITHUB_OUTPUT"
+
   deploy:
-    name: Auto-deploy to Staging
-    # Environment variables NAMESPACE and HELM_VALUES_PATH are read from GitHub Environment settings.
-    # Shared gateway inputs are hardcoded for the shared staging/test cluster.
-    uses: ./.github/workflows/deploy-theia.yml
+    needs: tags
+    uses: ./.github/workflows/deploy.yml
     with:
-      environment: theia-staging
-      execution_mode: ${{ inputs.execution_mode || 'self-hosted-buildkit' }}
-      clean_install: ${{ github.event_name == 'workflow_dispatch' && (inputs.clean_install || false) }}
-      deploy_shared_gateway: true
-      shared_gateway_values_file: deployments/shared-gateway/values.yaml
-      shared_gateway_namespace: gateway-system
+      environment: staging
+      image_overrides: ${{ needs.tags.outputs.json }}
     secrets: inherit

@@ -1,0 +1,298 @@
+# Install the cluster-scoped half of EduIDE.
+#
+# This is the ONLY workflow permitted to touch cluster-scoped resources: CRDs,
+# the conversion webhook, ClusterRoles, ClusterIssuers, the GatewayClass and the
+# shared Gateway.
+#
+# Previously every tenant deploy reinstalled theia-cloud-base, theia-cloud-crds
+# and theia-monitoring into the `default` namespace, so three concurrent test
+# deploys raced over the same cluster-scoped objects. That was worked around
+# with a six-attempt retry loop. Making one workflow the sole writer removes
+# the race rather than retrying through it.
+#
+# The shared Gateway's listeners are derived from the environments that say
+# they live on this cluster, so adding an environment no longer means editing a
+# second file by hand.
+
+name: Bootstrap cluster
+
+on:
+  workflow_dispatch:
+    inputs:
+      cluster:
+        description: Which cluster
+        required: true
+        type: choice
+        options: [tum-student, tum-production, eduide]
+      chart_version:
+        description: Cluster chart version
+        required: true
+        type: string
+      dry_run:
+        description: Render and diff only, apply nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.r.outputs.runner }}
+      environment: ${{ steps.r.outputs.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - id: r
+        run: |
+          set -euo pipefail
+          F="clusters/${{ inputs.cluster }}.yaml"
+          [[ -f "$F" ]] || { echo "::error::no such cluster: ${{ inputs.cluster }}"; exit 1; }
+          {
+            echo "runner=$(yq -r '.spec.runner // "ubuntu-latest"' "$F")"
+            echo "environment=$(yq -r '.spec.bootstrapEnvironment // ("cluster-" + .metadata.name)' "$F")"
+          } >> "$GITHUB_OUTPUT"
+
+  bootstrap:
+    needs: resolve
+    runs-on: ${{ needs.resolve.outputs.runner }}
+    environment: ${{ needs.resolve.outputs.environment }}
+    concurrency:
+      group: bootstrap-${{ inputs.cluster }}
+      cancel-in-progress: false
+    env:
+      KUBECONFIG: ${{ github.workspace }}/kubeconfig
+      CLUSTER: ${{ inputs.cluster }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+      - uses: azure/setup-kubectl@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Log in to GHCR
+        run: |
+          set -euo pipefail
+          helm plugin install https://github.com/databus23/helm-diff >/dev/null 2>&1 || true
+          echo '${{ secrets.GITHUB_TOKEN }}' | helm registry login ghcr.io -u '${{ github.actor }}' --password-stdin
+
+      - name: Set up kubeconfig
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null "$KUBECONFIG"
+          printf '%s' '${{ secrets.KUBECONFIG }}' > "$KUBECONFIG"
+
+      - name: Check what is already on this cluster
+        run: |
+          set -euo pipefail
+          # If this cluster has been bootstrapped before, it carries its own
+          # name. Bootstrapping it as something else means the KUBECONFIG for
+          # this GitHub Environment points somewhere unexpected.
+          FOUND=$(kubectl -n eduide-system get configmap eduide-cluster-identity \
+                    -o jsonpath='{.data.clusterName}' 2>/dev/null || true)
+          if [[ -z "$FOUND" ]]; then
+            echo "::notice::this cluster carries no identity yet; it will be stamped as '${CLUSTER}'"
+          elif [[ "$FOUND" != "$CLUSTER" ]]; then
+            echo "::error::this cluster says it is '${FOUND}', but you asked to bootstrap '${CLUSTER}'."
+            echo "::error::The KUBECONFIG in this GitHub Environment probably points at the wrong cluster."
+            echo "::error::If the rename is deliberate, delete the configmap eduide-cluster-identity in eduide-system first."
+            exit 1
+          else
+            echo "cluster '${CLUSTER}' confirmed"
+          fi
+
+      - name: Derive listeners and monitored namespaces from the environments
+        run: |
+          set -euo pipefail
+          # Every environment on this cluster contributes four listeners.
+          # deployments/shared-gateway/values.yaml used to list them by hand,
+          # which is why adding an environment needed two edits.
+          CLASS=$(yq -r '.spec.gatewayClassName // "envoy"' "clusters/${CLUSTER}.yaml")
+          ACME_HTTP=$(yq -r '.spec.tls.acmeHttp // false' "clusters/${CLUSTER}.yaml")
+          {
+            echo "gateway:"
+            echo "  className: ${CLASS}"
+            echo "  listeners:"
+          } > listeners.yaml
+          : > namespaces.txt
+          : > certnames.txt
+          found=0
+          for f in environments/*/env.yaml; do
+            env=$(basename "$(dirname "$f")")
+            [[ "$(yq -r '.spec.cluster' "$f")" == "$CLUSTER" ]] || continue
+            v="environments/$env/values.yaml"
+            [[ -f "$v" ]] || continue
+
+            # Section names come from the parentRefs the environment actually
+            # declares, so a listener cannot disagree with the route that
+            # attaches to it. Host names come from the same file.
+            base=$(yq -r '.hosts.configuration.baseHost' "$v")
+            landing=$(yq -r '.hosts.configuration.landing' "$v")
+            service=$(yq -r '.hosts.configuration.service' "$v")
+            instance=$(yq -r '.hosts.configuration.instance' "$v")
+
+            while read -r section; do
+              [[ -n "$section" ]] || continue
+              # Each role maps to a host and to the TLS secret this cluster
+              # uses for it. The secret is not optional: a listener without one
+              # renders an empty certificateRef, and the Gateway then never
+              # programs TLS for that hostname.
+              case "$section" in
+                *-landing)   host="${landing}.${base}";              role=landing ;;
+                *-service)   host="${service}.${base}";              role=service ;;
+                *-instances) host="${instance}.${base}";             role=instances ;;
+                *-webview)   host="*.webview.${instance}.${base}";   role=webview ;;
+                *) echo "::warning::${env}: unrecognised gateway section '${section}', skipping"; continue ;;
+              esac
+              secret=$(yq -r ".spec.tls.${role} // \"\"" "clusters/${CLUSTER}.yaml")
+              if [[ -z "$secret" ]]; then
+                echo "::error::clusters/${CLUSTER}.yaml has no spec.tls.${role}"
+                exit 1
+              fi
+              {
+                echo "    - name: ${section}"
+                echo "      hostname: '${host}'"
+                echo "      tlsSecretName: ${secret}"
+              } >> listeners.yaml
+
+              # Only names with a listener go on the certificate. cert-manager
+              # solves HTTP-01 by serving a token on port 80 per name; a name
+              # with no listener answers 404 and leaves the order pending, which
+              # blocks the certificate for every other name on it. The webview
+              # host is excluded because it is a wildcard, which HTTP-01 cannot
+              # do at all - it uses its own long-lived certificate.
+              case "$role" in
+                landing|service|instances) echo "$host" >> certnames.txt ;;
+              esac
+
+              # cert-manager answers HTTP-01 challenges on plain :80. Webview is
+              # a wildcard host and is never renewed that way.
+              if [[ "$ACME_HTTP" == "true" && "$role" != "webview" ]]; then
+                {
+                  echo "    - name: acme-${section%-*}-${role}-http"
+                  echo "      protocol: HTTP"
+                  echo "      port: 80"
+                  echo "      hostname: '${host}'"
+                } >> listeners.yaml
+              fi
+            done < <(yq -r '.gateway.parentRefs[]?.sectionName' "$v")
+            # An environment can opt out of being scraped with
+            # monitoring.enabled: false in its values. Default is on.
+            if [[ "$(yq -r '.monitoring.enabled // true' "$v")" == "true" ]]; then
+              yq -r '.spec.namespace' "$f" >> namespaces.txt
+            else
+              echo "::notice::${env} opted out of monitoring"
+            fi
+            found=$((found + 1))
+          done
+          if [[ $found -eq 0 ]]; then
+            echo "::error::no environments claim cluster ${CLUSTER}"
+            exit 1
+          fi
+          # The PodMonitors name every namespace they watch. That list used to
+          # be written by hand in theia-monitoring's values and had gone stale -
+          # it still named `theia` and `theia-staging`, which no longer exist, so
+          # two environments were being scraped and the rest were not.
+          # A cluster where every environment opted out gets monitoring
+          # switched off, rather than PodMonitors that watch nothing.
+          if [[ -s namespaces.txt ]]; then
+            {
+              echo "monitoring:"
+              echo "  enabled: true"
+              echo "  targetNamespaces:"
+              sed 's/^/    - /' namespaces.txt
+              echo "  sessionNamespaces:"
+              sed 's/^/    - /' namespaces.txt
+            } >> listeners.yaml
+          else
+            echo "::warning::no environment on ${CLUSTER} opts into monitoring"
+            printf 'monitoring:\n  enabled: false\n' >> listeners.yaml
+          fi
+          # The certificate covering every environment on this cluster. Left to
+          # a human, this is the file nobody remembers to edit: test3 ran for
+          # 184 days on a certificate that covered test1, test2 and staging but
+          # not itself, so every browser rejected it and the landing page could
+          # not call its own REST service.
+          if [[ "$ACME_HTTP" == "true" && -s certnames.txt ]]; then
+            SHARED=$(yq -r '.spec.tls.landing' "clusters/${CLUSTER}.yaml")
+            {
+              echo "managedCertificates:"
+              echo "  enabled: true"
+              echo "  certificates:"
+              echo "    - name: ${SHARED}"
+              echo "      secretName: ${SHARED}"
+              echo "      dnsNames:"
+              sed 's/^/        - /' certnames.txt
+            } >> listeners.yaml
+          fi
+          echo "::notice::${found} environment(s) on ${CLUSTER}"
+          echo "::group::derived cluster values"; cat listeners.yaml; echo "::endgroup::"
+
+      - name: Wildcard TLS secret
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null gw-secrets.yaml
+          cat > gw-secrets.yaml <<EOF
+          wildcardTLSSecret:
+            certificate: "$(printf '%s' '${{ secrets.THEIA_WILDCARD_CERTIFICATE_CERT }}' | base64 | tr -d '\n')"
+            key: "$(printf '%s' '${{ secrets.THEIA_WILDCARD_CERTIFICATE_KEY }}' | base64 | tr -d '\n')"
+          EOF
+
+      - name: Preview
+        run: |
+          set -euo pipefail
+          helm diff upgrade eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
+            --version "${{ inputs.chart_version }}" \
+            -n eduide-system -f listeners.yaml -f gw-secrets.yaml \
+            --allow-unreleased --no-color > gw.diff 2>&1 || true
+          {
+            echo "<details><summary>Cluster chart pending change</summary>"
+            echo ''; echo '```diff'; head -c 40000 gw.diff; echo '```'; echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install the cluster chart
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          helm upgrade --install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
+            --version "${{ inputs.chart_version }}" \
+            -n eduide-system --create-namespace \
+            -f listeners.yaml -f gw-secrets.yaml --wait --timeout 10m
+
+      - name: Stamp this cluster with its name
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          # This is how a tenant deploy knows which cluster it is talking to.
+          # Written here rather than typed into a manifest, because every
+          # cluster is behind the same Rancher endpoint - the API server URL
+          # is identical for all of them and so identifies nothing.
+          kubectl create namespace eduide-system --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n eduide-system create configmap eduide-cluster-identity \
+            --from-literal=clusterName="${CLUSTER}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n eduide-system label configmap eduide-cluster-identity \
+            app.kubernetes.io/part-of=eduide --overwrite
+          echo "stamped as '${CLUSTER}'"
+
+      - name: Report
+        if: ${{ always() && !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### ${CLUSTER} bootstrapped"
+            echo ''
+            echo '```'
+            kubectl -n eduide-system get gateway -o wide 2>/dev/null || true
+            kubectl get crd -o name 2>/dev/null | grep theia.cloud || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

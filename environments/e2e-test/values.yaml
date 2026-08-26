@@ -1,0 +1,51 @@
+# Helm values for the e2e-test environment.
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#
+# _base.yaml carries what is identical everywhere; this file carries what is
+# not. Anything appearing here for more than one environment belongs in
+# _base.yaml instead.
+#
+# Deployment metadata - which cluster, which namespace, which chart version -
+# is in env.yaml next door, because it configures the deploy rather than the
+# chart.
+
+app:
+  name: Artemis Online IDE (E2E)
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: e2e-landing
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: e2e-service
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: e2e-instances
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: e2e-webview
+operator:
+  sessionsPerUser: 1000
+landingPage:
+  footerLinks:
+    attribution:
+      version: E2E
+  infoTitle: Welcome to EduIDE Cloud (E2E test target)
+hosts:
+  configuration:
+    baseHost: eduide.student.k8s.aet.cit.tum.de
+    service: service.e2e
+    landing: e2e
+    instance: instance.e2e
+  allWildcardInstances:
+  - '*.webview.'
+keycloak:
+  enable: true
+  authUrl: https://keycloak-test.aet.cit.tum.de/
+  realm: tum
+  clientId: eduide
+eduide-shared-cache:
+  enabled: true

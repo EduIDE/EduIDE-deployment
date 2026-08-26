@@ -1,0 +1,72 @@
+# Deploy one environment by hand.
+#
+# Replaces deploy-pr.yml, which fired at all three test environments on every
+# pull request with no way to pick one.
+
+name: Deploy environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which environment
+        required: true
+        type: choice
+        options: [test1, test2, test3, e2e-test, staging, tum-production, bonn, mannheim]
+      chart_version:
+        description: "Chart version (blank uses the environment's own pin)"
+        required: false
+        type: string
+      control_plane_tag:
+        description: "Tag for operator and service (blank uses the chart default)"
+        required: false
+        type: string
+      ide_tag:
+        description: "Tag for the IDE images"
+        required: false
+        type: string
+      landing_page_tag:
+        description: "Tag for the landing page"
+        required: false
+        type: string
+      clean_install:
+        description: Purge the namespace first (never allowed for production)
+        type: boolean
+        default: false
+      dry_run:
+        description: Render and diff only, apply nothing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  overrides:
+    runs-on: ubuntu-latest
+    outputs:
+      json: ${{ steps.j.outputs.json }}
+    steps:
+      - id: j
+        env:
+          CP: ${{ inputs.control_plane_tag }}
+          IDE: ${{ inputs.ide_tag }}
+          LP: ${{ inputs.landing_page_tag }}
+        run: |
+          set -euo pipefail
+          json=$(jq -cn --arg cp "$CP" --arg ide "$IDE" --arg lp "$LP" \
+            '{} + (if $cp  != "" then {controlPlane: $cp} else {} end)
+                + (if $ide != "" then {ide: $ide}         else {} end)
+                + (if $lp  != "" then {landingPage: $lp}  else {} end)')
+          echo "json=$json" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: overrides
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ inputs.environment }}
+      chart_version: ${{ inputs.chart_version }}
+      image_overrides: ${{ needs.overrides.outputs.json }}
+      clean_install: ${{ inputs.clean_install }}
+      dry_run: ${{ inputs.dry_run }}
+    secrets: inherit

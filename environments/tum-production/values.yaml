@@ -1,0 +1,65 @@
+# Helm values for the tum-production environment.
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#
+# _base.yaml carries what is identical everywhere; this file carries what is
+# not. Anything appearing here for more than one environment belongs in
+# _base.yaml instead.
+#
+# Deployment metadata - which cluster, which namespace, which chart version -
+# is in env.yaml next door, because it configures the deploy rather than the
+# chart.
+#
+# HOSTNAME EXCEPTION. Every other production installation sits under
+# eduide.aet.cit.tum.de (bonn.eduide..., mannheim.eduide...). This one is
+# eduide.artemis.aet.cit.tum.de, under a different parent, because it runs
+# behind a different load balancer. That is deliberate - do not "fix" it to
+# match the others.
+# The Gradle/Maven dependency cache is not deployed here. The operator's
+# enableBuildCaching and enableDependencyCaching are false in every
+# environment, so no session ever reached it - on a production installation
+# that is a Redis, a cache server and a 20Gi reposilite PVC serving nobody.
+# The chart declares it with `condition: eduide-shared-cache.enabled`, so the
+# one key switches off the subchart, its vendored reposilite and the PVC.
+
+app:
+  name: Artemis Online IDE
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: prod-landing
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: prod-service
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: prod-instances
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: prod-webview
+operator:
+  replicas: 3
+landingPage:
+  sentry:
+    enable: false
+  footerLinks:
+    attribution:
+      version: v1.1.0
+  infoTitle: Welcome to EduIDE Cloud
+hosts:
+  configuration:
+    baseHost: artemis.aet.cit.tum.de
+    service: service.eduide
+    landing: eduide
+    instance: instance.eduide
+  allWildcardInstances:
+  - '*.webview.'
+keycloak:
+  enable: true
+  authUrl: https://keycloak.aet.cit.tum.de/
+  realm: tum
+  clientId: eduide
+eduide-shared-cache:
+  enabled: false

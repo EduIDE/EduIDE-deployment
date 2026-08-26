@@ -1,5 +1,0 @@
-# -- The cluster issuer to use for the certificate
-clusterIssuer: theia-cloud-selfsigned-issuer
-
-conversion:
-  image: ghcr.io/eduide/eduide-cloud/conversion-webhook:1.1.0

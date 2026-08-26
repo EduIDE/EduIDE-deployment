@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EduIDE Environment",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "eduide.dev/v1"
+    },
+    "kind": {
+      "const": "Environment"
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "name",
+        "tier"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "test",
+            "staging",
+            "production"
+          ]
+        },
+        "owners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "cluster",
+        "namespace",
+        "platform"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "cluster": {
+          "type": "string",
+          "description": "Must match a file in clusters/. Checked against the cluster's own identity at deploy time."
+        },
+        "namespace": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "platform": {
+          "type": "object",
+          "required": [
+            "chartVersion",
+            "channel"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "chartVersion": {
+              "type": "string"
+            },
+            "channel": {
+              "enum": [
+                "release",
+                "main",
+                "pinned"
+              ],
+              "description": "release pins images to the chart appVersion; main follows an immutable main-<sha> tag; pinned uses spec.imageTag."
+            }
+          }
+        }
+      }
+    }
+  },
+  "description": "Deployment metadata for one environment. Chart configuration lives in values.yaml alongside this file, as a plain Helm values file."
+}
