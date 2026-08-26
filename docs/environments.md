@@ -8,7 +8,7 @@ clusters/<name>.yaml            where things run
 environments/<name>/env.yaml    what runs there
 environments/_base.yaml         settings identical in every environment
 schemas/                        JSON schemas both are validated against
-scripts/render-values.sh        compiles a manifest into Helm values
+environments/<name>/values.yaml  plain Helm values, -f'd directly
 ```
 
 ## The three clusters
@@ -215,7 +215,7 @@ meaning anything.
 ## Checking a change
 
 ```bash
-./scripts/render-values.sh test1          # what it compiles to
+helm template ... -f environments/_base.yaml -f environments/test1/values.yaml
 ./scripts/test-deploy-logic.sh            # overrides, tags, listener collisions
 ./scripts/verify-migration.sh             # compiled == legacy values
 ```

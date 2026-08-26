@@ -51,17 +51,13 @@
       "required": [
         "cluster",
         "namespace",
-        "platform",
-        "hosts",
-        "gateway",
-        "keycloak",
-        "branding"
+        "platform"
       ],
       "additionalProperties": false,
       "properties": {
         "cluster": {
           "type": "string",
-          "description": "Must match a file in clusters/. Asserted against the kubeconfig at deploy time."
+          "description": "Must match a file in clusters/. Checked against the cluster's own identity at deploy time."
         },
         "namespace": {
           "type": "string",
@@ -87,132 +83,9 @@
               "description": "release pins images to the chart appVersion; main follows an immutable main-<sha> tag; pinned uses spec.imageTag."
             }
           }
-        },
-        "imageTag": {
-          "type": "string",
-          "description": "One tag for every EduIDE image in this environment. Defaults to latest."
-        },
-        "hosts": {
-          "type": "object",
-          "required": [
-            "baseHost",
-            "landing"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "baseHost": {
-              "type": "string"
-            },
-            "landing": {
-              "type": "string"
-            },
-            "service": {
-              "type": "string",
-              "description": "Defaults to service.<landing>"
-            },
-            "instance": {
-              "type": "string",
-              "description": "Defaults to instance.<landing>"
-            },
-            "wildcardPrefixes": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        },
-        "gateway": {
-          "type": "object",
-          "required": [
-            "mode"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "mode": {
-              "enum": [
-                "shared",
-                "local",
-                "none"
-              ]
-            },
-            "listenerPrefix": {
-              "type": "string",
-              "description": "Derives the four sectionNames. NOT necessarily the landing host: staging uses 'staging' and production uses 'prod'."
-            }
-          }
-        },
-        "keycloak": {
-          "type": "object",
-          "required": [
-            "realm",
-            "clientId"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "realm": {
-              "type": "string"
-            },
-            "clientId": {
-              "type": "string"
-            },
-            "enabled": {
-              "type": "boolean",
-              "description": "Defaults to true. Set false only when another OIDC provider is configured through spec.values."
-            },
-            "authUrl": {
-              "type": "string",
-              "description": "Keycloak base URL, with trailing slash. Defaults to the TUM server; installations elsewhere set their own."
-            },
-            "adminGroup": {
-              "type": "string",
-              "description": "Group whose members may use the admin scaling API, e.g. /eduide/admin."
-            }
-          }
-        },
-        "branding": {
-          "type": "object",
-          "required": [
-            "appName",
-            "infoTitle"
-          ],
-          "additionalProperties": false,
-          "properties": {
-            "appName": {
-              "type": "string"
-            },
-            "infoTitle": {
-              "type": "string"
-            },
-            "footerVersion": {
-              "type": "string"
-            }
-          }
-        },
-        "preloadApps": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "IDE images to pre-pull on every node. Defaults to the standard app set."
-        },
-        "addons": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "sharedCache": {
-              "type": "boolean"
-            },
-            "garbageCollector": {
-              "type": "boolean"
-            }
-          }
-        },
-        "values": {
-          "type": "object",
-          "description": "Free-form Helm values, merged last. Use sparingly: anything that appears here for more than one environment belongs in environments/_base.yaml or as a first-class field."
         }
       }
     }
-  }
+  },
+  "description": "Deployment metadata for one environment. Chart configuration lives in values.yaml alongside this file, as a plain Helm values file."
 }

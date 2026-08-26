@@ -108,7 +108,8 @@ jobs:
             echo "namespace=$(yq -r '.spec.namespace' "$M")"
             echo "tier=$(yq -r '.metadata.tier' "$M")"
             echo "channel=$(yq -r '.spec.platform.channel' "$M")"
-            echo "landing=$(yq -r '.spec.hosts.landing + "." + .spec.hosts.baseHost' "$M")"
+            V="environments/${{ inputs.environment }}/values.yaml"
+            echo "landing=$(yq -r '.["theia-cloud"].hosts.configuration | .landing + "." + .baseHost' "$V")"
             v="${{ inputs.chart_version }}"
             [[ -z "$v" ]] && v="$(yq -r '.spec.platform.chartVersion' "$M")"
             echo "chart_version=$v"
@@ -153,12 +154,6 @@ jobs:
             echo "::error::AppDefinition CRD not present. Run the Bootstrap cluster workflow for ${{ steps.env.outputs.cluster }} first."
             exit 1
           fi
-
-      - name: Compile values
-        run: |
-          set -euo pipefail
-          ./scripts/render-values.sh "${{ inputs.environment }}" > values.rendered.yaml
-          echo "::group::compiled values"; cat values.rendered.yaml; echo "::endgroup::"
 
       - name: Resolve image overrides
         id: images
@@ -211,7 +206,7 @@ jobs:
           mapfile -t IMG < image-args.txt || true
           helm diff upgrade eduide ./charts/theia-cloud-combined \
             --namespace "${{ steps.env.outputs.namespace }}" \
-            -f values.rendered.yaml -f secrets.yaml "${IMG[@]}" \
+            -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
             --allow-unreleased --no-color > helm.diff 2>&1 || true
           {
             echo "<details><summary>Pending change (helm diff)</summary>"
@@ -248,7 +243,7 @@ jobs:
           helm upgrade --install eduide ./charts/theia-cloud-combined \
             --namespace "${{ steps.env.outputs.namespace }}" --create-namespace \
             --version "${{ steps.env.outputs.chart_version }}" \
-            -f values.rendered.yaml -f secrets.yaml "${IMG[@]}" \
+            -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
             --wait --atomic --timeout 15m
 
       - name: Force a pull when the tag is floating

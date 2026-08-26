@@ -51,8 +51,10 @@ for cf in "$ROOT"/clusters/*.yaml; do
   n=0; prefixes=""
   for f in "$ROOT"/environments/*/env.yaml; do
     [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" ]] || continue
-    [[ "$(yq -r '.spec.gateway.mode' "$f")" == "shared" ]] || continue
-    prefixes+="$(yq -r '.spec.gateway.listenerPrefix // .spec.hosts.landing' "$f") "
+    env=$(basename "$(dirname "$f")")
+    v="$ROOT/environments/$env/values.yaml"
+    [[ -f "$v" ]] || continue
+    prefixes+="$(yq -r '[.["theia-cloud"].gateway.parentRefs[]?.sectionName | sub("-(landing|service|instances|webview)$"; "")] | unique | .[]' "$v" | tr '\n' ' ')" 
     n=$((n + 1))
   done
   dupes=$(tr ' ' '\n' <<<"$prefixes" | grep -v '^$' | sort | uniq -d)
@@ -73,8 +75,11 @@ for f in "$ROOT"/environments/*/env.yaml; do
   if [[ ! -f "$ROOT/clusters/$c.yaml" ]]; then
     bad "$env references unknown cluster" "$c"; continue
   fi
-  if ! "$ROOT/scripts/render-values.sh" "$env" >/dev/null 2>&1; then
-    bad "$env does not compile" ""; continue
+  if [[ ! -f "$ROOT/environments/$env/values.yaml" ]]; then
+    bad "$env has no values.yaml" ""; continue
+  fi
+  if ! yq -e '.' "$ROOT/environments/$env/values.yaml" >/dev/null 2>&1; then
+    bad "$env values.yaml is not valid YAML" ""; continue
   fi
   ok "$env -> cluster $c"
 done

@@ -66,7 +66,8 @@ jobs:
           for cluster in $(yq -r '.metadata.name' clusters/*.yaml); do
             dupes=$(for f in environments/*/env.yaml; do
               [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" ]] || continue
-              yq -r '.spec.gateway.listenerPrefix // .spec.hosts.landing' "$f"
+              env=$(basename "$(dirname "$f")")
+              yq -r '[.["theia-cloud"].gateway.parentRefs[]?.sectionName | sub("-(landing|service|instances|webview)$"; "")] | unique | .[]' "environments/$env/values.yaml" 
             done | sort | uniq -d)
             if [[ -n "$dupes" ]]; then
               echo "::error::cluster $cluster has duplicate gateway listener prefixes: $dupes"
@@ -81,14 +82,22 @@ jobs:
       - name: Deploy logic tests
         run: ./scripts/test-deploy-logic.sh
 
-      - name: Compile every environment
+      - name: Every environment has a values file and it parses
         run: |
           set -euo pipefail
+          fail=0
           for f in environments/*/env.yaml; do
             env=$(basename "$(dirname "$f")")
-            ./scripts/render-values.sh "$env" > /dev/null
-            echo "  compiled $env"
+            v="environments/$env/values.yaml"
+            if [[ ! -f "$v" ]]; then
+              echo "::error::$env has no values.yaml"; fail=1; continue
+            fi
+            if ! yq -e '.' "$v" >/dev/null 2>&1; then
+              echo "::error file=$v::is not valid YAML"; fail=1; continue
+            fi
+            echo "  OK   $env"
           done
+          exit $fail
 
   # Proves the manifests are equivalent to the values files they replace.
   # Drop this job once deployments/ is deleted.

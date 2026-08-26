@@ -1,0 +1,82 @@
+# Helm values for the bonn environment.
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#
+# _base.yaml carries what is identical everywhere; this file carries what is
+# not. Anything appearing here for more than one environment belongs in
+# _base.yaml instead.
+#
+# Deployment metadata - which cluster, which namespace, which chart version -
+# is in env.yaml next door, because it configures the deploy rather than the
+# chart.
+
+theia-certificates:
+  hosts:
+    configuration:
+      baseHost: uni-bonn.de
+      service: service.eduide
+      landing: eduide
+      instance: instance.eduide
+theia-cloud:
+  app:
+    name: EduIDE Bonn
+  gateway:
+    parentRefs:
+    - name: theia-shared-gateway
+      namespace: gateway-system
+      sectionName: bonn-landing
+    - name: theia-shared-gateway
+      namespace: gateway-system
+      sectionName: bonn-service
+    - name: theia-shared-gateway
+      namespace: gateway-system
+      sectionName: bonn-instances
+    - name: theia-shared-gateway
+      namespace: gateway-system
+      sectionName: bonn-webview
+  operator:
+    storageClassName: csi-rbd-sc
+    image: ghcr.io/eduide/eduide-cloud/operator:1.0.0-rc0
+  landingPage:
+    footerLinks:
+      attribution:
+        version: 'null'
+    infoTitle: Welcome to EduIDE (Bonn)
+    image: ghcr.io/eduide/eduidec-landing-page:1.0.0-rc0
+  hosts:
+    configuration:
+      baseHost: uni-bonn.de
+      service: service.eduide
+      landing: eduide
+      instance: instance.eduide
+    allWildcardInstances:
+    - '*.webview.'
+  keycloak:
+    enable: true
+    authUrl: https://sso.uni-bonn.de/auth/
+    realm: eduide
+    clientId: eduide-bonn
+    adminGroup: /eduide/admin
+  service:
+    image: ghcr.io/eduide/eduide-cloud/service:1.0.0-rc0
+  preloading:
+    images:
+    - ghcr.io/eduide/eduidec-landing-page:1.0.0-rc0
+    - ghcr.io/eduide/eduide/java-17:1.0.0-rc0
+    - ghcr.io/eduide/eduide/java-17-templates:1.0.0-rc0
+    - ghcr.io/eduide/eduide/c:1.0.0-rc0
+    - ghcr.io/eduide/eduide/c-templates:1.0.0-rc0
+    - ghcr.io/eduide/eduide/javascript:1.0.0-rc0
+    - ghcr.io/eduide/eduide/ocaml:1.0.0-rc0
+    - ghcr.io/eduide/eduide/rust:1.0.0-rc0
+    - ghcr.io/eduide/eduide/python:1.0.0-rc0
+    - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
+      args:
+      - --version
+hosts:
+  configuration:
+    baseHost: uni-bonn.de
+    service: service.eduide
+    landing: eduide
+    instance: instance.eduide

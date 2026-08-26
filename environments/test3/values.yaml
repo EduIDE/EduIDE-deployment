@@ -1,0 +1,82 @@
+# Helm values for the test3 environment.
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#
+# _base.yaml carries what is identical everywhere; this file carries what is
+# not. Anything appearing here for more than one environment belongs in
+# _base.yaml instead.
+#
+# Deployment metadata - which cluster, which namespace, which chart version -
+# is in env.yaml next door, because it configures the deploy rather than the
+# chart.
+
+theia-certificates:
+  hosts:
+    configuration:
+      baseHost: theia-test.artemis.cit.tum.de
+      service: service.test3
+      landing: test3
+      instance: instance.test3
+theia-cloud:
+  app:
+    name: Artemis Online IDE (Test3)
+  gateway:
+    parentRefs:
+    - name: theia-shared-gateway
+      namespace: gateway-system
+      sectionName: test3-landing
+    - name: theia-shared-gateway
+      namespace: gateway-system
+      sectionName: test3-service
+    - name: theia-shared-gateway
+      namespace: gateway-system
+      sectionName: test3-instances
+    - name: theia-shared-gateway
+      namespace: gateway-system
+      sectionName: test3-webview
+  operator:
+    storageClassName: longhorn
+    image: ghcr.io/eduide/eduide-cloud/operator:latest
+  landingPage:
+    loadingText: ⚡ Setting up your development workspace...
+    footerLinks:
+      attribution:
+        version: Test3-v1.0.0
+    infoTitle: 🚀 Welcome to EduIDE Cloud (Test3)
+    image: ghcr.io/eduide/eduidec-landing-page:latest
+  hosts:
+    configuration:
+      baseHost: theia-test.artemis.cit.tum.de
+      service: service.test3
+      landing: test3
+      instance: instance.test3
+    allWildcardInstances:
+    - '*.webview.'
+  keycloak:
+    enable: true
+    authUrl: https://keycloak.aet.cit.tum.de/
+    realm: Test
+    clientId: theia-test
+  service:
+    image: ghcr.io/eduide/eduide-cloud/service:latest
+  preloading:
+    images:
+    - ghcr.io/eduide/eduidec-landing-page:latest
+    - ghcr.io/eduide/eduide/java-17:latest
+    - ghcr.io/eduide/eduide/java-17-templates:latest
+    - ghcr.io/eduide/eduide/c:latest
+    - ghcr.io/eduide/eduide/c-templates:latest
+    - ghcr.io/eduide/eduide/javascript:latest
+    - ghcr.io/eduide/eduide/ocaml:latest
+    - ghcr.io/eduide/eduide/rust:latest
+    - ghcr.io/eduide/eduide/python:latest
+    - image: quay.io/oauth2-proxy/oauth2-proxy:v7.12.0
+      args:
+      - --version
+hosts:
+  configuration:
+    baseHost: theia-test.artemis.cit.tum.de
+    service: service.test3
+    landing: test3
+    instance: instance.test3

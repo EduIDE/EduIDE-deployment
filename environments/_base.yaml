@@ -5,8 +5,8 @@
 # environment's env.yaml instead. If you find yourself editing this file for one
 # environment, it belongs in that environment's `values:` block.
 #
-# Host names, gateway parentRefs and the preload list are NOT here: they are
-# derived per environment by scripts/render-values.sh.
+# Host names, gateway routing and the image set are per environment and live
+# in that environment's values.yaml.
 
 theia-certificates:
   certificates:
@@ -31,7 +31,7 @@ theia-cloud:
 
   # Keycloak is NOT here: realm, clientId and authUrl are per environment.
   # TUM installations share a server and differ by realm; installations at
-  # other universities bring their own server. See render-values.sh.
+  # other universities bring their own server entirely.
 
   gateway:
     enabled: true

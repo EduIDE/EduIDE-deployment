@@ -10,7 +10,7 @@ Deploys EduIDE to TUM's Kubernetes clusters. **No application code lives here.**
 clusters/<name>.yaml            where things run (identity, storage, runner)
 environments/<name>/env.yaml    what runs there (hosts, branding, versions)
 environments/_base.yaml         settings identical in every environment
-scripts/render-values.sh        compiles a manifest into Helm values
+environments/<name>/values.yaml  plain Helm values, -f'd directly
 ```
 
 An environment is one namespace on one cluster.
@@ -27,7 +27,7 @@ The charts live in **EduIDE-Helm** and are pulled from
 ## Before you change anything
 
 ```bash
-./scripts/render-values.sh test1        # what the manifest compiles to
+helm template ... -f environments/_base.yaml -f environments/test1/values.yaml
 ./scripts/test-deploy-logic.sh          # override, tag and listener logic
 ./scripts/verify-migration.sh           # compiled == legacy values (needs helm + GHCR)
 ```

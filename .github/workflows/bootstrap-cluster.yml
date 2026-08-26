@@ -115,23 +115,31 @@ jobs:
           echo "  listeners:" >> listeners.yaml
           found=0
           for f in environments/*/env.yaml; do
+            env=$(basename "$(dirname "$f")")
             [[ "$(yq -r '.spec.cluster' "$f")" == "$CLUSTER" ]] || continue
-            [[ "$(yq -r '.spec.gateway.mode' "$f")" == "shared" ]] || continue
-            prefix=$(yq -r '.spec.gateway.listenerPrefix // .spec.hosts.landing' "$f")
-            base=$(yq -r '.spec.hosts.baseHost' "$f")
-            landing=$(yq -r '.spec.hosts.landing' "$f")
-            service=$(yq -r '.spec.hosts.service // ("service." + .spec.hosts.landing)' "$f")
-            instance=$(yq -r '.spec.hosts.instance // ("instance." + .spec.hosts.landing)' "$f")
-            {
-              echo "    - name: ${prefix}-landing"
-              echo "      hostname: ${landing}.${base}"
-              echo "    - name: ${prefix}-service"
-              echo "      hostname: ${service}.${base}"
-              echo "    - name: ${prefix}-instances"
-              echo "      hostname: ${instance}.${base}"
-              echo "    - name: ${prefix}-webview"
-              echo "      hostname: '*.webview.${instance}.${base}'"
-            } >> listeners.yaml
+            v="environments/$env/values.yaml"
+            [[ -f "$v" ]] || continue
+
+            # Section names come from the parentRefs the environment actually
+            # declares, so a listener cannot disagree with the route that
+            # attaches to it. Host names come from the same file.
+            base=$(yq -r '.["theia-cloud"].hosts.configuration.baseHost' "$v")
+            landing=$(yq -r '.["theia-cloud"].hosts.configuration.landing' "$v")
+            service=$(yq -r '.["theia-cloud"].hosts.configuration.service' "$v")
+            instance=$(yq -r '.["theia-cloud"].hosts.configuration.instance' "$v")
+
+            while read -r section; do
+              [[ -n "$section" ]] || continue
+              case "$section" in
+                *-landing)   host="${landing}.${base}" ;;
+                *-service)   host="${service}.${base}" ;;
+                *-instances) host="${instance}.${base}" ;;
+                *-webview)   host="*.webview.${instance}.${base}" ;;
+                *) echo "::warning::${env}: unrecognised gateway section '${section}', skipping"; continue ;;
+              esac
+              echo "    - name: ${section}" >> listeners.yaml
+              echo "      hostname: '${host}'" >> listeners.yaml
+            done < <(yq -r '.["theia-cloud"].gateway.parentRefs[]?.sectionName' "$v")
             found=$((found + 1))
           done
           if [[ $found -eq 0 ]]; then
