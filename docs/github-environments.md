@@ -8,7 +8,7 @@ There are **two kinds**, and they are not interchangeable.
 
 | Kind | Named | Used by | Holds |
 |---|---|---|---|
-| Per environment | exactly the directory name under `environments/` | `Deploy`, `Rollback` | `KUBECONFIG`, `THEIA_KEYCLOAK_COOKIE_SECRET` |
+| Per environment | the installation's landing hostname, which is also its directory under `environments/` | `Deploy`, `Rollback` | `KUBECONFIG`, `THEIA_KEYCLOAK_COOKIE_SECRET` |
 | Per cluster | `spec.bootstrapEnvironment` in `clusters/<name>.yaml`, by convention `cluster-<name>` | `Bootstrap cluster` | `KUBECONFIG`, `THEIA_WILDCARD_CERTIFICATE_CERT`, `THEIA_WILDCARD_CERTIFICATE_KEY` |
 
 A deploy never installs anything cluster-scoped, and a bootstrap never installs
@@ -71,12 +71,11 @@ ACME cannot issue a wildcard over HTTP-01, so this certificate is obtained from
 Harica through RBG and renewed by hand. See
 [tum-certificates.md](tum-certificates.md).
 
-These currently sit on `test1`, `test2` and `test3`, which is where the
-pre-2.0.0 workflows read them from. `bootstrap-cluster.yml` reads them from the
-**cluster** environment, so they need to be copied to `cluster-tum-student` and
-friends.
+They live on the **cluster** environments (`cluster-tum-student`,
+`cluster-tum-production`, `cluster-eduide`), which is where
+`bootstrap-cluster.yml` reads them. A deploy never uses them.
 
-### `E2E_KEYCLOAK_USER` and `E2E_KEYCLOAK_PWD` - `e2e-test` only
+### `E2E_KEYCLOAK_USER` and `E2E_KEYCLOAK_PWD` - `e2e.eduide.student.k8s.aet.cit.tum.de` only
 
 Credentials for the account the functional tests log in as. Only
 `deploy-e2e.yml` reads them.
@@ -84,17 +83,19 @@ Credentials for the account the functional tests log in as. Only
 ## Creating one
 
 **In the UI:** Settings -> Environments -> New environment. The name must match
-exactly - `environments/test1/` needs an environment called `test1`, not
-`Test1`.
+the directory exactly - `environments/test1.eduide.student.k8s.aet.cit.tum.de/`
+needs an environment of the same name. Names are the landing hostname, so they are long; that is deliberate,
+since it removes any mapping that could drift.
 
 **With the CLI:**
 
 ```bash
 REPO=EduIDE/EduIDE-deployment
-gh api -X PUT "repos/$REPO/environments/test1"
+ENV=test1.eduide.student.k8s.aet.cit.tum.de
+gh api -X PUT "repos/$REPO/environments/$ENV"
 
-gh secret set KUBECONFIG --repo "$REPO" --env test1 < ~/.kube/test1.yaml
-gh secret set THEIA_KEYCLOAK_COOKIE_SECRET --repo "$REPO" --env test1 \
+gh secret set KUBECONFIG --repo "$REPO" --env "$ENV" < ~/.kube/stud-cp.yaml
+gh secret set THEIA_KEYCLOAK_COOKIE_SECRET --repo "$REPO" --env "$ENV" \
   --body "$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d -- '\n' | tr -- '+/' '-_')"
 ```
 
@@ -110,7 +111,7 @@ gh secret set THEIA_WILDCARD_CERTIFICATE_KEY  --repo "$REPO" --env cluster-tum-s
 Check what an environment holds - names only, values are never readable:
 
 ```bash
-gh api "repos/$REPO/environments/test1/secrets" --jq '.secrets[].name'
+gh api "repos/$REPO/environments/test1.eduide.student.k8s.aet.cit.tum.de/secrets" --jq '.secrets[].name'
 ```
 
 ## Protection rules
@@ -124,29 +125,30 @@ gh api -X PUT "repos/$REPO/environments/tum-production" \
   -F 'reviewers[][type]=Team' -F 'reviewers[][id]=<team-id>'
 ```
 
-`e2e-test` deliberately has none: it deploys from `main` automatically and a
-gate there would just leave runs waiting. Test environments generally do not
+`e2e.eduide.student.k8s.aet.cit.tum.de` deliberately has none: it deploys
+from `main` automatically and a gate there would just leave runs waiting. Test environments generally do not
 need approvers either - the point of a test environment is that deploying to it
 is cheap.
 
 ## What is configured today
 
-Audited against the repository. `THEIA_ADMIN_API_TOKEN` is repository-wide and
-therefore available to all of them.
+`THEIA_ADMIN_API_TOKEN` is a repository secret, so every environment inherits it.
 
 | Environment | `KUBECONFIG` | Cookie secret | Wildcard cert | Reviewers |
 |---|---|---|---|---|
-| `test1`, `test2`, `test3` | yes | yes | yes, **wrong kind of environment** | yes |
-| `e2e-test` | **missing** | **missing** | n/a | none, by design |
-| `staging` | **missing** | **missing** | n/a | yes |
-| `tum-production` | **missing** | **missing** | n/a | yes |
-| `bonn`, `mannheim` | **missing** | **missing** | n/a | yes |
-| `cluster-tum-student` | **missing** | n/a | **missing** | yes |
-| `cluster-tum-production` | **missing** | n/a | **missing** | yes |
-| `cluster-eduide` | **missing** | n/a | **missing** | yes |
+| `cluster-tum-student` | yes | n/a | yes | yes |
+| `cluster-tum-production` | yes | n/a | yes | yes |
+| `cluster-eduide` | **missing** | n/a | yes | yes |
+| `test1.eduide.student.k8s.aet.cit.tum.de` and the other two `test` ones | yes | yes | n/a | yes |
+| `staging.eduide.student.k8s.aet.cit.tum.de` | yes | yes | n/a | yes |
+| `e2e.eduide.student.k8s.aet.cit.tum.de` | yes | yes | n/a | none, by design |
+| `eduide.artemis.cit.tum.de` | yes | yes | n/a | yes |
+| `bonn.…`, `mannheim.…` | **missing** | **missing** | n/a | yes |
 
-So today **no cluster can be bootstrapped** and only `test1`, `test2` and
-`test3` can be deployed. Everything else stops at the kubeconfig.
+Outstanding: `cluster-eduide` has no `KUBECONFIG`, so the cluster hosting Bonn
+and Mannheim cannot be bootstrapped, and `e2e.eduide.student.k8s.aet.cit.tum.de`
+still needs
+`E2E_KEYCLOAK_USER` and `E2E_KEYCLOAK_PWD`.
 
 `theia-prod` and `theia-staging` are pre-2.0.0 environments. No workflow
 references either name any more, and both still hold live secrets. They should

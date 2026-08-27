@@ -18,11 +18,19 @@ An environment is one namespace on one cluster.
 
 | Cluster | Environments |
 |---|---|
-| `tum-student` | `test1`, `test2`, `test3`, `e2e-test`, `staging` |
-| `tum-production` | `tum-production` |
-| `eduide` | `bonn`, `mannheim` - **cluster not provisioned yet** |
+| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`test3.…`<br>`e2e.…`<br>`staging.…` |
+| `tum-production` | `eduide.artemis.cit.tum.de` |
+| `eduide` | `bonn.eduide.aet.cit.tum.de`<br>`mannheim.eduide.aet.cit.tum.de` |
 
-Every namespace is `eduide-<environment>`.
+**An environment is named after the hostname it serves.** The directory under
+`environments/`, the GitHub Environment and the landing host are the same
+string, so there is nothing to map and nothing to keep in sync.
+
+The `eduide` cluster is **not provisioned yet**.
+
+Namespaces stay short - `eduide-test1`, `eduide-tum-production` - because a
+Kubernetes namespace cannot contain dots. `spec.namespace` in each `env.yaml`
+states it.
 
 ## Installing
 
@@ -52,15 +60,16 @@ file. `Deploy` does the second.
 
 | I want to | Do this |
 |---|---|
-| Put a PR's images on a test environment | Comment `/deploy test2` on the PR |
+| Put a PR's images on a test environment | Comment `/deploy test2.eduide.student.k8s.aet.cit.tum.de` on the PR |
 | Deploy any environment by hand | Actions → **Deploy (dispatch)** |
 | Move staging | Actions → **Deploy staging** |
 | Move production | Bump `chartVersion` in `environments/tum-production/env.yaml`, open a PR |
 | Undo a bad deploy | Actions → **Rollback** |
 | Bring up a new cluster | Actions → **Bootstrap cluster** |
 
-`e2e-test` deploys from `main` automatically and the functional tests run
-against it. Do not point manual work at it - use `staging`.
+`e2e.eduide.student.k8s.aet.cit.tum.de` deploys from `main` automatically and
+the functional tests run against it. Do not point manual work at it - use the
+`staging.` one.
 
 Every deploy asserts which cluster it reached before touching anything, shows a
 `helm diff` before applying, runs `--wait --atomic`, and prints a summary read
