@@ -212,7 +212,19 @@ for cf in "$ROOT"/clusters/*.yaml; do
     continue
   fi
   acme=$(yq -r '.spec.tls.acmeHttp // false' "$cf")
-  ok "$cluster: all four roles have a secret, acmeHttp=$acme"
+  # acmeHttp means bootstrap creates the ClusterIssuer the derived certificates
+  # point at, and cert-manager will not register an ACME account without a
+  # contact address. Caught here rather than half way through a bootstrap.
+  if [[ "$acme" == "true" ]]; then
+    email=$(yq -r '.spec.acmeEmail // ""' "$cf")
+    if [[ -z "$email" ]]; then
+      bad "$cluster sets spec.tls.acmeHttp but has no spec.acmeEmail" "cert-manager needs a contact address"
+      continue
+    fi
+    ok "$cluster: all four roles have a secret, acmeHttp=true, acmeEmail=$email"
+  else
+    ok "$cluster: all four roles have a secret, acmeHttp=false"
+  fi
 done
 
 # --- monitoring opt-out reaches the derived namespace list -----------------

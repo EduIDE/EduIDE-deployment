@@ -98,8 +98,46 @@
               "description": "Add a plain :80 listener per host for cert-manager HTTP-01 challenges. Only needed where cert-manager issues the certificates."
             }
           }
+        },
+        "acmeEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact address on the ACME account. Required when spec.tls.acmeHttp is true, because bootstrap then creates the ClusterIssuer the derived certificates reference."
+        },
+        "acmeIssuerName": {
+          "type": "string",
+          "description": "Name of the Gateway-API ACME ClusterIssuer bootstrap creates. Defaults to letsencrypt-prod-gateway.",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+          "minLength": 1,
+          "maxLength": 253
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "tls": {
+                "properties": {
+                  "acmeHttp": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "acmeHttp"
+                ]
+              }
+            },
+            "required": [
+              "tls"
+            ]
+          },
+          "then": {
+            "required": [
+              "acmeEmail"
+            ]
+          }
+        }
+      ]
     }
   }
 }

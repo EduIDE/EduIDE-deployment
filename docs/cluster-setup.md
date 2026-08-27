@@ -13,7 +13,7 @@ that reports itself healthy and serves nothing.
 |---|---|
 | Gateway API CRDs, Envoy Gateway, cert-manager, storage | **you**, once per cluster |
 | A GatewayClass whose load balancer address matches DNS | **you** |
-| An ACME `ClusterIssuer` that can solve over Gateway API | **you** |
+| The ACME `ClusterIssuer` | `Bootstrap cluster`, from `spec.acmeEmail` |
 | The webview wildcard certificate | **you**, see [tum-certificates.md](tum-certificates.md) |
 | DNS records | **you** (RBG) |
 | Keycloak client and redirect URIs | **you**, see [keycloak-setup.md](keycloak-setup.md) |
@@ -26,8 +26,9 @@ that reports itself healthy and serves nothing.
 | The operator, service, landing page, routes, apps | `Deploy` |
 
 `Bootstrap cluster` installs the `eduide-cluster` chart and nothing else. It
-does not install a Gateway controller, an issuer, cert-manager or a CNI. It
-assumes the platform underneath already works.
+does not install a Gateway controller, cert-manager or a CNI, and it assumes the
+platform underneath already works. It does create the ACME `ClusterIssuer` the
+certificates it derives point at - see step 3.
 
 ## Step 1: the platform layer
 
@@ -129,16 +130,27 @@ dig +short eduide.student.k8s.aet.cit.tum.de A
 
 Those two must end at the same address.
 
-## Step 3: an ACME issuer that speaks Gateway API
+## Step 3: the ACME issuer
 
 `Bootstrap cluster` derives a cert-manager `Certificate` covering every
-environment's landing, service and instance hostnames. That `Certificate`
-references a `ClusterIssuer` by name, and **the workflow does not create the
-issuer, nor does it choose which one to use** - the chart's default,
-`letsencrypt-prod`, is what the derived certificate asks for.
+environment's landing, service and instance hostnames, and **creates the
+`ClusterIssuer` it points at** rather than assuming a suitable one exists. That
+happens whenever the cluster sets `spec.tls.acmeHttp: true`, and it needs one
+thing from the cluster manifest:
 
-An issuer of that name exists on both TUM clusters, but on `tum-student` its
-only solver is an nginx Ingress solver:
+```yaml
+spec:
+  acmeEmail: admin.aet@xcit.tum.de        # required when acmeHttp is true
+  acmeIssuerName: letsencrypt-prod-gateway   # optional, this is the default
+```
+
+cert-manager will not register an ACME account without a contact address, so
+bootstrap fails early if it is missing, and `test-deploy-logic.sh` catches it
+before that.
+
+:::warning Do not reuse the existing `letsencrypt-prod`
+Both TUM clusters carry a `ClusterIssuer` of that name whose only solver is an
+nginx Ingress solver:
 
 ```yaml
 solvers:
@@ -147,31 +159,15 @@ solvers:
         class: nginx
 ```
 
-cert-manager cannot solve a Gateway API challenge with that. The certificate
-would stay pending indefinitely, and, as ever, the Gateway would keep reporting
-`Programmed=True` while serving whatever stale certificate the secret holds.
-
-You need a `ClusterIssuer` whose HTTP-01 solver is `gatewayHTTPRoute`. The chart
-creates one:
-
-```yaml
-gatewayAcmeIssuer:
-  enabled: true
-  name: letsencrypt-prod-gateway
-  email: ls1.itg@in.tum.de
-managedCertificates:
-  issuerRef:
-    kind: ClusterIssuer
-    name: letsencrypt-prod-gateway
-```
-
-Until `bootstrap-cluster.yml` passes those two blocks, supply them by hand: run
-the chart once with a values file containing them, or create the `ClusterIssuer`
-directly. The test cluster already carries a working
-`letsencrypt-prod-gateway`, created out of band.
+cert-manager cannot answer a **Gateway API** challenge with that. Certificates
+pointed at it stay pending indefinitely, and the Gateway keeps reporting
+`Programmed=True` while serving whatever the secret already held. The issuer
+bootstrap creates uses `http01.gatewayHTTPRoute` against the shared Gateway.
+:::
 
 The wildcard webview certificate is **not** issued this way and never can be.
-ACME does not permit HTTP-01 for wildcards. See
+ACME does not permit HTTP-01 for wildcards. Those hosts keep a long-lived
+certificate supplied through `wildcardTLSSecret`; see
 [tum-certificates.md](tum-certificates.md).
 
 ## Step 4: DNS
@@ -306,6 +302,7 @@ EduIDE somewhere unexpected.
        instances: shared-theia-cert
        webview: static-theia-cert   # always separate - two labels lower
        acmeHttp: false              # true adds :80 listeners for HTTP-01
+     acmeEmail: you@example.edu     # required when acmeHttp is true
      sharedGateway: { namespace: eduide-system, name: theia-shared-gateway }
      runner: ubuntu-latest          # must be able to reach the API server
      bootstrapEnvironment: cluster-eduide
@@ -328,5 +325,4 @@ listed above in context; collected here so they are not missed:
 | Gap | Consequence |
 |---|---|
 | `bootstrap-cluster.yml` passes no `gatewayClass` or `envoyProxy` | A cluster needing its own data plane address must have it created by hand (step 2) |
-| `bootstrap-cluster.yml` passes no `gatewayAcmeIssuer` and no `managedCertificates.issuerRef` | Derived certificates ask for `letsencrypt-prod`, which on `tum-student` cannot solve Gateway API challenges (step 3) |
 | `spec.loadBalancerIP` is in the schema and in `tum-production.yaml` | Nothing reads it. It records intent only (step 2) |

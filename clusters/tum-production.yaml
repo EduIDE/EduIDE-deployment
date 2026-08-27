@@ -20,6 +20,13 @@ spec:
     # does not break anything until a certificate comes up for renewal.
     acmeHttp: true
 
+  # Contact address on the ACME account. Required because acmeHttp is true:
+  # bootstrap creates the ClusterIssuer that the derived certificates point at,
+  # rather than assuming a suitable one already exists. The `letsencrypt-prod`
+  # issuer on these clusters solves over nginx Ingress only, so it cannot
+  # answer a Gateway API challenge.
+  acmeEmail: admin.aet@xcit.tum.de
+
   sharedGateway:
     namespace: eduide-system
     name: theia-shared-gateway
