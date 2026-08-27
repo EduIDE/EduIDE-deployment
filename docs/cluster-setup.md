@@ -26,8 +26,9 @@ that reports itself healthy and serves nothing.
 | The operator, service, landing page, routes, apps | `Deploy` |
 
 `Bootstrap cluster` installs the `eduide-cluster` chart and nothing else. It
-does not install a Gateway controller, an issuer, cert-manager or a CNI. It
-assumes the platform underneath already works.
+does not install a Gateway controller, cert-manager or a CNI, and it assumes the
+platform underneath already works. It does create the ACME `ClusterIssuer` the
+certificates it derives point at - see step 3.
 
 ## Step 1: the platform layer
 

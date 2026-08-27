@@ -170,8 +170,14 @@ jobs:
               # blocks the certificate for every other name on it. The webview
               # host is excluded because it is a wildcard, which HTTP-01 cannot
               # do at all - it uses its own long-lived certificate.
+              #
+              # Recorded WITH its secret. The three roles do not have to share
+              # one: tum-production terminates each with its own. One
+              # certificate covering all three names but written to only the
+              # landing secret would leave the other two listeners pointing at
+              # Secrets nothing creates.
               case "$role" in
-                landing|service|instances) echo "$host" >> certnames.txt ;;
+                landing|service|instances) echo "${secret} ${host}" >> certnames.txt ;;
               esac
 
               # cert-manager answers HTTP-01 challenges on plain :80. Webview is
@@ -222,20 +228,23 @@ jobs:
           # 184 days on a certificate that covered test1, test2 and staging but
           # not itself, so every browser rejected it and the landing page could
           # not call its own REST service.
-          if [[ "$ACME_HTTP" == "true" && -s certnames.txt ]]; then
-            # The issuer is created here rather than assumed. Both TUM clusters
-            # carry a `letsencrypt-prod` whose only solver is an nginx Ingress
-            # one, which cannot answer a Gateway API challenge - so pointing the
-            # derived certificates at it would leave every one of them pending
-            # forever, with the Gateway still reporting Programmed=True.
+          # Checked whenever acmeHttp is set, not only when there turn out to
+          # be names to issue, so the manifest's contract and the workflow agree.
+          if [[ "$ACME_HTTP" == "true" ]]; then
             ACME_EMAIL=$(yq -r '.spec.acmeEmail // ""' "clusters/${CLUSTER}.yaml")
             if [[ -z "$ACME_EMAIL" ]]; then
               echo "::error::clusters/${CLUSTER}.yaml sets spec.tls.acmeHttp but no spec.acmeEmail."
               echo "::error::cert-manager needs a contact address to register the ACME account."
               exit 1
             fi
+          fi
+          if [[ "$ACME_HTTP" == "true" && -s certnames.txt ]]; then
+            # The issuer is created here rather than assumed. Both TUM clusters
+            # carry a `letsencrypt-prod` whose only solver is an nginx Ingress
+            # one, which cannot answer a Gateway API challenge - so pointing the
+            # derived certificates at it would leave every one of them pending
+            # forever, with the Gateway still reporting Programmed=True.
             ISSUER=$(yq -r '.spec.acmeIssuerName // "letsencrypt-prod-gateway"' "clusters/${CLUSTER}.yaml")
-            SHARED=$(yq -r '.spec.tls.landing' "clusters/${CLUSTER}.yaml")
             {
               echo "gatewayAcmeIssuer:"
               echo "  enabled: true"
@@ -247,11 +256,19 @@ jobs:
               echo "    kind: ClusterIssuer"
               echo "    name: ${ISSUER}"
               echo "  certificates:"
-              echo "    - name: ${SHARED}"
-              echo "      secretName: ${SHARED}"
-              echo "      dnsNames:"
-              sed 's/^/        - /' certnames.txt
             } >> listeners.yaml
+            # One certificate per TLS secret, because the chart writes each
+            # certificate to exactly the secret it names and copies it nowhere.
+            # tum-student terminates all three roles with one secret and gets
+            # one certificate; tum-production uses three and gets three.
+            while read -r secret; do
+              {
+                echo "    - name: ${secret}"
+                echo "      secretName: ${secret}"
+                echo "      dnsNames:"
+              } >> listeners.yaml
+              awk -v s="$secret" '$1 == s { print "        - " $2 }' certnames.txt >> listeners.yaml
+            done < <(awk '{print $1}' certnames.txt | sort -u)
           fi
           # The wildcard webview certificate is deliberately NOT issued here.
           # ACME does not permit HTTP-01 for wildcards at all, so those hosts
