@@ -93,7 +93,10 @@ jobs:
       - name: Install helm-diff and yq
         run: |
           set -euo pipefail
-          helm plugin install https://github.com/databus23/helm-diff >/dev/null 2>&1 || true
+          # Pinned: helm-diff's newer releases declare `platformHooks`, which the
+          # pinned helm v3.16.3 cannot parse, so the plugin fails to load and the
+          # preview quietly renders nothing at all.
+          helm plugin install https://github.com/databus23/helm-diff --version v3.9.11 >/dev/null 2>&1 || true
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
@@ -198,9 +201,14 @@ jobs:
           lp="$(jq -r '.landingPage // empty' <<<'${{ inputs.image_overrides }}')"
           # if-blocks, not `A && B`: under set -e a trailing false test would
           # fail the step when no override is given, which is the common case.
-          if [[ -n "$cp"  ]]; then echo "--set versions.cloud=${cp}"       >> image-args.txt; fi
-          if [[ -n "$ide" ]]; then echo "--set versions.ide=${ide}"        >> image-args.txt; fi
-          if [[ -n "$lp"  ]]; then echo "--set versions.landingPage=${lp}" >> image-args.txt; fi
+          # One token per line. `mapfile` makes each line a single array element,
+          # so writing "--set versions.ide=latest" as one line hands helm one
+          # argument containing a space and it dies with
+          # `unknown flag: --set versions.ide`. The flag and its value have to
+          # be separate elements.
+          if [[ -n "$cp"  ]]; then printf '%s\n' --set "versions.cloud=${cp}"       >> image-args.txt; fi
+          if [[ -n "$ide" ]]; then printf '%s\n' --set "versions.ide=${ide}"        >> image-args.txt; fi
+          if [[ -n "$lp"  ]]; then printf '%s\n' --set "versions.landingPage=${lp}" >> image-args.txt; fi
           if [[ -s image-args.txt ]]; then
             echo "::notice::image overrides: $(tr '\n' ' ' < image-args.txt)"
           fi
