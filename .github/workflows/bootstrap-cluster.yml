@@ -203,9 +203,69 @@ jobs:
             fi
             found=$((found + 1))
           done
+          # Redirect listeners, for hostnames this cluster used to serve. They
+          # carry no route of their own here - the chart renders the 301 - but
+          # without a listener that route would attach to nothing.
+          while read -r rname; do
+            [[ -n "$rname" ]] || continue
+            rfrom=$(yq -r ".spec.redirects[] | select(.name == \"${rname}\") | .from" "clusters/${CLUSTER}.yaml")
+            rsecret=$(yq -r ".spec.redirects[] | select(.name == \"${rname}\") | .tlsSecretName" "clusters/${CLUSTER}.yaml")
+            {
+              echo "    - name: ${rname}"
+              echo "      hostname: '${rfrom}'"
+              echo "      tlsSecretName: ${rsecret}"
+            } >> listeners.yaml
+            echo "${rsecret} ${rfrom}" >> certnames.txt
+            if [[ "$ACME_HTTP" == "true" ]]; then
+              {
+                echo "    - name: acme-${rname}-http"
+                echo "      protocol: HTTP"
+                echo "      port: 80"
+                echo "      hostname: '${rfrom}'"
+              } >> listeners.yaml
+            fi
+            echo "::notice::redirect ${rfrom} -> $(yq -r ".spec.redirects[] | select(.name == \"${rname}\") | .to" "clusters/${CLUSTER}.yaml")"
+          done < <(yq -r '.spec.redirects[]?.name' "clusters/${CLUSTER}.yaml")
+
+          # The 301s themselves, still inside the `gateway:` mapping opened
+          # above. A second top-level `gateway:` key would be a duplicate, and
+          # the last one wins - silently discarding every listener derived so far.
+          if [[ "$(yq -r '(.spec.redirects // []) | length' "clusters/${CLUSTER}.yaml")" != "0" ]]; then
+            echo "  redirects:" >> listeners.yaml
+            yq -r '.spec.redirects[] | "    - name: " + .name + "\n      from: " + .from + "\n      to: " + .to' \
+              "clusters/${CLUSTER}.yaml" >> listeners.yaml
+          fi
+
           if [[ $found -eq 0 ]]; then
             echo "::error::no environments claim cluster ${CLUSTER}"
             exit 1
+          fi
+          # The GatewayClass and its EnvoyProxy. Only ours to create on a cluster
+          # where nothing else owns them - tum-student's belong to Artemis. The
+          # EnvoyProxy is what pins the data plane to a load balancer address, so
+          # it has to name the pool DNS already points at; a Gateway on the wrong
+          # address is Programmed=True and reachable by nobody.
+          if [[ "$(yq -r '.spec.gatewayClass.create // false' "clusters/${CLUSTER}.yaml")" == "true" ]]; then
+            {
+              echo "gatewayClass:"
+              echo "  create: true"
+              echo "  controllerName: $(yq -r '.spec.gatewayClass.controllerName // "gateway.envoyproxy.io/gatewayclass-controller"' "clusters/${CLUSTER}.yaml")"
+              echo "  parametersRef:"
+              echo "    group: gateway.envoyproxy.io"
+              echo "    kind: EnvoyProxy"
+              echo "    name: $(yq -r '.spec.envoyProxy.name' "clusters/${CLUSTER}.yaml")"
+              echo "    namespace: $(yq -r '.spec.envoyProxy.namespace' "clusters/${CLUSTER}.yaml")"
+            } >> listeners.yaml
+          fi
+          if [[ "$(yq -r '.spec.envoyProxy.create // false' "clusters/${CLUSTER}.yaml")" == "true" ]]; then
+            {
+              echo "envoyProxy:"
+              echo "  create: true"
+              echo "  name: $(yq -r '.spec.envoyProxy.name' "clusters/${CLUSTER}.yaml")"
+              echo "  namespace: $(yq -r '.spec.envoyProxy.namespace' "clusters/${CLUSTER}.yaml")"
+              echo "  spec:"
+              yq -r '.spec.envoyProxy.spec' "clusters/${CLUSTER}.yaml" | sed 's/^/    /'
+            } >> listeners.yaml
           fi
           # The PodMonitors name every namespace they watch. That list used to
           # be written by hand in theia-monitoring's values and had gone stale -

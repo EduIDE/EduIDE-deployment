@@ -110,6 +110,74 @@
           "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
           "minLength": 1,
           "maxLength": 253
+        },
+        "gatewayClass": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Whether this cluster's GatewayClass is ours to create. False when another team owns it.",
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "controllerName": {
+              "type": "string"
+            }
+          }
+        },
+        "envoyProxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "EnvoyProxy the GatewayClass points at. This is what pins the data plane to a load balancer address, so it must match the address DNS publishes.",
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            },
+            "spec": {
+              "type": "object"
+            }
+          }
+        },
+        "redirects": {
+          "type": "array",
+          "description": "Hostnames this cluster used to serve, permanently redirected to their new name.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "from",
+              "to",
+              "tlsSecretName"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "tlsSecretName": {
+                "type": "string"
+              },
+              "statusCode": {
+                "type": "integer",
+                "enum": [
+                  301,
+                  302
+                ]
+              }
+            }
+          }
         }
       },
       "allOf": [
