@@ -50,27 +50,60 @@ Click **Next**
 
 Configure these URLs based on your environment domain:
 
-For test environments (e.g., `test1.theia-test.artemis.cit.tum.de`):
+Four settings, derived from the environment's **landing host**. Every value
+carries the `https://` scheme.
+
 ```
-Root URL: https://test1.theia-test.artemis.cit.tum.de
-Home URL: https://test1.theia-test.artemis.cit.tum.de
+Root URL:                         https://<landing-host>
+Home URL:                         https://<landing-host>
 Valid redirect URIs:
-  - https://test1.theia-test.artemis.cit.tum.de/*
-  - https://instance.test1.theia-test.artemis.cit.tum.de/*
-Valid post logout redirect URIs: +
-Web origins: +
+  https://<landing-host>/*
+  https://instance.<landing-host>/*
+Valid post logout redirect URIs:
+  https://<landing-host>/
+  https://<landing-host>/*
+Web origins:
+  https://<landing-host>
+  https://instance.<landing-host>
 ```
 
-For production:
+The post-logout entries need **both** forms, the bare `/` and the `/*`.
+
+For `test1`, whose landing host is `test1.eduide.student.k8s.aet.cit.tum.de`:
+
 ```
-Root URL: https://theia.artemis.cit.tum.de
-Home URL: https://theia.artemis.cit.tum.de
 Valid redirect URIs:
-  - https://theia.artemis.cit.tum.de/*
-  - https://instance.theia.artemis.cit.tum.de/*
-Valid post logout redirect URIs: +
-Web origins: +
+  https://test1.eduide.student.k8s.aet.cit.tum.de/*
+  https://instance.test1.eduide.student.k8s.aet.cit.tum.de/*
+Valid post logout redirect URIs:
+  https://test1.eduide.student.k8s.aet.cit.tum.de/
+  https://test1.eduide.student.k8s.aet.cit.tum.de/*
+Web origins:
+  https://test1.eduide.student.k8s.aet.cit.tum.de
+  https://instance.test1.eduide.student.k8s.aet.cit.tum.de
 ```
+
+and for `tum-production`, whose landing host is `eduide.artemis.aet.cit.tum.de`:
+
+```
+Valid redirect URIs:
+  https://eduide.artemis.aet.cit.tum.de/*
+  https://instance.eduide.artemis.aet.cit.tum.de/*
+Valid post logout redirect URIs:
+  https://eduide.artemis.aet.cit.tum.de/
+  https://eduide.artemis.aet.cit.tum.de/*
+Web origins:
+  https://eduide.artemis.aet.cit.tum.de
+  https://instance.eduide.artemis.aet.cit.tum.de
+```
+
+> **The service and webview hosts are deliberately absent.** An installation
+> serves four hostnames, but only the landing and instance hosts take part in
+> the browser redirect flow. Four is the right number for DNS and for
+> certificates; the Keycloak client names two. Do not pad this list out.
+
+Landing hosts for every environment are listed in
+[environments.md](environments.md).
 
 Click **Save**
 
@@ -190,7 +223,7 @@ After deploying with Keycloak configuration:
 
 ### Access the Landing Page
 
-1. Navigate to your environment URL (e.g., `https://test1.theia-test.artemis.cit.tum.de`)
+1. Navigate to your environment URL (e.g., `https://test1.eduide.student.k8s.aet.cit.tum.de`)
 2. You should be redirected to Keycloak login page
 3. Log in with valid credentials
 
@@ -222,7 +255,7 @@ After successful login, you can verify that user information is correctly passed
 
 **Solutions:**
 - Verify all redirect URIs are correctly configured in Keycloak
-- Check that wildcard redirect URIs include `/*` suffix
+- Check the redirect URIs end in `/*`, that the post logout list has both `https://<landing-host>/` and `https://<landing-host>/*`, and that the web origins carry no path suffix at all
 - Ensure cookie secret is correctly base64-encoded
 - Verify all URLs use HTTPS
 
