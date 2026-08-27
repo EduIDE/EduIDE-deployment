@@ -264,6 +264,35 @@ for f in "$ROOT"/environments/*/env.yaml; do
   fi
 done
 
+# --- the hostname comment matches what the chart will actually serve --------
+# Each values.yaml lists its four hostnames above the block that composes them,
+# because `<prefix>.<baseHost>` hides the result and a name wrong by one label
+# fails silently: the Gateway reports the listener healthy and the browser
+# cannot reach it. tum-production carried `artemis.aet.cit.tum.de` for exactly
+# that reason. A comment nobody checks would have the same problem, so it is
+# checked.
+echo
+echo "=== hostname comments match the composed hosts ==="
+for v in "$ROOT"/environments/*/values.yaml; do
+  env=$(basename "$(dirname "$v")")
+  base=$(yq -r '.hosts.configuration.baseHost' "$v")
+  expected=$(printf '%s.%s\n%s.%s\n%s.%s\n*.webview.%s.%s\n' \
+    "$(yq -r '.hosts.configuration.landing'  "$v")" "$base" \
+    "$(yq -r '.hosts.configuration.service'  "$v")" "$base" \
+    "$(yq -r '.hosts.configuration.instance' "$v")" "$base" \
+    "$(yq -r '.hosts.configuration.instance' "$v")" "$base" | sort)
+  documented=$(sed -n '/--- hostnames served by this installation/,/--- end hostnames/p' "$v" \
+    | grep -oE '[*a-z0-9.-]+\.tum\.de' | sort)
+  if [[ -z "$documented" ]]; then
+    bad "$env has no hostname comment" "add the block above hosts.configuration"
+  elif [[ "$documented" == "$expected" ]]; then
+    ok "$env: 4 hostnames documented and correct"
+  else
+    bad "$env hostname comment does not match the composed hosts" \
+        "$(diff <(echo "$documented") <(echo "$expected") | tr '\n' ' ')"
+  fi
+done
+
 echo
 [[ $FAILED -eq 0 ]] && echo "ALL PASS" || echo "SOME FAILED"
 exit $FAILED

@@ -35,6 +35,12 @@ landingPage:
       version: E2E
   infoTitle: Welcome to EduIDE Cloud (E2E test target)
 hosts:
+  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
+  #   e2e.eduide.student.k8s.aet.cit.tum.de                      landing page
+  #   service.e2e.eduide.student.k8s.aet.cit.tum.de              REST service
+  #   instance.e2e.eduide.student.k8s.aet.cit.tum.de             session ingress
+  #   *.webview.instance.e2e.eduide.student.k8s.aet.cit.tum.de   session webviews
+  # --- end hostnames
   configuration:
     baseHost: eduide.student.k8s.aet.cit.tum.de
     service: service.e2e

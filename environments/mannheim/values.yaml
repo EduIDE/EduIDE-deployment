@@ -39,6 +39,12 @@ landingPage:
     attribution:
       version: Mannheim-v1.0.0
 hosts:
+  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
+  #   mannheim.eduide.aet.cit.tum.de                      landing page
+  #   service.mannheim.eduide.aet.cit.tum.de              REST service
+  #   instance.mannheim.eduide.aet.cit.tum.de             session ingress
+  #   *.webview.instance.mannheim.eduide.aet.cit.tum.de   session webviews
+  # --- end hostnames
   configuration:
     baseHost: eduide.aet.cit.tum.de
     service: service.mannheim

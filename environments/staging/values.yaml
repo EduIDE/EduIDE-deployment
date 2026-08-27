@@ -33,6 +33,12 @@ landingPage:
       version: Staging-v1.0.0
   infoTitle: Welcome to EduIDE Cloud (Staging)
 hosts:
+  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
+  #   staging.eduide.student.k8s.aet.cit.tum.de                      landing page
+  #   service.staging.eduide.student.k8s.aet.cit.tum.de              REST service
+  #   instance.staging.eduide.student.k8s.aet.cit.tum.de             session ingress
+  #   *.webview.instance.staging.eduide.student.k8s.aet.cit.tum.de   session webviews
+  # --- end hostnames
   configuration:
     baseHost: eduide.student.k8s.aet.cit.tum.de
     service: service.staging

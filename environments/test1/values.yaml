@@ -33,6 +33,12 @@ landingPage:
       version: Test1-v1.0.0
   infoTitle: Welcome to EduIDE Cloud (Test1)
 hosts:
+  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
+  #   test1.eduide.student.k8s.aet.cit.tum.de                      landing page
+  #   service.test1.eduide.student.k8s.aet.cit.tum.de              REST service
+  #   instance.test1.eduide.student.k8s.aet.cit.tum.de             session ingress
+  #   *.webview.instance.test1.eduide.student.k8s.aet.cit.tum.de   session webviews
+  # --- end hostnames
   configuration:
     baseHost: eduide.student.k8s.aet.cit.tum.de
     service: service.test1

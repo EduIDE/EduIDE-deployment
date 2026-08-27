@@ -49,18 +49,12 @@ landingPage:
       version: v1.1.0
   infoTitle: Welcome to EduIDE Cloud
 hosts:
-  # The chart joins each prefix below to baseHost, so these four are what
-  # actually get served. Written out because the composition hides them, and a
-  # hostname that is wrong by one label fails silently: the Gateway reports the
-  # listener healthy and the browser simply cannot reach it.
-  #
-  #   eduide.artemis.cit.tum.de                       landing page
-  #   service.eduide.artemis.cit.tum.de               REST service
-  #   instance.eduide.artemis.cit.tum.de              session ingress
-  #   *.webview.instance.eduide.artemis.cit.tum.de    session webviews
-  #
-  # All four resolve to 131.159.88.82 (k8s-theia-lb1), and the wildcard
-  # certificate in the cluster-tum-production environment covers the fourth.
+  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
+  #   eduide.artemis.cit.tum.de                      landing page
+  #   service.eduide.artemis.cit.tum.de              REST service
+  #   instance.eduide.artemis.cit.tum.de             session ingress
+  #   *.webview.instance.eduide.artemis.cit.tum.de   session webviews
+  # --- end hostnames
   configuration:
     baseHost: artemis.cit.tum.de
     service: service.eduide
