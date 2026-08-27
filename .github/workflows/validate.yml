@@ -15,10 +15,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Same version the deploy workflows pin. test-deploy-logic.sh renders
+      # every environment against the chart, and without helm on PATH it
+      # skipped that silently - the job went green having rendered nothing.
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+
       - name: Install tools
+        env:
+          # renovate: datasource=github-releases depName=mikefarah/yq
+          YQ_VERSION: v4.44.3
         run: |
           set -euo pipefail
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo wget -qO /usr/local/bin/yq \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
           sudo chmod +x /usr/local/bin/yq
           pipx install check-jsonschema
 
@@ -78,6 +89,16 @@ jobs:
 
       - name: AGENTS.md does not reference missing paths
         run: ./scripts/check-agents-md.sh
+
+      # The script skips its render checks when the chart cannot be pulled, so
+      # that it still runs on a laptop with no helm. In CI an unreachable chart
+      # is a failure, not a skip, or the render coverage disappears without
+      # anything turning red.
+      - name: Chart every environment renders against is reachable
+        run: |
+          set -euo pipefail
+          version="$(yq -r '.spec.platform.chartVersion' environments/test1/env.yaml)"
+          helm show chart oci://ghcr.io/eduide/charts/eduide --version "$version" >/dev/null
 
       - name: Deploy logic tests
         run: ./scripts/test-deploy-logic.sh

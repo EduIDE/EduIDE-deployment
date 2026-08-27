@@ -202,6 +202,23 @@ One file under `environments/`, then the GitHub Environment holding its
 `KUBECONFIG`. The shared Gateway listeners are derived from the manifests, so
 there is no second file to edit. See `docs/environments.md`.
 
+## Dependency updates
+
+`renovate.json` extends the org-wide preset in EduIDE/.github. Only two things
+here are versioned and both are managed: the actions in the workflows, and
+`spec.platform.chartVersion` in each environment manifest. The chart version
+needs a custom regex manager - `env.yaml` is an `eduide.dev/v1 Environment`, not
+a `Chart.yaml` and not a values file, so no built-in manager can see it.
+
+**Test and staging chart bumps arrive batched. Production ones do not arrive at
+all** until somebody ticks the box on the Dependency Dashboard, because bumping
+`chartVersion` in a production environment is the release procedure rather than
+a chore, and grouping it with the test environments would mean neither could be
+reverted without the other.
+
+`eduide-cluster` is a `Bootstrap cluster` workflow input, not a value in a file,
+so nothing bumps it. Keep it at the same version as `eduide` by hand.
+
 ## Conventions
 
 - Bash: `set -euo pipefail`. Prefer `if` blocks over `A && B` — `set -e` has

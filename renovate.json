@@ -1,0 +1,49 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": [
+    "Policy comes from the org preset. Only what is specific to this repo lives here.",
+    "There is no application code, no Dockerfile and no chart source in this repo. Two things are versioned: the GitHub Actions in .github/workflows (the preset's github-actions manager sees those) and spec.platform.chartVersion in each environments/<name>/env.yaml, which no built-in manager can read because env.yaml is an eduide.dev/v1 Environment manifest rather than a Chart.yaml or a Helm values file."
+  ],
+
+  "extends": ["local>EduIDE/.github:renovate-config"],
+
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "spec.platform.chartVersion selects which eduide chart an environment installs from oci://ghcr.io/eduide/charts. eduide-cluster is released in lockstep at the same version and is passed to Bootstrap cluster as a workflow input, so it is not pinned in a file and nothing here can bump it. Neither of the preset's custom managers matches a path in this repo, so it does not matter whether this list replaces or extends them.",
+      "managerFilePatterns": ["/^environments/[^/]+/env\\.yaml$/"],
+      "matchStrings": ["chartVersion:\\s*[\"']?(?<currentValue>[^\"'\\s]+)"],
+      "depNameTemplate": "ghcr.io/eduide/charts/eduide",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "semver"
+    }
+  ],
+
+  "packageRules": [
+    {
+      "description": "Production moves only when a human ticks it on the Dependency Dashboard. Bumping chartVersion in a production environment IS the release procedure - README says so under 'Move production' - so a PR here is not a dependency update that happens to touch production, it is a production deploy waiting for a merge. It must never appear unasked.",
+      "matchFileNames": [
+        "environments/tum-production/**",
+        "environments/bonn/**",
+        "environments/mannheim/**"
+      ],
+      "dependencyDashboardApproval": true,
+      "groupName": "production chart version",
+      "groupSlug": "chart-prod",
+      "addLabels": ["production"]
+    },
+    {
+      "description": "Staging and the test environments batch into one PR. Kept apart from the production group on purpose: bundling the two would mean production could not be reverted without also reverting the environments it is supposed to have been proven on first.",
+      "matchFileNames": [
+        "environments/staging/**",
+        "environments/e2e-test/**",
+        "environments/test1/**",
+        "environments/test2/**",
+        "environments/test3/**"
+      ],
+      "groupName": "staging and test chart version",
+      "groupSlug": "chart-test",
+      "addLabels": ["staging"]
+    }
+  ]
+}

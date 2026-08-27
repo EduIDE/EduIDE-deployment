@@ -11,6 +11,7 @@ environments/<name>/env.yaml     how an installation is deployed
 environments/<name>/values.yaml  how the chart is configured
 environments/_base.yaml          chart settings identical everywhere
 schemas/                         JSON schemas the manifests are validated against
+renovate.json                    who may bump the chart version, and when
 ```
 
 An environment is one namespace on one cluster.
