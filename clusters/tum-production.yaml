@@ -27,6 +27,42 @@ spec:
   # answer a Gateway API challenge.
   acmeEmail: admin.aet@xcit.tum.de
 
+  # This cluster's GatewayClass and data plane are ours. tum-student's belong to
+  # Artemis, which is why these are per cluster rather than chart defaults.
+  #
+  # The EnvoyProxy pins the data plane to MetalLB pool `ingress`, which is the
+  # address every production hostname resolves to. A Gateway on any other
+  # address comes up Programmed=True and is reachable by nobody.
+  gatewayClass:
+    create: true
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  envoyProxy:
+    create: true
+    name: theia-shared-gateway
+    namespace: envoy-gateway-system
+    spec:
+      logging:
+        level:
+          default: warn
+      provider:
+        type: Kubernetes
+        kubernetes:
+          envoyService:
+            annotations:
+              metallb.io/address-pool: ingress
+              metallb.io/loadBalancerIPs: 131.159.88.82
+            externalTrafficPolicy: Local
+            type: LoadBalancer
+
+  # The installation was called `theia` until 2026-08. The old hostname is in
+  # bookmarks and in Artemis exercise configurations, so it keeps answering and
+  # 301s to the new one, path and query intact.
+  redirects:
+    - name: legacy-landing
+      from: theia.artemis.cit.tum.de
+      to: eduide.artemis.cit.tum.de
+      tlsSecretName: legacy-landing-cert-secret
+
   sharedGateway:
     namespace: eduide-system
     name: theia-shared-gateway
