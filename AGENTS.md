@@ -198,7 +198,7 @@ list too**, or the render diff becomes noise and stops being read.
 
 ## Adding an environment
 
-One file under `environments/`, then the GitHub Environment holding its
+One directory under `environments/`, then the GitHub Environment holding its
 `KUBECONFIG`. The shared Gateway listeners are derived from the manifests, so
 there is no second file to edit. See `docs/environments.md`.
 
@@ -218,6 +218,15 @@ reverted without the other.
 
 `eduide-cluster` is a `Bootstrap cluster` workflow input, not a value in a file,
 so nothing bumps it. Keep it at the same version as `eduide` by hand.
+
+## Preparing a cluster
+
+`docs/cluster-setup.md` is the sequence, and says which parts
+`bootstrap-cluster.yml` does and which are manual. Three things it needs that
+the workflow does not supply: a GatewayClass whose load balancer address matches
+DNS, a `ClusterIssuer` that can solve ACME over Gateway API, and the webview
+wildcard certificate. `docs/github-environments.md` covers every secret and
+which of the two kinds of GitHub Environment holds it.
 
 ## Conventions
 

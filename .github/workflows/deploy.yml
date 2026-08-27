@@ -120,9 +120,11 @@ jobs:
           set -euo pipefail
           # Storage class is a property of the cluster, not of the environment,
           # so it is stated once in clusters/<name>.yaml. An environment that
-          # sets its own is rejected by test-deploy-logic.sh: test3 used to ask
-          # for longhorn on a cluster that only offers csi-rbd-sc, which does
-          # not fail - the PVC simply never binds.
+          # sets its own is rejected by test-deploy-logic.sh. On the test
+          # cluster BOTH csi-rbd-sc and longhorn exist and both are marked
+          # default, so a PVC that names no class gets an arbitrary one; test3
+          # ran on longhorn and the rest on csi-rbd-sc for no recorded reason.
+          # Naming it explicitly is what makes that deterministic.
           C="clusters/${{ steps.env.outputs.cluster }}.yaml"
           SC=$(yq -r '.spec.storageClassName' "$C")
           [[ -n "$SC" && "$SC" != "null" ]] || { echo "::error::${C} has no spec.storageClassName"; exit 1; }

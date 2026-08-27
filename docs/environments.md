@@ -56,7 +56,7 @@ installations under `eduide.aet.cit.tum.de`.
 | `test3` | `test3.eduide.student.k8s.aet.cit.tum.de` |
 | `e2e-test` | `e2e.eduide.student.k8s.aet.cit.tum.de` |
 | `staging` | `staging.eduide.student.k8s.aet.cit.tum.de` |
-| `tum-production` | `eduide.artemis.aet.cit.tum.de` — see below |
+| `tum-production` | `eduide.artemis.aet.cit.tum.de` - see below |
 | `bonn` | `bonn.eduide.aet.cit.tum.de` |
 | `mannheim` | `mannheim.eduide.aet.cit.tum.de` |
 
@@ -89,14 +89,14 @@ installations elsewhere may bring their own entirely.
 | test1, test2, test3, e2e-test, staging | `keycloak-test.aet.cit.tum.de` | `tum` | `eduide` |
 | tum-production | `keycloak.aet.cit.tum.de` | `tum` | `eduide` |
 | mannheim | `keycloak.aet.cit.tum.de` | `external_register` | `eduide` |
-| bonn | **not configured** | — | — |
+| bonn | **not configured** | - | - |
 
 **Bonn has no authentication.** Its realm has not been decided, so the block is
 commented out and it sets `keycloak.allowUnauthenticated: true`. Do not expose
 that installation until the block is filled in and the flag removed.
 
 That flag exists because the oauth2-proxy ConfigMaps are rendered regardless of
-`keycloak.enable` — the operator mounts them into every session pod by literal
+`keycloak.enable` - the operator mounts them into every session pod by literal
 name, so they cannot be gated. Left at the chart's defaults they carry
 `https://keycloak.url/auth/realms/TheiaCloud`, a host that does not exist, so
 sessions fail at the proxy instead of running unauthenticated. The chart now
@@ -114,13 +114,12 @@ The chart also supports a generic OIDC provider, added for Gitea and mutually
 exclusive with Keycloak:
 
 ```yaml
-theia-cloud:
-  keycloak:
-    enable: false
-  gitea:
-    enable: true
-    issuerUrl: https://git.example.edu
-    clientId: eduide
+keycloak:
+  enable: false
+gitea:
+  enable: true
+  issuerUrl: https://git.example.edu
+  clientId: eduide
 ```
 
 The chart refuses to render if both are enabled at once.
@@ -161,32 +160,26 @@ The four `parentRefs` are what the shared Gateway listeners are derived from,
 so their `sectionName`s are load-bearing:
 
 ```yaml
-theia-cloud:
-  gateway:
-    parentRefs:
-      - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-landing }
-      - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-service }
-      - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-instances }
-      - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-webview }
+gateway:
+  parentRefs:
+    - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-landing }
+    - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-service }
+    - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-instances }
+    - { name: theia-shared-gateway, namespace: eduide-system, sectionName: bonn-webview }
 ```
 
 The prefix (`bonn-`) must be unique on the cluster; CI rejects a collision.
 
 ### 3. The GitHub Environment
 
-Create one named exactly as the manifest, under **Settings → Environments**.
+Create one named exactly as the manifest, under **Settings -> Environments**,
+holding `KUBECONFIG` and `THEIA_KEYCLOAK_COOKIE_SECRET`. Add required reviewers
+for anything `tier: production` or `staging`.
 
-| Secret | What |
-|---|---|
-| `KUBECONFIG` | the whole kubeconfig file, pasted in |
-| `THEIA_KEYCLOAK_COOKIE_SECRET` | `dd if=/dev/urandom bs=32 count=1 \| base64 \| tr -d -- '\n' \| tr -- '+/' '-_'` |
-| `THEIA_ADMIN_API_TOKEN` | bearer token for the admin scaling API |
-
-**Protection:** add required reviewers for anything `tier: production` or
-`staging`. The deploy job names the environment, so GitHub holds the run until
-someone approves, and the approval is recorded on the run. Test environments
-generally do not need approvers - the point of a test environment is that
-deploying to it is cheap.
+The wildcard certificate is **not** here: `Bootstrap cluster` reads it from the
+cluster's own environment. See
+[github-environments.md](github-environments.md) for each secret, how to
+produce it, and how to create the environment from the CLI.
 
 ### 4. Bootstrap the cluster
 
@@ -200,9 +193,12 @@ the cluster, so a new environment needs no second file edited. Run it with
 
 ### 5. DNS, certificates and Keycloak
 
-Four DNS records per environment, matching the hosts above. Certificates for
-each listener. Redirect URIs in Keycloak for every one of the four hosts, on a
-client matching `clientId`. See `docs/keycloak-setup.md`.
+Four DNS records per environment, matching the hosts above, pointing at the
+Gateway's load balancer address. Certificates for each listener. Redirect URIs
+in Keycloak for every one of the four hosts, on a client matching `clientId`.
+
+See [cluster-setup.md](cluster-setup.md), [tum-certificates.md](tum-certificates.md)
+and [keycloak-setup.md](keycloak-setup.md).
 
 ## Versions
 
@@ -252,7 +248,7 @@ The PodMonitor objects are in `eduide-cluster`, not the tenant chart: they have
 to be created in Rancher's own namespace to be discovered, and one per tenant
 writing into a shared namespace would collide on names. So the cluster chart
 owns them and this flag decides whether the environment's namespace appears in
-the list they watch — `Bootstrap cluster` reads it when deriving that list. A
+the list they watch - `Bootstrap cluster` reads it when deriving that list. A
 cluster where everything has opted out gets monitoring switched off rather than
 PodMonitors watching nothing.
 
@@ -302,7 +298,7 @@ cluster because the clusters issue certificates differently: `tum-student`
 terminates everything with one pre-issued wildcard, `tum-production` has
 cert-manager issue one certificate per role and therefore also needs
 `acmeHttp: true`, which adds a plain `:80` listener per host for HTTP-01
-challenges. The webview secret is always separate — those hosts are two labels
+challenges. The webview secret is always separate - those hosts are two labels
 below the instance host, so no certificate covering the others covers them.
 
 `Bootstrap cluster` also derives the certificate's `dnsNames` from the same
