@@ -1,7 +1,7 @@
 # EduIDE deployment
 
 Where the EduIDE installations are described. **No application code and no
-chart templates live here** — the charts are in
+chart templates live here** - the charts are in
 [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) and published to
 `ghcr.io/eduide/charts`.
 
@@ -20,16 +20,19 @@ An environment is one namespace on one cluster.
 |---|---|
 | `tum-student` | `test1`, `test2`, `test3`, `e2e-test`, `staging` |
 | `tum-production` | `tum-production` |
-| `eduide` | `bonn`, `mannheim` — **cluster not provisioned yet** |
+| `eduide` | `bonn`, `mannheim` - **cluster not provisioned yet** |
 
 Every namespace is `eduide-<environment>`.
 
 ## Installing
 
+New cluster? Start at [Preparing a cluster](docs/cluster-setup.md) - it covers
+what the workflows do and what has to be set up by hand first.
+
 Two charts, always at the same version. The cluster one first.
 
 ```bash
-# once per cluster — CRDs, conversion webhook, ClusterRoles, issuers,
+# once per cluster - CRDs, conversion webhook, ClusterRoles, issuers,
 # the shared Gateway, PodMonitors and dashboards
 helm install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
   --version 2.0.0 -n eduide-system --create-namespace -f cluster-values.yaml
@@ -57,7 +60,7 @@ file. `Deploy` does the second.
 | Bring up a new cluster | Actions → **Bootstrap cluster** |
 
 `e2e-test` deploys from `main` automatically and the functional tests run
-against it. Do not point manual work at it — use `staging`.
+against it. Do not point manual work at it - use `staging`.
 
 Every deploy asserts which cluster it reached before touching anything, shows a
 `helm diff` before applying, runs `--wait --atomic`, and prints a summary read
@@ -84,19 +87,24 @@ repositories.
 
 ## Secrets
 
-Per environment, in its GitHub Environment. Never in a file here.
+In GitHub Environments, never in a file here. There are two kinds of
+environment and they hold different secrets:
 
-| Secret | What |
-|---|---|
-| `KUBECONFIG` | the whole kubeconfig, pasted in |
-| `THEIA_KEYCLOAK_COOKIE_SECRET` | `dd if=/dev/urandom bs=32 count=1 \| base64 \| tr -d -- '\n' \| tr -- '+/' '-_'` |
-| `THEIA_ADMIN_API_TOKEN` | bearer token for the admin scaling API |
+| | Named | Holds |
+|---|---|---|
+| Per environment, for `Deploy` | the directory under `environments/` | `KUBECONFIG`, `THEIA_KEYCLOAK_COOKIE_SECRET` |
+| Per cluster, for `Bootstrap cluster` | `spec.bootstrapEnvironment`, by convention `cluster-<name>` | `KUBECONFIG`, `THEIA_WILDCARD_CERTIFICATE_CERT`, `THEIA_WILDCARD_CERTIFICATE_KEY` |
 
-Bootstrap additionally needs `THEIA_WILDCARD_CERTIFICATE_CERT` and `_KEY` on the
-cluster's GitHub Environment.
+`THEIA_ADMIN_API_TOKEN` is a repository secret today, so every environment
+shares one token.
 
 Anything `tier: production` or `staging` should have required reviewers set, so
 GitHub holds the run until someone approves and records the approval.
+
+**Most of these are not set yet**: no cluster environment has a `KUBECONFIG`, so
+no cluster can currently be bootstrapped. See
+[GitHub Environments](docs/github-environments.md) for what each secret is, how
+to produce it, and what is missing.
 
 ## Checking a change
 
@@ -121,6 +129,8 @@ renders every environment.
 
 | | |
 |---|---|
+| [Preparing a cluster](docs/cluster-setup.md) | what to install and configure before bootstrapping, manual vs automated |
+| [GitHub Environments](docs/github-environments.md) | every secret, how to produce it, protection rules |
 | [Environments](docs/environments.md) | the model, adding one, what is derived |
 | [Keycloak](docs/keycloak-setup.md) | clients, scopes, redirect URIs |
 | [Envoy Gateway](docs/envoy-gateway-setup.md) | the Gateway API layer |
@@ -130,8 +140,8 @@ renders every environment.
 
 ## Related
 
-- [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) — the charts
-- [EduIDE](https://github.com/EduIDE/EduIDE) — the IDE and its images
-- [EduIDE-Cloud](https://github.com/EduIDE/EduIDE-Cloud) — operator and REST service
+- [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) - the charts
+- [EduIDE](https://github.com/EduIDE/EduIDE) - the IDE and its images
+- [EduIDE-Cloud](https://github.com/EduIDE/EduIDE-Cloud) - operator and REST service
 - [EduIDE-Landing-Page](https://github.com/EduIDE/EduIDE-Landing-Page)
-- [theia-scale-tests](https://github.com/EduIDE/theia-scale-tests) — the test suite
+- [theia-scale-tests](https://github.com/EduIDE/theia-scale-tests) - the test suite
