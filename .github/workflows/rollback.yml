@@ -18,7 +18,7 @@ on:
       environment:
         required: true
         type: choice
-        options: [test1, test2, test3, e2e-test, staging, tum-production, bonn, mannheim]
+        options: [test1.eduide.student.k8s.aet.cit.tum.de, test2.eduide.student.k8s.aet.cit.tum.de, test3.eduide.student.k8s.aet.cit.tum.de, e2e.eduide.student.k8s.aet.cit.tum.de, staging.eduide.student.k8s.aet.cit.tum.de, eduide.artemis.cit.tum.de, bonn.eduide.aet.cit.tum.de, mannheim.eduide.aet.cit.tum.de]
       revision:
         description: "Helm revision to roll back to (blank goes back one)"
         required: false

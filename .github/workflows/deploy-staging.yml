@@ -74,6 +74,6 @@ jobs:
     needs: tags
     uses: ./.github/workflows/deploy.yml
     with:
-      environment: staging
+      environment: staging.eduide.student.k8s.aet.cit.tum.de
       image_overrides: ${{ needs.tags.outputs.json }}
     secrets: inherit

@@ -43,7 +43,7 @@ cannot disagree with the route that attaches to it, and adding an environment
 never means editing a second file.
 
 The prefix is not the landing host. Production's landing host is `eduide` and
-its sections are `prod-*`; `e2e-test`'s are `e2e-*`. CI rejects two environments
+its sections are `prod-*`; the `e2e.` one's are `e2e-*`. CI rejects two environments
 on one cluster sharing a prefix.
 
 `create: false` matters. With `create: true` the tenant chart renders a Gateway

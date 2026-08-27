@@ -96,7 +96,7 @@ done
 echo
 echo "=== storage class follows the cluster ==="
 CHART="${EDUIDE_CHART:-oci://ghcr.io/eduide/charts/eduide}"
-CHART_VERSION=$(yq -r '.spec.platform.chartVersion' "$ROOT/environments/test1/env.yaml")
+CHART_VERSION=$(yq -r '.spec.platform.chartVersion' "$ROOT/environments/test1.eduide.student.k8s.aet.cit.tum.de/env.yaml")
 VER_ARG=()
 if [[ "$CHART" == oci://* ]]; then VER_ARG=(--version "$CHART_VERSION"); fi
 if helm show chart "$CHART" "${VER_ARG[@]}" >/dev/null 2>&1; then
