@@ -53,7 +53,7 @@ An environment **is** its landing hostname. The directory under
 `environments/`, the GitHub Environment that holds its secrets, and the host it
 serves are one string:
 
-```
+```text
 environments/test1.eduide.student.k8s.aet.cit.tum.de/
 environments/eduide.artemis.cit.tum.de/
 ```
