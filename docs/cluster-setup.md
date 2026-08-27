@@ -139,7 +139,7 @@ thing from the cluster manifest:
 
 ```yaml
 spec:
-  acmeEmail: ls1.itg@in.tum.de        # required when acmeHttp is true
+  acmeEmail: admin.aet@xcit.tum.de        # required when acmeHttp is true
   acmeIssuerName: letsencrypt-prod-gateway   # optional, this is the default
 ```
 

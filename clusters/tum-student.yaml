@@ -29,7 +29,7 @@ spec:
   # rather than assuming a suitable one already exists. The `letsencrypt-prod`
   # issuer on these clusters solves over nginx Ingress only, so it cannot
   # answer a Gateway API challenge.
-  acmeEmail: ls1.itg@in.tum.de
+  acmeEmail: admin.aet@xcit.tum.de
 
   sharedGateway:
     namespace: eduide-system
