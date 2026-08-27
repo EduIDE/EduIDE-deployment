@@ -279,9 +279,20 @@ jobs:
       - name: Wildcard TLS secret
         run: |
           set -euo pipefail
+          # `create` is not optional. The chart defaults it to false and gates
+          # the Secret template on it, so supplying only the certificate and key
+          # renders nothing at all: the webview listeners then reference a
+          # Secret that does not exist, sit at Programmed=False for ever, and
+          # every preview inside every session fails with no error anywhere.
+          if [[ -z '${{ secrets.THEIA_WILDCARD_CERTIFICATE_CERT }}' || -z '${{ secrets.THEIA_WILDCARD_CERTIFICATE_KEY }}' ]]; then
+            echo "::error::THEIA_WILDCARD_CERTIFICATE_CERT and _KEY must be set on the '${{ needs.resolve.outputs.environment }}' environment."
+            echo "::error::ACME cannot issue the webview wildcard, so it has to be supplied. See docs/tum-certificates.md."
+            exit 1
+          fi
           install -m 600 /dev/null gw-secrets.yaml
           cat > gw-secrets.yaml <<EOF
           wildcardTLSSecret:
+            create: true
             certificate: "$(printf '%s' '${{ secrets.THEIA_WILDCARD_CERTIFICATE_CERT }}' | base64 | tr -d '\n')"
             key: "$(printf '%s' '${{ secrets.THEIA_WILDCARD_CERTIFICATE_KEY }}' | base64 | tr -d '\n')"
           EOF
