@@ -43,14 +43,14 @@ One per landing host, since the webview names sit two labels below it.
 
 | Environment | Wildcard |
 |---|---|
-| `test1` | `*.webview.instance.test1.eduide.student.k8s.aet.cit.tum.de` |
-| `test2` | `*.webview.instance.test2.eduide.student.k8s.aet.cit.tum.de` |
-| `test3` | `*.webview.instance.test3.eduide.student.k8s.aet.cit.tum.de` |
-| `e2e-test` | `*.webview.instance.e2e.eduide.student.k8s.aet.cit.tum.de` |
-| `staging` | `*.webview.instance.staging.eduide.student.k8s.aet.cit.tum.de` |
-| `tum-production` | `*.webview.instance.eduide.artemis.cit.tum.de` |
-| `bonn` | `*.webview.instance.bonn.eduide.aet.cit.tum.de` |
-| `mannheim` | `*.webview.instance.mannheim.eduide.aet.cit.tum.de` |
+| `test1.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.test1.eduide.student.k8s.aet.cit.tum.de` |
+| `test2.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.test2.eduide.student.k8s.aet.cit.tum.de` |
+| `test3.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.test3.eduide.student.k8s.aet.cit.tum.de` |
+| `e2e.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.e2e.eduide.student.k8s.aet.cit.tum.de` |
+| `staging.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.staging.eduide.student.k8s.aet.cit.tum.de` |
+| `eduide.artemis.cit.tum.de` | `*.webview.instance.eduide.artemis.cit.tum.de` |
+| `bonn.eduide.aet.cit.tum.de` | `*.webview.instance.bonn.eduide.aet.cit.tum.de` |
+| `mannheim.eduide.aet.cit.tum.de` | `*.webview.instance.mannheim.eduide.aet.cit.tum.de` |
 
 In practice one certificate per cluster covers all of its environments, by
 requesting a wildcard high enough in the tree. Whatever is requested must cover

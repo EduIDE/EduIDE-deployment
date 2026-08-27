@@ -1,4 +1,4 @@
-# AGENTS.md — EduIDE-deployment
+# AGENTS.md - EduIDE-deployment
 
 Deploys EduIDE to TUM's Kubernetes clusters. **No application code lives here.**
 
@@ -17,9 +17,15 @@ An environment is one namespace on one cluster.
 
 | Cluster | Environments |
 |---|---|
-| `tum-student` | `test1`, `test2`, `test3`, `e2e-test`, `staging` |
-| `tum-production` | `tum-production` |
-| `eduide` | `bonn`, `mannheim` (cluster not provisioned yet) |
+| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`test3.…`<br>`e2e.…`<br>`staging.…` |
+| `tum-production` | `eduide.artemis.cit.tum.de` |
+| `eduide` | `bonn.eduide.aet.cit.tum.de`<br>`mannheim.eduide.aet.cit.tum.de` |
+
+**An environment is named after the hostname it serves.** The directory under
+`environments/`, the GitHub Environment and the landing host are the same
+string, so there is nothing to map and nothing to keep in sync.
+
+The `eduide` cluster is not provisioned yet.
 
 The charts live in **EduIDE-Helm** and are pulled from
 `oci://ghcr.io/eduide/charts`. Chart templates are not edited here.
@@ -146,14 +152,14 @@ so enabling the chart alone deploys a cache with no clients.
 **Never set a blanket image tag.** A pull request only builds the images of the
 repo it came from. One tag for everything puts the whole namespace into
 `ImagePullBackOff` because `java-17:pr-451` does not exist. The chart carries
-one version knob per source repository — `versions.ide` (EduIDE),
-`versions.cloud` (EduIDE-Cloud), `versions.landingPage` — and a deploy override
+one version knob per source repository - `versions.ide` (EduIDE),
+`versions.cloud` (EduIDE-Cloud), `versions.landingPage` - and a deploy override
 names exactly one of them. `versions.ide` empty means the chart's `appVersion`,
 so a plain install pins every IDE image to the released tag.
 
 **Do not list images to preload, and do not list app definitions.** Both derive
 from `appDefinitions.apps` in the chart, along with the landing page's app
-list. They used to be three hand-maintained lists — that is how production
+list. They used to be three hand-maintained lists - that is how production
 ended up offering `c-templates` while preloading everything except
 `c-templates`. Adding a language is one entry in the chart.
 
@@ -191,8 +197,8 @@ healthy deploy.
 
 The `eduide` chart preserves live `minInstances`/`maxInstances` on
 AppDefinitions, and the shared cache generates a Redis password when its lookup
-finds no existing Secret. Both are correct — they stop Helm resetting live state
-— but `lookup` returns empty under `helm template`, so both must be masked
+finds no existing Secret. Both are correct - they stop Helm resetting live state
+- but `lookup` returns empty under `helm template`, so both must be masked
 wherever rendered output is diffed. **If you add a `lookup`, add it to the mask
 list too**, or the render diff becomes noise and stops being read.
 
@@ -230,7 +236,7 @@ which of the two kinds of GitHub Environment holds it.
 
 ## Conventions
 
-- Bash: `set -euo pipefail`. Prefer `if` blocks over `A && B` — `set -e` has
+- Bash: `set -euo pipefail`. Prefer `if` blocks over `A && B` - `set -e` has
   subtle rules there and this is code that touches production.
 - Workflows must pass `actionlint` and scripts `shellcheck -S error`.
 - Every environment renders through the same code path. If something is true of

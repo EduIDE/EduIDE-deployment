@@ -36,11 +36,11 @@ base sets.
 
 | Cluster | Environments | Notes |
 |---|---|---|
-| `tum-student` | `test1`, `test2`, `test3`, `e2e-test`, `staging` | everything non-production |
-| `tum-production` | `tum-production` | TUM's own installation |
-| `eduide` | `bonn`, `mannheim` | other universities. **Not provisioned yet.** |
+| `tum-student` | `test1.…`, `test2.…`, `test3.…`, `e2e.…`, `staging.eduide.student.k8s.aet.cit.tum.de` | everything non-production |
+| `tum-production` | `eduide.artemis.cit.tum.de` | TUM's own installation |
+| `eduide` | `bonn.eduide.aet.cit.tum.de`, `mannheim.eduide.aet.cit.tum.de` | other universities. **Not provisioned yet.** |
 
-`bonn` and `mannheim` exist as reviewable configuration before the cluster does.
+The two `eduide` ones exist as reviewable configuration before the cluster does.
 Deploying one stops at the cluster identity check until that cluster has been
 bootstrapped and the GitHub Environment holds a `KUBECONFIG`.
 
@@ -49,16 +49,22 @@ bootstrapped and the GitHub Environment holds a `KUBECONFIG`.
 Test installations sit under `eduide.student.k8s.aet.cit.tum.de`, production
 installations under `eduide.aet.cit.tum.de`.
 
-| Environment | Landing host |
-|---|---|
-| `test1` | `test1.eduide.student.k8s.aet.cit.tum.de` |
-| `test2` | `test2.eduide.student.k8s.aet.cit.tum.de` |
-| `test3` | `test3.eduide.student.k8s.aet.cit.tum.de` |
-| `e2e-test` | `e2e.eduide.student.k8s.aet.cit.tum.de` |
-| `staging` | `staging.eduide.student.k8s.aet.cit.tum.de` |
-| `tum-production` | `eduide.artemis.cit.tum.de` - see below |
-| `bonn` | `bonn.eduide.aet.cit.tum.de` |
-| `mannheim` | `mannheim.eduide.aet.cit.tum.de` |
+An environment **is** its landing hostname. The directory under
+`environments/`, the GitHub Environment that holds its secrets, and the host it
+serves are one string:
+
+```
+environments/test1.eduide.student.k8s.aet.cit.tum.de/
+environments/eduide.artemis.cit.tum.de/
+```
+
+There is no table mapping one to the other, because there is nothing to map -
+and nothing that can drift out of step, which is what happened when the
+production entry said `artemis.aet.cit.tum.de` and its certificate said
+otherwise.
+
+Namespaces are the exception and stay short (`eduide-test1`), because a
+Kubernetes namespace cannot contain dots. Each `env.yaml` states its own.
 
 **TUM production is deliberately not under `eduide.aet.cit.tum.de`.** It runs
 behind a different load balancer, so it sits under `artemis.cit.tum.de` -
@@ -373,11 +379,11 @@ the ConfigMap first if the rename is genuinely intended.
 ## Things that are not what they look like
 
 **The Gateway section prefix is not the landing host.** Production's landing
-host is `eduide` but its Gateway sections are `prod-*`; `e2e-test`'s are `e2e-*`.
+host is `eduide` but its Gateway sections are `prod-*`; the `e2e.` one's are `e2e-*`.
 Getting this wrong attaches routes to sections that do not exist, and nothing
 fails until traffic does.
 
-**`e2e-test` is not for people.** It follows `main` and the functional tests run
+**The `e2e.` environment is not for people.** It follows `main` and the functional tests run
 against it automatically. Point manual work at `staging` instead, or a red build
 there stops meaning anything.
 

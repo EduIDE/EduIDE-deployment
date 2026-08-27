@@ -56,7 +56,7 @@ jobs:
     needs: tags
     uses: ./.github/workflows/deploy.yml
     with:
-      environment: e2e-test
+      environment: e2e.eduide.student.k8s.aet.cit.tum.de
       image_overrides: ${{ needs.tags.outputs.json }}
     secrets: inherit
 
@@ -67,7 +67,7 @@ jobs:
     needs: deploy
     uses: EduIDE/theia-scale-tests/.github/workflows/functional-tests.yml@main
     with:
-      environment: e2e-test
+      environment: e2e.eduide.student.k8s.aet.cit.tum.de
     secrets:
       KEYCLOAK_USER: ${{ secrets.E2E_KEYCLOAK_USER }}
       KEYCLOAK_PWD: ${{ secrets.E2E_KEYCLOAK_PWD }}

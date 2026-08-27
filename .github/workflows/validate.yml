@@ -97,7 +97,7 @@ jobs:
       - name: Chart every environment renders against is reachable
         run: |
           set -euo pipefail
-          version="$(yq -r '.spec.platform.chartVersion' environments/test1/env.yaml)"
+          version="$(yq -r '.spec.platform.chartVersion' environments/test1.eduide.student.k8s.aet.cit.tum.de/env.yaml)"
           helm show chart oci://ghcr.io/eduide/charts/eduide --version "$version" >/dev/null
 
       - name: Deploy logic tests
