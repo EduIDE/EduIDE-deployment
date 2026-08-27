@@ -13,8 +13,6 @@ app:
   id: nJV3nKZmpxTD4wu2
 demoApplication:
   install: false
-issuer:
-  email: ls1.itg@in.tum.de
 gateway:
   enabled: true
   create: false
