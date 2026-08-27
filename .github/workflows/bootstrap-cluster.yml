@@ -223,10 +223,29 @@ jobs:
           # not itself, so every browser rejected it and the landing page could
           # not call its own REST service.
           if [[ "$ACME_HTTP" == "true" && -s certnames.txt ]]; then
+            # The issuer is created here rather than assumed. Both TUM clusters
+            # carry a `letsencrypt-prod` whose only solver is an nginx Ingress
+            # one, which cannot answer a Gateway API challenge - so pointing the
+            # derived certificates at it would leave every one of them pending
+            # forever, with the Gateway still reporting Programmed=True.
+            ACME_EMAIL=$(yq -r '.spec.acmeEmail // ""' "clusters/${CLUSTER}.yaml")
+            if [[ -z "$ACME_EMAIL" ]]; then
+              echo "::error::clusters/${CLUSTER}.yaml sets spec.tls.acmeHttp but no spec.acmeEmail."
+              echo "::error::cert-manager needs a contact address to register the ACME account."
+              exit 1
+            fi
+            ISSUER=$(yq -r '.spec.acmeIssuerName // "letsencrypt-prod-gateway"' "clusters/${CLUSTER}.yaml")
             SHARED=$(yq -r '.spec.tls.landing' "clusters/${CLUSTER}.yaml")
             {
+              echo "gatewayAcmeIssuer:"
+              echo "  enabled: true"
+              echo "  name: ${ISSUER}"
+              echo "  email: ${ACME_EMAIL}"
               echo "managedCertificates:"
               echo "  enabled: true"
+              echo "  issuerRef:"
+              echo "    kind: ClusterIssuer"
+              echo "    name: ${ISSUER}"
               echo "  certificates:"
               echo "    - name: ${SHARED}"
               echo "      secretName: ${SHARED}"
@@ -234,6 +253,9 @@ jobs:
               sed 's/^/        - /' certnames.txt
             } >> listeners.yaml
           fi
+          # The wildcard webview certificate is deliberately NOT issued here.
+          # ACME does not permit HTTP-01 for wildcards at all, so those hosts
+          # keep the long-lived certificate supplied through wildcardTLSSecret.
           echo "::notice::${found} environment(s) on ${CLUSTER}"
           echo "::group::derived cluster values"; cat listeners.yaml; echo "::endgroup::"
 
