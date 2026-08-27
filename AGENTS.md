@@ -87,7 +87,7 @@ was mid-experiment. `staging` is the manual one.
 
 **TUM production is on a different domain on purpose.** Every other production
 installation is under `eduide.aet.cit.tum.de`; `tum-production` is
-`eduide.artemis.aet.cit.tum.de` because it sits behind a different load
+`eduide.artemis.cit.tum.de` because it sits behind a different load
 balancer. It reads like a typo. It is not.
 
 **A certificate that does not name a host fails silently too, and worse.** The
