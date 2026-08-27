@@ -188,7 +188,7 @@ Current state:
 | Host | Resolves |
 |---|---|
 | `*.eduide.student.k8s.aet.cit.tum.de` | `131.159.88.14` |
-| `eduide.artemis.aet.cit.tum.de` | **not yet** |
+| `eduide.artemis.cit.tum.de` | `131.159.88.82` |
 | `bonn.eduide.aet.cit.tum.de`, `mannheim.…` | **not yet** |
 
 ## Step 5: the GitHub Environment

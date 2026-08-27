@@ -56,12 +56,13 @@ installations under `eduide.aet.cit.tum.de`.
 | `test3` | `test3.eduide.student.k8s.aet.cit.tum.de` |
 | `e2e-test` | `e2e.eduide.student.k8s.aet.cit.tum.de` |
 | `staging` | `staging.eduide.student.k8s.aet.cit.tum.de` |
-| `tum-production` | `eduide.artemis.aet.cit.tum.de` - see below |
+| `tum-production` | `eduide.artemis.cit.tum.de` - see below |
 | `bonn` | `bonn.eduide.aet.cit.tum.de` |
 | `mannheim` | `mannheim.eduide.aet.cit.tum.de` |
 
 **TUM production is deliberately not under `eduide.aet.cit.tum.de`.** It runs
-behind a different load balancer, so it keeps `eduide.artemis.aet.cit.tum.de`.
+behind a different load balancer, so it sits under `artemis.cit.tum.de` -
+note the missing `aet` label the other hosts carry.
 Bonn and Mannheim do sit under the shared base. This is recorded in the values
 file too, because it reads like a typo and is not one.
 

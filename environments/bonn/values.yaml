@@ -39,6 +39,12 @@ landingPage:
     attribution:
       version: Bonn-v1.0.0
 hosts:
+  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
+  #   bonn.eduide.aet.cit.tum.de                      landing page
+  #   service.bonn.eduide.aet.cit.tum.de              REST service
+  #   instance.bonn.eduide.aet.cit.tum.de             session ingress
+  #   *.webview.instance.bonn.eduide.aet.cit.tum.de   session webviews
+  # --- end hostnames
   configuration:
     baseHost: eduide.aet.cit.tum.de
     service: service.bonn
