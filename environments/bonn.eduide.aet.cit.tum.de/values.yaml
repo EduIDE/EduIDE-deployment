@@ -84,6 +84,14 @@ eduide-shared-cache:
 # The chart ships eight; the rest are removed rather than hidden, so nothing is
 # rendered, preloaded or offered for them.
 appDefinitions:
+  # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
+  # These render from values on every deploy, unlike minInstances which is read
+  # back from the live resource.
+  defaults:
+    limitsCpu: "4"
+    limitsMemory: 3000M
+    # Minutes. 3 hours.
+    timeout: 180
   apps:
     c-latest: null
     c-templates-latest: null
