@@ -4,25 +4,66 @@ metadata:
   name: eduide
   displayName: EduIDE cluster (installations outside TUM)
 spec:
-  # NOT YET PROVISIONED. Environments targeting this cluster exist so their
-  # configuration can be reviewed, but deploying one stops at the identity
-  # check until the cluster has been bootstrapped and a KUBECONFIG exists.
+  # Single node k3s (parma, 131.159.88.106). Everything below was confirmed
+  # against the live cluster rather than copied from the TUM ones.
 
-  # Bonn and Mannheim both run on local disks. Stated once here rather than in
-  # each environment, because it is a property of the cluster; an environment
-  # can still override it in its own values.yaml.
-  storageClassName: local
-  gatewayClassName: envoy
+  # The only class on the node. Node-local by design: a workspace volume is
+  # pinned to this node, which is fine while the cluster is one node.
+  storageClassName: local-path
+  gatewayClassName: eduide
 
-  # NOT CONFIRMED - this cluster does not exist yet. Copied from the student
-  # cluster's shape; settle it against however Bonn and Mannheim issue
-  # certificates before the first bootstrap.
   tls:
     landing: shared-theia-cert
     service: shared-theia-cert
     instances: shared-theia-cert
+    # Bought from Harica, covers bonn, mannheim and *.webview.instance under
+    # eduide.aet.cit.tum.de. ACME cannot issue a wildcard over HTTP-01.
     webview: static-theia-cert
-    acmeHttp: false
+    acmeHttp: true
+  acmeEmail: admin.aet@xcit.tum.de
+
+  # Nothing else owns a GatewayClass here, so this one is ours to create.
+  gatewayClass:
+    create: true
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+
+  envoyProxy:
+    create: true
+    name: eduide-envoy-proxy
+    namespace: envoy-gateway-system
+    spec:
+      logging:
+        level:
+          default: warn
+      provider:
+        type: Kubernetes
+        kubernetes:
+          # THIS CLUSTER HAS NO LOAD BALANCER. k3s runs without servicelb and
+          # there is no MetalLB, so a Service of type LoadBalancer would sit
+          # pending for ever. The node's own address is what DNS publishes, so
+          # Envoy binds the host's :80 and :443 directly.
+          #
+          # Two settings are needed together: hostNetwork puts the pod on the
+          # node's network namespace, and useListenerPortAsContainerPort stops
+          # Envoy shifting 80/443 up to 10080/10443. Binding a privileged port
+          # as a non-root user then needs NET_BIND_SERVICE.
+          useListenerPortAsContainerPort: true
+          envoyDeployment:
+            container:
+              securityContext:
+                capabilities:
+                  add: ["NET_BIND_SERVICE"]
+            patch:
+              type: StrategicMerge
+              value:
+                spec:
+                  template:
+                    spec:
+                      hostNetwork: true
+                      dnsPolicy: ClusterFirstWithHostNet
+          # Irrelevant with hostNetwork, but a LoadBalancer here would hang.
+          envoyService:
+            type: ClusterIP
 
   sharedGateway:
     namespace: eduide-system

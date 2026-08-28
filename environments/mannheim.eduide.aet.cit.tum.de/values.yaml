@@ -34,6 +34,11 @@ gateway:
     namespace: eduide-system
     sectionName: mannheim-webview
 landingPage:
+  # Workspaces persist here, so a launch must not be ephemeral. The chart-wide
+  # default in _base.yaml is `true`, which would throw the volume away with the
+  # session.
+  ephemeralStorage: false
+  appDefinition: thm-java-25-latest
   infoTitle: Welcome to EduIDE (Mannheim)
   footerLinks:
     attribution:
@@ -59,3 +64,37 @@ keycloak:
   clientId: eduide
 eduide-shared-cache:
   enabled: false
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+# Mannheim offers the TH Mannheim Java 25 image only.
+# The chart ships eight; the rest are removed rather than hidden, so nothing is
+# rendered, preloaded or offered for them.
+appDefinitions:
+  apps:
+    c-latest: null
+    c-templates-latest: null
+    java-17-latest: null
+    java-17-templates-latest: null
+    javascript-latest: null
+    ocaml-latest: null
+    python-latest: null
+    rust-latest: null
+    # TH Mannheim's own Java 25 image. Still a pull request in EduIDE (#170),
+    # so only pr-170 tags exist - the deploy passes ide_tag explicitly until it
+    # merges and a release publishes a numbered tag.
+    thm-java-25-latest:
+      image: eduide/thm-java-25
+      landingPage:
+        label: Java 25
+# Reap a workspace this long after its last session. Default is 14 days.
+theia-workspace-garbage-collector:
+  enabled: true
+  env:
+    WORKSPACE_TTL: "12960000s"
+
+# Scraped by the cluster's PodMonitors. On by default; stated so it is a
+# decision rather than an accident.
+monitoring:
+  enabled: true

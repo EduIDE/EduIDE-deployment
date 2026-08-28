@@ -34,6 +34,11 @@ gateway:
     namespace: eduide-system
     sectionName: bonn-webview
 landingPage:
+  # Workspaces persist here, so a launch must not be ephemeral. The chart-wide
+  # default in _base.yaml is `true`, which would throw the volume away with the
+  # session.
+  ephemeralStorage: false
+  appDefinition: javascript-latest
   infoTitle: Welcome to EduIDE (Bonn)
   footerLinks:
     attribution:
@@ -71,3 +76,33 @@ keycloak:
 #   clientId: eduide
 eduide-shared-cache:
   enabled: false
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+# Bonn offers Javascript only.
+# The chart ships eight; the rest are removed rather than hidden, so nothing is
+# rendered, preloaded or offered for them.
+appDefinitions:
+  apps:
+    c-latest: null
+    c-templates-latest: null
+    java-17-latest: null
+    java-17-templates-latest: null
+    ocaml-latest: null
+    python-latest: null
+    rust-latest: null
+    javascript-latest:
+      image: eduide/javascript
+      landingPage:
+        label: Javascript
+# Reap a workspace this long after its last session. Default is 14 days.
+theia-workspace-garbage-collector:
+  enabled: true
+  env:
+    WORKSPACE_TTL: "1209600s"
+
+# Scraped by the cluster's PodMonitors. On by default; stated so it is a
+# decision rather than an accident.
+monitoring:
+  enabled: true
