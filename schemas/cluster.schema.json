@@ -123,6 +123,14 @@
                   "channel": {
                     "type": "string",
                     "description": "Slack channel override, e.g. \"#eduide-alerts\". Ignored for Discord, where the webhook itself names the channel."
+                  },
+                  "environments": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Namespaces whose alerts go to this channel instead of to all of them. Use when one cluster hosts installations belonging to different people. Alerts that match no scoped channel - including every cluster-scoped alert, such as a certificate expiring - still go to all channels."
                   }
                 },
                 "allOf": [

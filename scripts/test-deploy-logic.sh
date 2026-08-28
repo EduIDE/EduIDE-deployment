@@ -309,6 +309,24 @@ for cf in "$ROOT"/clusters/*.yaml; do
       bad_channel=1
     fi
   done < <(yq -r '.spec.alerting.channels[]? | [.name, .type, .secretKey] | @tsv' "$cf")
+
+  # A channel scoped to an environment that does not exist on this cluster
+  # matches nothing, so that channel silently receives only the cluster-scoped
+  # alerts and nobody notices the tenant's own alerts are going elsewhere.
+  # Typos here are invisible at render time: the matcher is just a regex.
+  while IFS=$'\t' read -r cname cenv; do
+    [[ -n "$cenv" ]] || continue
+    found=0
+    for f in "$ROOT"/environments/*/env.yaml; do
+      [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" ]] || continue
+      [[ "$(yq -r '.spec.namespace' "$f")" == "$cenv" ]] && { found=1; break; }
+    done
+    if [[ $found -eq 0 ]]; then
+      bad "$cluster channel '$cname' is scoped to namespace '$cenv'" \
+          "no environment with that namespace lives on $cluster, so the route matches nothing"
+      bad_channel=1
+    fi
+  done < <(yq -r '.spec.alerting.channels[]? as $c | ($c.environments // [])[] | [$c.name, .] | @tsv' "$cf")
   [[ $bad_channel -eq 0 ]] && ok "$cluster: alerting on, $n channel(s), minSeverity $sev"
 done
 

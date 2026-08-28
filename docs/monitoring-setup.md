@@ -71,6 +71,36 @@ spec:
         channel: "#eduide-alerts"
 ```
 
+**A channel can be scoped to one installation.** One cluster may host
+installations that belong to different people: Bonn and Mannheim share the
+`eduide` cluster, and neither wants the other's incidents.
+
+```yaml
+    channels:
+      - name: mannheim
+        type: discord
+        secretKey: discord-mannheim
+        environments: [eduide-mannheim]
+      - name: bonn
+        type: discord
+        secretKey: discord-bonn
+        environments: [eduide-bonn]
+```
+
+`environments` lists **namespaces**, not hostnames, and each becomes a sub-route
+matched on `eduide_namespace`. First match wins.
+
+**Anything no scoped channel claims goes to every channel.** That is deliberate
+and it is the part worth remembering: a certificate expiring or the conversion
+webhook failing is cluster-scoped, belongs to no tenant namespace, and would
+otherwise be dropped for failing to match a tenant route. Those are the alerts
+you least want to lose, so they go to everyone.
+
+A scoped channel pointing at a namespace no environment on that cluster uses
+would match nothing and quietly receive only the cluster-scoped alerts, so
+`test-deploy-logic.sh` checks every `environments` entry against the
+environments actually on the cluster.
+
 **`minSeverity` is what reaches the channels, not what fires.** Everything
 fires and is visible in Alertmanager and on the dashboards; the channels get a
 filtered subset. This is deliberate and it is the whole reason the split
@@ -139,18 +169,29 @@ Webhook URLs are credentials. They never go in a manifest, a values file or a
 `--set`, which would put them in the process list and in Actions debug logs.
 
 1. Create the incoming webhook in Slack or Discord.
-2. Put it on the **cluster** GitHub Environment:
+2. Put it on the **cluster** GitHub Environment. The secret is named after the
+   channel's `secretKey`, uppercased with hyphens as underscores and prefixed
+   `ALERT_WEBHOOK_`, so one cluster can hold a different webhook per
+   installation:
+
+   | `secretKey` | GitHub Environment secret |
+   |---|---|
+   | `discord-mannheim` | `ALERT_WEBHOOK_DISCORD_MANNHEIM` |
+   | `discord-bonn` | `ALERT_WEBHOOK_DISCORD_BONN` |
+   | `slack-platform` | `ALERT_WEBHOOK_SLACK_PLATFORM` |
 
    ```bash
    REPO=EduIDE/EduIDE-deployment
-   gh secret set ALERT_WEBHOOK_SLACK --repo "$REPO" --env cluster-tum-student
-   gh secret set ALERT_WEBHOOK_DISCORD --repo "$REPO" --env cluster-tum-student
+   gh secret set ALERT_WEBHOOK_DISCORD_MANNHEIM --repo "$REPO" --env cluster-eduide < webhook.txt
    ```
 
+   Pipe from a file or use `--body`; never paste a webhook URL into a shell you
+   share, and never into a manifest.
+
 3. Add the channel to `clusters/<name>.yaml`. The `secretKey` prefix decides
-   which secret is read, so it must be `slack-*` for a Slack channel and
-   `discord-*` for a Discord one. `test-deploy-logic.sh` and the cluster schema
-   both check this.
+   which webhook type it is, so it must be `slack-*` for a Slack channel and
+   `discord-*` for a Discord one, and the rest must be a valid Kubernetes Secret
+   data key. `test-deploy-logic.sh` and the cluster schema both check this.
 4. Re-run `Bootstrap cluster`.
 
 Alerting enabled with no channels fails the render rather than firing into

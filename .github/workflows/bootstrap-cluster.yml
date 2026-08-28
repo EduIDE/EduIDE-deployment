@@ -401,8 +401,17 @@ jobs:
 
       - name: Collect the alert webhook URLs
         env:
-          ALERT_WEBHOOK_SLACK: ${{ secrets.ALERT_WEBHOOK_SLACK }}
-          ALERT_WEBHOOK_DISCORD: ${{ secrets.ALERT_WEBHOOK_DISCORD }}
+          # Looked up by name rather than listed one per type, because one
+          # cluster can host installations that belong to different people and
+          # want different channels: Bonn and Mannheim share the `eduide`
+          # cluster and each has its own Discord. A channel's secretKey
+          # `discord-mannheim` reads `ALERT_WEBHOOK_DISCORD_MANNHEIM`.
+          #
+          # GitHub expressions cannot index `secrets` by a computed name, so the
+          # whole map is passed in and one key is picked out with jq. Nothing in
+          # this step echoes it, and Actions masks secret values in logs
+          # regardless.
+          ALL_SECRETS: ${{ toJSON(secrets) }}
         run: |
           set -euo pipefail
           # A Slack or Discord webhook URL is a credential: anyone holding it can
@@ -441,20 +450,19 @@ jobs:
               echo "::error::The prefix selects the webhook secret; the rest has to be a valid Kubernetes Secret data key."
               exit 1
             fi
-            case "$key" in
-              slack-*)   value="$ALERT_WEBHOOK_SLACK" ;;
-              discord-*) value="$ALERT_WEBHOOK_DISCORD" ;;
-            esac
+            # discord-mannheim -> ALERT_WEBHOOK_DISCORD_MANNHEIM
+            secret_name="ALERT_WEBHOOK_$(printf '%s' "$key" | tr '[:lower:]-' '[:upper:]_')"
+            value=$(printf '%s' "$ALL_SECRETS" | jq -r --arg n "$secret_name" '.[$n] // ""')
             if [[ -z "$value" ]]; then
-              MISSING+=("$key")
+              MISSING+=("${key} (expected secret ${secret_name})")
               continue
             fi
             echo "        ${key}: \"$(printf '%s' "$value" | base64 | tr -d '\n')\"" >> alert-secrets.yaml
           done < <(yq -r '.spec.alerting.channels[]?.secretKey' "clusters/${CLUSTER}.yaml")
           if (( ${#MISSING[@]} > 0 )); then
-            echo "::error::alerting is enabled on ${CLUSTER} but no webhook URL was supplied for: ${MISSING[*]}"
-            echo "::error::set ALERT_WEBHOOK_SLACK and/or ALERT_WEBHOOK_DISCORD on the '${{ needs.resolve.outputs.environment }}' environment."
-            echo "::error::See docs/monitoring.md."
+            echo "::error::alerting is enabled on ${CLUSTER} but no webhook URL was supplied for:"
+            for m in "${MISSING[@]}"; do echo "::error::  ${m}"; done
+            echo "::error::Set them on the '${{ needs.resolve.outputs.environment }}' environment. See docs/monitoring-setup.md."
             exit 1
           fi
           echo "collected $(yq -r '.spec.alerting.channels | length' "clusters/${CLUSTER}.yaml") webhook(s)"
