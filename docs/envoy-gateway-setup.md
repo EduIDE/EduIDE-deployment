@@ -58,7 +58,7 @@ If the GatewayClass is configured with `mergeGateways: true`, **every** Gateway
 using that class shares one Envoy deployment and one external address. On
 `tum-student` today:
 
-```
+```text
 GatewayClass envoy
   -> EnvoyProxy envoy-gateway-system/artemis-envoy-proxy
        mergeGateways: true
@@ -96,8 +96,10 @@ envoyProxy:
           type: LoadBalancer
 ```
 
-**`bootstrap-cluster.yml` does not pass either block.** Until it does, create
-them by hand or add the values to the workflow. `spec.loadBalancerIP` in
+**`bootstrap-cluster.yml` passes both blocks straight through** from
+`clusters/<name>.yaml`, so the manifest above is the whole configuration - do
+not create a GatewayClass or an EnvoyProxy by hand as well, or bootstrap and
+the hand-made copy will fight over the same names. `spec.loadBalancerIP` in
 `clusters/tum-production.yaml` records the intended address but is read by
 nothing.
 
@@ -135,6 +137,37 @@ dig +short eduide.student.k8s.aet.cit.tum.de A
 
 The Gateway's address and the DNS answer must be the same. A service's
 `clusterIP` is internal and never what DNS should point at.
+
+## Redirecting a hostname you used to serve
+
+A renamed installation leaves its old hostname in bookmarks, course pages and
+Artemis exercise configurations. `spec.redirects` in the cluster manifest keeps
+it answering and 301s it to the new name, path and query intact:
+
+```yaml
+redirects:
+  - name: legacy-landing
+    from: theia.artemis.cit.tum.de
+    to: eduide.artemis.cit.tum.de
+    tlsSecretName: legacy-landing-cert-secret
+```
+
+Bootstrap gives it an HTTPS listener and adds its hostname to the certificate
+for that secret, so it renews like any other name. It also gets an ACME `:80`
+listener, but **only when the cluster sets `spec.acmeHttp: true`** - on a
+cluster that issues its certificates some other way there is no such listener,
+and nothing should be written that assumes one. Check it with headers, not a
+browser:
+
+```bash
+curl -sI https://theia.artemis.cit.tum.de/foo?bar=1 | grep -i '^location'
+# location: https://eduide.artemis.cit.tum.de/foo?bar=1
+```
+
+A 302 would work but should not be used. It means *temporarily* moved, so
+clients and bookmarks keep the old hostname and keep sending traffic to it. A
+301 says the move is permanent, which is both true here and what lets clients
+and search engines update what they have stored.
 
 ## TLS
 

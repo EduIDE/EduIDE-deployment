@@ -14,6 +14,8 @@ that reports itself healthy and serves nothing.
 | Gateway API CRDs, Envoy Gateway, cert-manager, storage | **you**, once per cluster |
 | A GatewayClass whose load balancer address matches DNS | **you** |
 | The ACME `ClusterIssuer` | `Bootstrap cluster`, from `spec.acmeEmail` |
+| The GatewayClass and its EnvoyProxy | `Bootstrap cluster`, from `spec.gatewayClass` and `spec.envoyProxy` |
+| Redirects from hostnames you used to serve | `Bootstrap cluster`, from `spec.redirects` |
 | The webview wildcard certificate | **you**, see [tum-certificates.md](tum-certificates.md) |
 | DNS records | **you** (RBG) |
 | Keycloak client and redirect URIs | **you**, see [keycloak-setup.md](keycloak-setup.md) |
@@ -83,7 +85,7 @@ Envoy Gateway can be configured to **merge gateways**: every `Gateway` using a
 GatewayClass shares one Envoy deployment and therefore one external address.
 `tum-student` is configured that way today:
 
-```
+```text
 GatewayClass envoy
   -> parametersRef: EnvoyProxy envoy-gateway-system/artemis-envoy-proxy
        mergeGateways: true
@@ -92,7 +94,7 @@ GatewayClass envoy
 
 and the EduIDE hostnames point somewhere else:
 
-```
+```text
 eduide.student.k8s.aet.cit.tum.de  ->  k8s-stud-lb3  ->  131.159.88.14   (pool lb3)
 ```
 
@@ -112,9 +114,11 @@ own `EnvoyProxy` pinned to pool `lb3`, and set `gatewayClassName` in
 `clusters/tum-student.yaml` to match. EduIDE then has its own data plane on
 `131.159.88.14`, which is what DNS already says.
 
-The `eduide-cluster` chart can create both objects (`gatewayClass.create` and
-`envoyProxy.create`), but **`bootstrap-cluster.yml` does not pass either**, so
-today option (b) means creating them by hand or extending the workflow. See
+`bootstrap-cluster.yml` passes both from the cluster manifest, so option (b) is
+`spec.gatewayClass.create: true` plus a `spec.envoyProxy` block. `envoyProxy.name`
+is the name of the EnvoyProxy resource itself; the MetalLB pool goes inside it,
+under `spec.provider.kubernetes.envoyService.annotations`. That is exactly what
+`tum-production` does. See
 [envoy-gateway-setup.md](envoy-gateway-setup.md) for the MetalLB details.
 
 `clusters/tum-production.yaml` carries `spec.loadBalancerIP: 131.159.88.82`.
@@ -174,7 +178,7 @@ certificate supplied through `wildcardTLSSecret`; see
 
 Four records per environment, all pointing at the address from step 2:
 
-```
+```text
 <landing>                             the landing page
 service.<landing>                     the REST service
 instance.<landing>                    session ingress
@@ -203,7 +207,7 @@ Full instructions, including what is missing today, are in
 
 ## Step 6: bootstrap
 
-```
+```text
 Actions -> Bootstrap cluster
   cluster:       tum-student
   chart_version: 2.1.0
@@ -274,7 +278,7 @@ invalid certificate. Nothing appeared in any log.
 
 ## Step 8: deploy an environment
 
-```
+```text
 Actions -> Deploy (dispatch) -> environment: test1, dry_run: true
 ```
 
@@ -317,12 +321,55 @@ EduIDE somewhere unexpected.
 `runner` is per cluster because deploying is not building: a deploy has to reach
 the API server, and the clusters may differ in how they are reachable.
 
-## Known gaps
+## When a certificate will not issue
 
-Three things this repository describes but does not yet apply. All three are
-listed above in context; collected here so they are not missed:
+Two failures look identical from outside - the listener never programs - and
+have different causes.
+
+**No challenges outstanding, order `errored`.** Let's Encrypt occasionally fails
+to finalize an order that has already validated:
+
+```text
+Failed to finalize Order: 404 urn:ietf:params:acme:error:malformed:
+Certificate not found
+```
+
+Confirm it is that failure before doing anything, by reading down the chain the
+`Certificate` owns - its conditions alone do not tell you:
+
+```bash
+kubectl -n eduide-system describe certificate <name>
+kubectl -n eduide-system get certificaterequest,order,challenge
+```
+
+cert-manager retries on its own, but only after an exponential backoff that
+starts at an hour. Clear the backoff to retry immediately (`--subresource`
+needs kubectl v1.24 or newer):
+
+```bash
+kubectl -n eduide-system patch certificate <name> --type=merge --subresource=status \
+  -p '{"status":{"lastFailureTime":null,"failedIssuanceAttempts":null}}'
+```
+
+It issued on the first retry when this happened during the `tum-production`
+bootstrap, so one clean retry is the expected outcome and no configuration
+change is called for. If the retry fails too, the transient explanation is
+wrong: go back over the `CertificateRequest`, `Order`, `Challenge` and
+`ClusterIssuer`, and the cert-manager controller logs, before changing anything.
+
+**Challenges pending, staying pending.** That is a real problem, and the error
+on the `Challenge` says which:
+
+- **HTTP 404** - something answered, but nothing routes the solver path. The
+  hostname has no listener on the Gateway, or the listener exists on a Gateway
+  the solver's HTTPRoute does not attach to.
+- **DNS, connection refused or timeout** - nothing answered at all. The name
+  does not resolve, or it resolves somewhere that is not this Gateway.
+
+See step 3.
+
+## Known gaps
 
 | Gap | Consequence |
 |---|---|
-| `bootstrap-cluster.yml` passes no `gatewayClass` or `envoyProxy` | A cluster needing its own data plane address must have it created by hand (step 2) |
-| `spec.loadBalancerIP` is in the schema and in `tum-production.yaml` | Nothing reads it. It records intent only (step 2) |
+| `spec.loadBalancerIP` is in the schema and in `tum-production.yaml` | Nothing reads it. `spec.envoyProxy` is what actually pins the address (step 2) |

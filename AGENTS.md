@@ -193,6 +193,20 @@ not ours to move.
 node; under `--wait` it would time out and `--atomic` would then roll back a
 healthy deploy.
 
+**A release tag is `vX.Y.Z`; the image it publishes is `X.Y.Z`.** The shared
+build workflow normalises with `${RELEASE_TAG#v}`, but an `image-tag` override
+is used verbatim - so a caller passing `github.event.release.tag_name` defeats
+the normalisation and publishes `v1.2.0`, which no chart can consume. Releasing
+`1.2.0` without the `v` happens to produce the right image and fails the Tag
+format check, which is how this stayed hidden. Fixed in EduIDE-Cloud and
+EduIDE-Landing-Page; check any repo that has not been.
+
+**helm-diff must stay pinned.** Its current release declares `platformHooks`,
+which the pinned helm v3.16.3 cannot parse, so the plugin fails to load. Both
+the deploy and the bootstrap preview end in `|| true`, so the diff renders
+nothing at all and the step still passes - every "Pending change" summary was
+silently empty until it was pinned to v3.9.11.
+
 ## Two `lookup` calls make rendering nondeterministic
 
 The `eduide` chart preserves live `minInstances`/`maxInstances` on
