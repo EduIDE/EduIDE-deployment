@@ -136,6 +136,32 @@ dig +short eduide.student.k8s.aet.cit.tum.de A
 The Gateway's address and the DNS answer must be the same. A service's
 `clusterIP` is internal and never what DNS should point at.
 
+## Redirecting a hostname you used to serve
+
+A renamed installation leaves its old hostname in bookmarks, course pages and
+Artemis exercise configurations. `spec.redirects` in the cluster manifest keeps
+it answering and 301s it to the new name, path and query intact:
+
+```yaml
+redirects:
+  - name: legacy-landing
+    from: theia.artemis.cit.tum.de
+    to: eduide.artemis.cit.tum.de
+    tlsSecretName: legacy-landing-cert-secret
+```
+
+Bootstrap gives it a listener and an ACME `:80` listener, and adds its hostname
+to the certificate for that secret, so it renews like any other name. Check it
+with headers, not a browser:
+
+```bash
+curl -sI https://theia.artemis.cit.tum.de/foo?bar=1 | grep -i '^location'
+# location: https://eduide.artemis.cit.tum.de/foo?bar=1
+```
+
+A 302 would work but should not be used: it is not cached, so the old hostname
+keeps taking traffic indefinitely.
+
 ## TLS
 
 Each listener terminates with a Secret named per cluster in

@@ -14,6 +14,8 @@ that reports itself healthy and serves nothing.
 | Gateway API CRDs, Envoy Gateway, cert-manager, storage | **you**, once per cluster |
 | A GatewayClass whose load balancer address matches DNS | **you** |
 | The ACME `ClusterIssuer` | `Bootstrap cluster`, from `spec.acmeEmail` |
+| The GatewayClass and its EnvoyProxy | `Bootstrap cluster`, from `spec.gatewayClass` and `spec.envoyProxy` |
+| Redirects from hostnames you used to serve | `Bootstrap cluster`, from `spec.redirects` |
 | The webview wildcard certificate | **you**, see [tum-certificates.md](tum-certificates.md) |
 | DNS records | **you** (RBG) |
 | Keycloak client and redirect URIs | **you**, see [keycloak-setup.md](keycloak-setup.md) |
@@ -112,9 +114,9 @@ own `EnvoyProxy` pinned to pool `lb3`, and set `gatewayClassName` in
 `clusters/tum-student.yaml` to match. EduIDE then has its own data plane on
 `131.159.88.14`, which is what DNS already says.
 
-The `eduide-cluster` chart can create both objects (`gatewayClass.create` and
-`envoyProxy.create`), but **`bootstrap-cluster.yml` does not pass either**, so
-today option (b) means creating them by hand or extending the workflow. See
+`bootstrap-cluster.yml` passes both from the cluster manifest, so option (b) is
+`spec.gatewayClass.create: true` plus a `spec.envoyProxy` naming the pool -
+which is exactly what `tum-production` does. See
 [envoy-gateway-setup.md](envoy-gateway-setup.md) for the MetalLB details.
 
 `clusters/tum-production.yaml` carries `spec.loadBalancerIP: 131.159.88.82`.
@@ -317,12 +319,35 @@ EduIDE somewhere unexpected.
 `runner` is per cluster because deploying is not building: a deploy has to reach
 the API server, and the clusters may differ in how they are reachable.
 
-## Known gaps
+## When a certificate will not issue
 
-Three things this repository describes but does not yet apply. All three are
-listed above in context; collected here so they are not missed:
+Two failures look identical from outside - the listener never programs - and
+have different causes.
+
+**No challenges outstanding, order `errored`.** Let's Encrypt occasionally fails
+to finalize an order that has already validated:
+
+```
+Failed to finalize Order: 404 urn:ietf:params:acme:error:malformed:
+Certificate not found
+```
+
+cert-manager retries, but only after an exponential backoff that starts at an
+hour. Clear the backoff to retry immediately:
+
+```bash
+kubectl -n eduide-system patch certificate <name> --type=merge --subresource=status \
+  -p '{"status":{"lastFailureTime":null,"failedIssuanceAttempts":null}}'
+```
+
+It issued on the first retry when this happened during the `tum-production`
+bootstrap. Nothing is wrong with the configuration; do not go looking.
+
+**Challenges pending, staying pending.** That is a real problem: the name has no
+listener, or DNS does not reach the Gateway. See step 3.
+
+## Known gaps
 
 | Gap | Consequence |
 |---|---|
-| `bootstrap-cluster.yml` passes no `gatewayClass` or `envoyProxy` | A cluster needing its own data plane address must have it created by hand (step 2) |
-| `spec.loadBalancerIP` is in the schema and in `tum-production.yaml` | Nothing reads it. It records intent only (step 2) |
+| `spec.loadBalancerIP` is in the schema and in `tum-production.yaml` | Nothing reads it. `spec.envoyProxy` is what actually pins the address (step 2) |
