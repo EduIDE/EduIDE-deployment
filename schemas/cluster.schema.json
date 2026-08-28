@@ -69,6 +69,89 @@
         "bootstrapEnvironment": {
           "type": "string"
         },
+        "monitorCertManager": {
+          "type": "boolean",
+          "description": "Create a ServiceMonitor for cert-manager, so certificate expiry can be alerted on. cert-manager exports the metric but ships no ServiceMonitor, so nothing collects it by default."
+        },
+        "alerting": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Where alerts go. Webhook URLs are never listed here: they are credentials and live in the cluster's GitHub Environment.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minSeverity": {
+              "type": "string",
+              "enum": [
+                "warning",
+                "critical"
+              ],
+              "description": "What reaches the channels, not what fires. Everything below this still fires and is visible in Alertmanager and on the dashboards."
+            },
+            "grafanaUrl": {
+              "type": "string",
+              "description": "Base URL of the Grafana serving the EduIDE dashboards, no trailing slash. Used to deep-link a notification to the affected session."
+            },
+            "channels": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "type",
+                  "secretKey"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "slack",
+                      "discord"
+                    ]
+                  },
+                  "secretKey": {
+                    "type": "string",
+                    "pattern": "^(slack|discord)-",
+                    "description": "Key in the webhook Secret. The prefix decides which GitHub Environment secret bootstrap reads, so it must match the channel type."
+                  },
+                  "channel": {
+                    "type": "string",
+                    "description": "Slack channel override, e.g. \"#eduide-alerts\". Ignored for Discord, where the webhook itself names the channel."
+                  }
+                }
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              },
+              "then": {
+                "required": [
+                  "channels"
+                ],
+                "properties": {
+                  "channels": {
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
         "tls": {
           "type": "object",
           "description": "TLS Secret each shared-Gateway listener role terminates with. Per cluster because the clusters issue certificates differently. A listener without a secret renders an empty certificateRef: the Gateway is accepted and simply never programs TLS for that hostname.",

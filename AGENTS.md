@@ -76,11 +76,37 @@ both, with no clue why. An installation with no identity provider yet sets
 `keycloak.allowUnauthenticated: true` and says so; Bonn does.
 
 **Monitoring is on by default and opted out per environment** with
-`monitoring.enabled: false`. The PodMonitors themselves are in the cluster
-chart - they must be created in Rancher's namespace to be discovered, and one
+`monitoring.enabled: false`. The PodMonitor itself is in the cluster
+chart - it must be created in Rancher's namespace to be discovered, and one
 per tenant would collide on names - so the flag decides whether the
-environment's namespace is in the list they watch. Do not confuse it with
+environment's namespace is in the list it watches. Do not confuse it with
 `monitor.enable`, the operator's session activity tracker.
+
+**Session pods export no metrics, and nothing should try to scrape them.** They
+are Theia IDEs serving HTML; a PodMonitor pointed at them collects nothing and
+reports every target as down. There was one, for a year, and it never produced
+a sample. Everything the session dashboards show comes from cAdvisor, kubelet
+and kube-state-metrics, which need no PodMonitor at all. The REST service is
+the only EduIDE component that is scraped, and it exports exactly one custom
+metric - session startup latency, registered lazily on the first session, so it
+does not exist on a freshly restarted service.
+
+**Alert `namespace` labels are a routing artifact; silence on
+`eduide_namespace`.** Every EduIDE alert claims `namespace: eduide-system`
+whatever environment it concerns, because the Prometheus Operator prepends a
+`namespace = <the AlertmanagerConfig's own namespace>` matcher to every route it
+generates and the alert would otherwise reach no receiver. The real environment
+is in `eduide_namespace`, and grouping and inhibition must use that one too.
+Webhook URLs never appear in a manifest: `spec.alerting.channels` names a
+`secretKey`, whose `slack-`/`discord-` prefix tells bootstrap which GitHub
+Environment secret to read. See `docs/monitoring-setup.md`.
+
+**A selector that matches nothing looks exactly like a healthy platform.** Four
+dashboard panels selected on `service=~"theia-.*"`, a label that stopped
+existing in 2.0.0, and rendered empty for months; the namespace picker offered
+`theia` and `test1` long after both namespaces were gone. Neither could fail a
+render test. Check new expressions against a live Prometheus before shipping
+them, not just `helm template`.
 
 **Keycloak is per environment, including `authUrl`.** TUM installations share a
 server and differ only by realm; Bonn and Mannheim bring their own. Nothing

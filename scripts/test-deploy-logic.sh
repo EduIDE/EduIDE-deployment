@@ -251,6 +251,56 @@ for cf in "$ROOT"/clusters/*.yaml; do
   ok "$cluster: $n_in of $n_all environment(s) monitored"
 done
 
+# --- alerting is complete where it is switched on --------------------------
+# Alerting that fires into nowhere is worse than no alerting: it reads as
+# covered. The chart already fails the render on an empty channel list, but the
+# failure would land mid-bootstrap on a cluster, so the same conditions are
+# checked here where the feedback is a pull request comment.
+#
+# The secretKey prefix is load-bearing, not cosmetic. bootstrap-cluster.yml
+# picks which GitHub Environment secret to read from it, so a key named
+# anything else silently gets no webhook URL.
+echo
+echo "=== alerting configuration is complete ==="
+for cf in "$ROOT"/clusters/*.yaml; do
+  cluster=$(yq -r '.metadata.name' "$cf")
+  if [[ "$(yq -r '.spec.alerting.enabled // false' "$cf")" != "true" ]]; then
+    ok "$cluster: alerting off"
+    continue
+  fi
+  n=$(yq -r '(.spec.alerting.channels // []) | length' "$cf")
+  if [[ "$n" == "0" ]]; then
+    bad "$cluster enables alerting but declares no channels" \
+        "alerts would fire and notify nobody; add spec.alerting.channels"
+    continue
+  fi
+  sev=$(yq -r '.spec.alerting.minSeverity // "warning"' "$cf")
+  if [[ "$sev" != "warning" && "$sev" != "critical" ]]; then
+    bad "$cluster has minSeverity '$sev'" "must be 'warning' or 'critical'"
+  fi
+  bad_channel=0
+  while read -r line; do
+    [[ -n "$line" ]] || continue
+    cname=${line%% *}; ctype=${line#* }; ckey=${ctype#* }; ctype=${ctype%% *}
+    if [[ "$ctype" != "slack" && "$ctype" != "discord" ]]; then
+      bad "$cluster channel '$cname' has type '$ctype'" "supported: slack, discord"
+      bad_channel=1
+    fi
+    if [[ "$ckey" != slack-* && "$ckey" != discord-* ]]; then
+      bad "$cluster channel '$cname' has secretKey '$ckey'" \
+          "must start with slack- or discord-, which is how bootstrap picks the secret"
+      bad_channel=1
+    fi
+    if [[ "$ctype" == "slack" && "$ckey" != slack-* ]] \
+       || [[ "$ctype" == "discord" && "$ckey" != discord-* ]]; then
+      bad "$cluster channel '$cname' is $ctype but reads '$ckey'" \
+          "the prefix decides which webhook URL is used, so it must match the type"
+      bad_channel=1
+    fi
+  done < <(yq -r '.spec.alerting.channels[]? | .name + " " + .type + " " + .secretKey' "$cf")
+  [[ $bad_channel -eq 0 ]] && ok "$cluster: alerting on, $n channel(s), minSeverity $sev"
+done
+
 # --- every namespace carries the eduide- prefix ----------------------------
 echo
 echo "=== namespaces are prefixed ==="

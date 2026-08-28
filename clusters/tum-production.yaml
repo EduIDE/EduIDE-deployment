@@ -74,3 +74,22 @@ spec:
 
   runner: ubuntu-latest
   bootstrapEnvironment: cluster-tum-production
+
+  # Scrape cert-manager so certificates can be alerted on before they lapse.
+  # cert-manager exports expiry but ships no ServiceMonitor, so nothing watches
+  # it by default. The webview wildcard is renewed by hand once a year.
+  monitorCertManager: true
+
+  # Where alerts go. The channel list is here; the webhook URLs are not - they
+  # are credentials and live in the cluster's GitHub Environment as
+  # ALERT_WEBHOOK_SLACK and ALERT_WEBHOOK_DISCORD. A channel's `secretKey` must
+  # start with `slack-` or `discord-`, which is how the workflow knows which
+  # secret to read.
+  #
+  # `minSeverity` is what reaches the channels, not what fires. Everything below
+  # it still fires and is visible in Alertmanager and on the dashboards; it just
+  # does not page anyone. See docs/monitoring.md.
+  alerting:
+    enabled: false
+    minSeverity: warning
+    channels: []

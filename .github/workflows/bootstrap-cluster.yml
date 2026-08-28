@@ -279,9 +279,32 @@ jobs:
               echo "  enabled: true"
               echo "  targetNamespaces:"
               sed 's/^/    - /' namespaces.txt
-              echo "  sessionNamespaces:"
-              sed 's/^/    - /' namespaces.txt
             } >> listeners.yaml
+            # cert-manager exports certificate expiry but ships no
+            # ServiceMonitor, so by default nothing watches it. Opt in per
+            # cluster: the webview wildcard is renewed by hand once a year and
+            # has never had anything warning about it.
+            if [[ "$(yq -r '.spec.monitorCertManager // false' "clusters/${CLUSTER}.yaml")" == "true" ]]; then
+              printf '  certManager:\n    enabled: true\n' >> listeners.yaml
+            fi
+            # Alerting. The channel list is in the manifest; the webhook URLs
+            # are not - they are credentials and come from the environment's
+            # secrets, written to a separate file below.
+            if [[ "$(yq -r '.spec.alerting.enabled // false' "clusters/${CLUSTER}.yaml")" == "true" ]]; then
+              {
+                echo "  alerting:"
+                echo "    enabled: true"
+                echo "    minSeverity: $(yq -r '.spec.alerting.minSeverity // "warning"' "clusters/${CLUSTER}.yaml")"
+                if [[ "$(yq -r '.spec.alerting.grafanaUrl // ""' "clusters/${CLUSTER}.yaml")" != "" ]]; then
+                  echo "    grafanaUrl: $(yq -r '.spec.alerting.grafanaUrl' "clusters/${CLUSTER}.yaml")"
+                fi
+                # Passed through as YAML rather than rebuilt field by field: the
+                # manifest's channel keys are exactly the chart's, so there is
+                # nothing to translate and nothing to forget when a key is added.
+                echo "    channels:"
+                yq -r '.spec.alerting.channels' "clusters/${CLUSTER}.yaml" | sed 's/^/      /'
+              } >> listeners.yaml
+            fi
           else
             echo "::warning::no environment on ${CLUSTER} opts into monitoring"
             printf 'monitoring:\n  enabled: false\n' >> listeners.yaml
@@ -360,12 +383,66 @@ jobs:
             key: "$(printf '%s' '${{ secrets.THEIA_WILDCARD_CERTIFICATE_KEY }}' | base64 | tr -d '\n')"
           EOF
 
+      - name: Collect the alert webhook URLs
+        env:
+          ALERT_WEBHOOK_SLACK: ${{ secrets.ALERT_WEBHOOK_SLACK }}
+          ALERT_WEBHOOK_DISCORD: ${{ secrets.ALERT_WEBHOOK_DISCORD }}
+        run: |
+          set -euo pipefail
+          # A Slack or Discord webhook URL is a credential: anyone holding it can
+          # post into the channel. It goes in a values file read from a secret,
+          # never on a `--set`, which would put it in the process list and in
+          # Actions debug logs.
+          #
+          # Always written, even when alerting is off, so the later helm calls
+          # can name the file unconditionally.
+          install -m 600 /dev/null alert-secrets.yaml
+          if [[ "$(yq -r '.spec.alerting.enabled // false' "clusters/${CLUSTER}.yaml")" != "true" ]]; then
+            echo "{}" > alert-secrets.yaml
+            echo "alerting is off for ${CLUSTER}"
+            exit 0
+          fi
+          # Every channel names the key it reads. A channel whose secret is not
+          # set would render an AlertmanagerConfig that notifies nobody and
+          # reports no error, so fail here instead.
+          MISSING=()
+          {
+            echo "monitoring:"
+            echo "  alerting:"
+            echo "    webhookSecret:"
+            echo "      create: true"
+            echo "      data:"
+          } > alert-secrets.yaml
+          while read -r key; do
+            [[ -n "$key" ]] || continue
+            case "$key" in
+              slack-*)   value="$ALERT_WEBHOOK_SLACK" ;;
+              discord-*) value="$ALERT_WEBHOOK_DISCORD" ;;
+              *)
+                echo "::error::channel secretKey '${key}' must start with 'slack-' or 'discord-'"
+                exit 1
+                ;;
+            esac
+            if [[ -z "$value" ]]; then
+              MISSING+=("$key")
+              continue
+            fi
+            echo "        ${key}: \"$(printf '%s' "$value" | base64 | tr -d '\n')\"" >> alert-secrets.yaml
+          done < <(yq -r '.spec.alerting.channels[]?.secretKey' "clusters/${CLUSTER}.yaml")
+          if (( ${#MISSING[@]} > 0 )); then
+            echo "::error::alerting is enabled on ${CLUSTER} but no webhook URL was supplied for: ${MISSING[*]}"
+            echo "::error::set ALERT_WEBHOOK_SLACK and/or ALERT_WEBHOOK_DISCORD on the '${{ needs.resolve.outputs.environment }}' environment."
+            echo "::error::See docs/monitoring.md."
+            exit 1
+          fi
+          echo "collected $(yq -r '.spec.alerting.channels | length' "clusters/${CLUSTER}.yaml") webhook(s)"
+
       - name: Preview
         run: |
           set -euo pipefail
           helm diff upgrade eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
             --version "${{ inputs.chart_version }}" \
-            -n eduide-system -f listeners.yaml -f gw-secrets.yaml \
+            -n eduide-system -f listeners.yaml -f gw-secrets.yaml -f alert-secrets.yaml \
             --allow-unreleased --no-color > gw.diff 2>&1 || true
           {
             echo "<details><summary>Cluster chart pending change</summary>"
@@ -379,7 +456,7 @@ jobs:
           helm upgrade --install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
             --version "${{ inputs.chart_version }}" \
             -n eduide-system --create-namespace \
-            -f listeners.yaml -f gw-secrets.yaml --wait --timeout 10m
+            -f listeners.yaml -f gw-secrets.yaml -f alert-secrets.yaml --wait --timeout 10m
 
       - name: Stamp this cluster with its name
         if: ${{ !inputs.dry_run }}
