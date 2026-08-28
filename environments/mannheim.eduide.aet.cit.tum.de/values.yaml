@@ -85,6 +85,11 @@ appDefinitions:
     # so only pr-170 tags exist - the deploy passes ide_tag explicitly until it
     # merges and a release publishes a numbered tag.
     thm-java-25-latest:
+      # Ten sessions kept warm. Only a bootstrap default: the chart reads the
+      # live value back on every upgrade so the admin scaling API is not reset,
+      # so changing this alone does nothing to an AppDefinition that already
+      # exists - patch the live resource too.
+      minInstances: 10
       image: eduide/thm-java-25
       landingPage:
         label: Java 25
