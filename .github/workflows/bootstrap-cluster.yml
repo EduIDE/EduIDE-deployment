@@ -273,15 +273,54 @@ jobs:
           # two environments were being scraped and the rest were not.
           # A cluster where every environment opted out gets monitoring
           # switched off, rather than PodMonitors that watch nothing.
-          if [[ -s namespaces.txt ]]; then
+          # Two independent reasons to switch monitoring on: environments opted
+          # into it, or the cluster asked for something cluster-scoped
+          # (cert-manager scraping, alerting). Gating the second on the first
+          # would mean a cluster whose environments all opt out silently loses
+          # its certificate alerts, which are not about environments at all.
+          CERT_MANAGER=$(yq -r '.spec.monitorCertManager // false' "clusters/${CLUSTER}.yaml")
+          ALERTING=$(yq -r '.spec.alerting.enabled // false' "clusters/${CLUSTER}.yaml")
+          if [[ -s namespaces.txt || "$CERT_MANAGER" == "true" || "$ALERTING" == "true" ]]; then
             {
               echo "monitoring:"
               echo "  enabled: true"
-              echo "  targetNamespaces:"
-              sed 's/^/    - /' namespaces.txt
-              echo "  sessionNamespaces:"
-              sed 's/^/    - /' namespaces.txt
             } >> listeners.yaml
+            if [[ -s namespaces.txt ]]; then
+              {
+                echo "  targetNamespaces:"
+                sed 's/^/    - /' namespaces.txt
+              } >> listeners.yaml
+            else
+              # Supported, and the chart handles it: the namespace regex becomes
+              # ^$ so per-environment alerts match nothing and the dashboard
+              # pickers are empty, while the cluster-scoped rules still work.
+              echo "::warning::no environment on ${CLUSTER} opts into monitoring; only cluster-scoped rules will fire"
+            fi
+            # cert-manager exports certificate expiry but ships no
+            # ServiceMonitor, so by default nothing watches it. Opt in per
+            # cluster: the webview wildcard is renewed by hand once a year and
+            # has never had anything warning about it.
+            if [[ "$CERT_MANAGER" == "true" ]]; then
+              printf '  certManager:\n    enabled: true\n' >> listeners.yaml
+            fi
+            # Alerting. The channel list is in the manifest; the webhook URLs
+            # are not - they are credentials and come from the environment's
+            # secrets, written to a separate file below.
+            if [[ "$ALERTING" == "true" ]]; then
+              {
+                echo "  alerting:"
+                echo "    enabled: true"
+                echo "    minSeverity: $(yq -r '.spec.alerting.minSeverity // "warning"' "clusters/${CLUSTER}.yaml")"
+                if [[ "$(yq -r '.spec.alerting.grafanaUrl // ""' "clusters/${CLUSTER}.yaml")" != "" ]]; then
+                  echo "    grafanaUrl: $(yq -r '.spec.alerting.grafanaUrl' "clusters/${CLUSTER}.yaml")"
+                fi
+                # Passed through as YAML rather than rebuilt field by field: the
+                # manifest's channel keys are exactly the chart's, so there is
+                # nothing to translate and nothing to forget when a key is added.
+                echo "    channels:"
+                yq -r '.spec.alerting.channels' "clusters/${CLUSTER}.yaml" | sed 's/^/      /'
+              } >> listeners.yaml
+            fi
           else
             echo "::warning::no environment on ${CLUSTER} opts into monitoring"
             printf 'monitoring:\n  enabled: false\n' >> listeners.yaml
@@ -360,12 +399,80 @@ jobs:
             key: "$(printf '%s' '${{ secrets.THEIA_WILDCARD_CERTIFICATE_KEY }}' | base64 | tr -d '\n')"
           EOF
 
+      - name: Collect the alert webhook URLs
+        env:
+          # Looked up by name rather than listed one per type, because one
+          # cluster can host installations that belong to different people and
+          # want different channels: Bonn and Mannheim share the `eduide`
+          # cluster and each has its own Discord. A channel's secretKey
+          # `discord-mannheim` reads `ALERT_WEBHOOK_DISCORD_MANNHEIM`.
+          #
+          # GitHub expressions cannot index `secrets` by a computed name, so the
+          # whole map is passed in and one key is picked out with jq. Nothing in
+          # this step echoes it, and Actions masks secret values in logs
+          # regardless.
+          ALL_SECRETS: ${{ toJSON(secrets) }}
+        run: |
+          set -euo pipefail
+          # A Slack or Discord webhook URL is a credential: anyone holding it can
+          # post into the channel. It goes in a values file read from a secret,
+          # never on a `--set`, which would put it in the process list and in
+          # Actions debug logs.
+          #
+          # Always written, even when alerting is off, so the later helm calls
+          # can name the file unconditionally.
+          install -m 600 /dev/null alert-secrets.yaml
+          if [[ "$(yq -r '.spec.alerting.enabled // false' "clusters/${CLUSTER}.yaml")" != "true" ]]; then
+            echo "{}" > alert-secrets.yaml
+            echo "alerting is off for ${CLUSTER}"
+            exit 0
+          fi
+          # Every channel names the key it reads. A channel whose secret is not
+          # set would render an AlertmanagerConfig that notifies nobody and
+          # reports no error, so fail here instead.
+          MISSING=()
+          {
+            echo "monitoring:"
+            echo "  alerting:"
+            echo "    webhookSecret:"
+            echo "      create: true"
+            echo "      data:"
+          } > alert-secrets.yaml
+          while read -r key; do
+            [[ -n "$key" ]] || continue
+            # Checked here as well as in the schema, because this is the step
+            # that writes the key into a Secret. Anything outside what
+            # Kubernetes allows in a data key would be rejected by the API
+            # server partway through the install, after the Gateway had already
+            # been reconciled.
+            if [[ ! "$key" =~ ^(slack|discord)-[A-Za-z0-9._-]*$ ]] || (( ${#key} > 253 )); then
+              echo "::error::channel secretKey '${key}' must match ^(slack|discord)-[A-Za-z0-9._-]*$ and be at most 253 characters."
+              echo "::error::The prefix selects the webhook secret; the rest has to be a valid Kubernetes Secret data key."
+              exit 1
+            fi
+            # discord-mannheim -> ALERT_WEBHOOK_DISCORD_MANNHEIM
+            secret_name="ALERT_WEBHOOK_$(printf '%s' "$key" | tr '[:lower:]-' '[:upper:]_')"
+            value=$(printf '%s' "$ALL_SECRETS" | jq -r --arg n "$secret_name" '.[$n] // ""')
+            if [[ -z "$value" ]]; then
+              MISSING+=("${key} (expected secret ${secret_name})")
+              continue
+            fi
+            echo "        ${key}: \"$(printf '%s' "$value" | base64 | tr -d '\n')\"" >> alert-secrets.yaml
+          done < <(yq -r '.spec.alerting.channels[]?.secretKey' "clusters/${CLUSTER}.yaml")
+          if (( ${#MISSING[@]} > 0 )); then
+            echo "::error::alerting is enabled on ${CLUSTER} but no webhook URL was supplied for:"
+            for m in "${MISSING[@]}"; do echo "::error::  ${m}"; done
+            echo "::error::Set them on the '${{ needs.resolve.outputs.environment }}' environment. See docs/monitoring-setup.md."
+            exit 1
+          fi
+          echo "collected $(yq -r '.spec.alerting.channels | length' "clusters/${CLUSTER}.yaml") webhook(s)"
+
       - name: Preview
         run: |
           set -euo pipefail
           helm diff upgrade eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
             --version "${{ inputs.chart_version }}" \
-            -n eduide-system -f listeners.yaml -f gw-secrets.yaml \
+            -n eduide-system -f listeners.yaml -f gw-secrets.yaml -f alert-secrets.yaml \
             --allow-unreleased --no-color > gw.diff 2>&1 || true
           {
             echo "<details><summary>Cluster chart pending change</summary>"
@@ -379,7 +486,7 @@ jobs:
           helm upgrade --install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
             --version "${{ inputs.chart_version }}" \
             -n eduide-system --create-namespace \
-            -f listeners.yaml -f gw-secrets.yaml --wait --timeout 10m
+            -f listeners.yaml -f gw-secrets.yaml -f alert-secrets.yaml --wait --timeout 10m
 
       - name: Stamp this cluster with its name
         if: ${{ !inputs.dry_run }}

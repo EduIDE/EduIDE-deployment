@@ -89,3 +89,35 @@ spec:
 
   runner: ubuntu-latest
   bootstrapEnvironment: cluster-eduide
+
+  # Scrape cert-manager so certificates can be alerted on before they lapse.
+  # cert-manager exports expiry but ships no ServiceMonitor, so nothing watches
+  # it by default. The webview wildcard is renewed by hand once a year.
+  monitorCertManager: true
+
+  # Where alerts go. The channel list is here; the webhook URLs are not - they
+  # are credentials and live in this cluster's GitHub Environment. A channel's
+  # `secretKey` names the secret: `discord-mannheim` is read from
+  # ALERT_WEBHOOK_DISCORD_MANNHEIM, so one cluster can hold a different webhook
+  # per installation.
+  #
+  # `minSeverity` is what reaches the channels, not what fires. Everything below
+  # it still fires and is visible in Alertmanager and on the dashboards; it just
+  # does not page anyone. See docs/monitoring-setup.md.
+  alerting:
+    enabled: true
+    minSeverity: warning
+    # Bonn and Mannheim share this cluster and belong to different people, so
+    # each has its own Discord and neither sees the other's incidents. Alerts
+    # that belong to neither namespace - a certificate expiring, the conversion
+    # webhook failing - are cluster-scoped and go to both, because they affect
+    # both installations.
+    channels:
+      - name: mannheim
+        type: discord
+        secretKey: discord-mannheim
+        environments: [eduide-mannheim]
+      - name: bonn
+        type: discord
+        secretKey: discord-bonn
+        environments: [eduide-bonn]
