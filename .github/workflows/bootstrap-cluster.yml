@@ -273,24 +273,40 @@ jobs:
           # two environments were being scraped and the rest were not.
           # A cluster where every environment opted out gets monitoring
           # switched off, rather than PodMonitors that watch nothing.
-          if [[ -s namespaces.txt ]]; then
+          # Two independent reasons to switch monitoring on: environments opted
+          # into it, or the cluster asked for something cluster-scoped
+          # (cert-manager scraping, alerting). Gating the second on the first
+          # would mean a cluster whose environments all opt out silently loses
+          # its certificate alerts, which are not about environments at all.
+          CERT_MANAGER=$(yq -r '.spec.monitorCertManager // false' "clusters/${CLUSTER}.yaml")
+          ALERTING=$(yq -r '.spec.alerting.enabled // false' "clusters/${CLUSTER}.yaml")
+          if [[ -s namespaces.txt || "$CERT_MANAGER" == "true" || "$ALERTING" == "true" ]]; then
             {
               echo "monitoring:"
               echo "  enabled: true"
-              echo "  targetNamespaces:"
-              sed 's/^/    - /' namespaces.txt
             } >> listeners.yaml
+            if [[ -s namespaces.txt ]]; then
+              {
+                echo "  targetNamespaces:"
+                sed 's/^/    - /' namespaces.txt
+              } >> listeners.yaml
+            else
+              # Supported, and the chart handles it: the namespace regex becomes
+              # ^$ so per-environment alerts match nothing and the dashboard
+              # pickers are empty, while the cluster-scoped rules still work.
+              echo "::warning::no environment on ${CLUSTER} opts into monitoring; only cluster-scoped rules will fire"
+            fi
             # cert-manager exports certificate expiry but ships no
             # ServiceMonitor, so by default nothing watches it. Opt in per
             # cluster: the webview wildcard is renewed by hand once a year and
             # has never had anything warning about it.
-            if [[ "$(yq -r '.spec.monitorCertManager // false' "clusters/${CLUSTER}.yaml")" == "true" ]]; then
+            if [[ "$CERT_MANAGER" == "true" ]]; then
               printf '  certManager:\n    enabled: true\n' >> listeners.yaml
             fi
             # Alerting. The channel list is in the manifest; the webhook URLs
             # are not - they are credentials and come from the environment's
             # secrets, written to a separate file below.
-            if [[ "$(yq -r '.spec.alerting.enabled // false' "clusters/${CLUSTER}.yaml")" == "true" ]]; then
+            if [[ "$ALERTING" == "true" ]]; then
               {
                 echo "  alerting:"
                 echo "    enabled: true"
@@ -415,13 +431,19 @@ jobs:
           } > alert-secrets.yaml
           while read -r key; do
             [[ -n "$key" ]] || continue
+            # Checked here as well as in the schema, because this is the step
+            # that writes the key into a Secret. Anything outside what
+            # Kubernetes allows in a data key would be rejected by the API
+            # server partway through the install, after the Gateway had already
+            # been reconciled.
+            if [[ ! "$key" =~ ^(slack|discord)-[A-Za-z0-9._-]*$ ]] || (( ${#key} > 253 )); then
+              echo "::error::channel secretKey '${key}' must match ^(slack|discord)-[A-Za-z0-9._-]*$ and be at most 253 characters."
+              echo "::error::The prefix selects the webhook secret; the rest has to be a valid Kubernetes Secret data key."
+              exit 1
+            fi
             case "$key" in
               slack-*)   value="$ALERT_WEBHOOK_SLACK" ;;
               discord-*) value="$ALERT_WEBHOOK_DISCORD" ;;
-              *)
-                echo "::error::channel secretKey '${key}' must start with 'slack-' or 'discord-'"
-                exit 1
-                ;;
             esac
             if [[ -z "$value" ]]; then
               MISSING+=("$key")

@@ -279,25 +279,36 @@ for cf in "$ROOT"/clusters/*.yaml; do
     bad "$cluster has minSeverity '$sev'" "must be 'warning' or 'critical'"
   fi
   bad_channel=0
-  while read -r line; do
-    [[ -n "$line" ]] || continue
-    cname=${line%% *}; ctype=${line#* }; ckey=${ctype#* }; ctype=${ctype%% *}
+  # Tab-separated, not space-separated. A channel name is a free-form string and
+  # may contain spaces; splitting on those silently shifted every field along and
+  # reported a bogus "unsupported type", which would block validation on a
+  # perfectly valid manifest.
+  while IFS=$'\t' read -r cname ctype ckey; do
+    [[ -n "$cname" ]] || continue
     if [[ "$ctype" != "slack" && "$ctype" != "discord" ]]; then
       bad "$cluster channel '$cname' has type '$ctype'" "supported: slack, discord"
       bad_channel=1
     fi
-    if [[ "$ckey" != slack-* && "$ckey" != discord-* ]]; then
+    # The prefix picks the GitHub Environment secret; the rest has to survive
+    # being used as a Kubernetes Secret data key, which allows only
+    # alphanumerics, '-', '_' and '.'. A slash passes a prefix-only check and is
+    # then rejected by the API server halfway through a bootstrap.
+    if [[ ! "$ckey" =~ ^(slack|discord)-[A-Za-z0-9._-]*$ ]]; then
       bad "$cluster channel '$cname' has secretKey '$ckey'" \
-          "must start with slack- or discord-, which is how bootstrap picks the secret"
+          "must match ^(slack|discord)-[A-Za-z0-9._-]*\$ so it is both routable and a valid Secret key"
       bad_channel=1
-    fi
-    if [[ "$ctype" == "slack" && "$ckey" != slack-* ]] \
+    elif [[ "$ctype" == "slack" && "$ckey" != slack-* ]] \
        || [[ "$ctype" == "discord" && "$ckey" != discord-* ]]; then
       bad "$cluster channel '$cname' is $ctype but reads '$ckey'" \
           "the prefix decides which webhook URL is used, so it must match the type"
       bad_channel=1
     fi
-  done < <(yq -r '.spec.alerting.channels[]? | .name + " " + .type + " " + .secretKey' "$cf")
+    if (( ${#ckey} > 253 )); then
+      bad "$cluster channel '$cname' has a secretKey of ${#ckey} characters" \
+          "Kubernetes Secret keys are limited to 253"
+      bad_channel=1
+    fi
+  done < <(yq -r '.spec.alerting.channels[]? | [.name, .type, .secretKey] | @tsv' "$cf")
   [[ $bad_channel -eq 0 ]] && ok "$cluster: alerting on, $n channel(s), minSeverity $sev"
 done
 

@@ -116,14 +116,55 @@
                   },
                   "secretKey": {
                     "type": "string",
-                    "pattern": "^(slack|discord)-",
-                    "description": "Key in the webhook Secret. The prefix decides which GitHub Environment secret bootstrap reads, so it must match the channel type."
+                    "pattern": "^(slack|discord)-[A-Za-z0-9._-]*$",
+                    "maxLength": 253,
+                    "description": "Key in the webhook Secret. The prefix decides which GitHub Environment secret bootstrap reads, so it must match the channel type. The rest is restricted to what Kubernetes accepts in a Secret data key: a slash or a space here would be written into the Secret and rejected by the API server at bootstrap time."
                   },
                   "channel": {
                     "type": "string",
                     "description": "Slack channel override, e.g. \"#eduide-alerts\". Ignored for Discord, where the webhook itself names the channel."
                   }
-                }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "slack"
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "secretKey": {
+                          "pattern": "^slack-"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "discord"
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "secretKey": {
+                          "pattern": "^discord-"
+                        }
+                      }
+                    }
+                  }
+                ]
               }
             }
           },
