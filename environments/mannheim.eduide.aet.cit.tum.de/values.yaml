@@ -72,6 +72,14 @@ eduide-shared-cache:
 # The chart ships eight; the rest are removed rather than hidden, so nothing is
 # rendered, preloaded or offered for them.
 appDefinitions:
+  # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
+  # These render from values on every deploy, unlike minInstances which is read
+  # back from the live resource.
+  defaults:
+    limitsCpu: "4"
+    limitsMemory: 3000M
+    # Minutes. 3 hours.
+    timeout: 180
   apps:
     c-latest: null
     c-templates-latest: null
@@ -85,9 +93,19 @@ appDefinitions:
     # so only pr-170 tags exist - the deploy passes ide_tag explicitly until it
     # merges and a release publishes a numbered tag.
     thm-java-25-latest:
+      # Ten sessions kept warm. Only a bootstrap default: the chart reads the
+      # live value back on every upgrade so the admin scaling API is not reset,
+      # so changing this alone does nothing to an AppDefinition that already
+      # exists - patch the live resource too.
+      minInstances: 10
       image: eduide/thm-java-25
       landingPage:
         label: Java 25
+        # The landing page derives the icon from the label when this is unset:
+        # "Java 25" becomes /assets/logos/java-25-logo.png, which it does not
+        # bundle, so the tile rendered with a broken image. Named explicitly to
+        # the general Java logo it does ship.
+        image: java-logo.png
 # Reap a workspace this long after its last session. Default is 14 days.
 theia-workspace-garbage-collector:
   enabled: true
