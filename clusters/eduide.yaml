@@ -39,29 +39,47 @@ spec:
         type: Kubernetes
         kubernetes:
           # THIS CLUSTER HAS NO LOAD BALANCER. k3s runs without servicelb and
-          # there is no MetalLB, so a Service of type LoadBalancer would sit
-          # pending for ever. The node's own address is what DNS publishes, so
-          # Envoy binds the host's :80 and :443 directly.
+          # there is no MetalLB, so a Service of type LoadBalancer sits pending
+          # for ever. The node's own address is what DNS publishes, so the two
+          # public ports are mapped onto it with hostPort.
           #
-          # Two settings are needed together: hostNetwork puts the pod on the
-          # node's network namespace, and useListenerPortAsContainerPort stops
-          # Envoy shifting 80/443 up to 10080/10443. Binding a privileged port
-          # as a non-root user then needs NET_BIND_SERVICE.
-          useListenerPortAsContainerPort: true
+          # Envoy keeps its default port shifting and binds 10080 and 10443
+          # inside the pod; the CNI maps 80 and 443 on the host onto those.
+          #
+          # The obvious alternative - hostNetwork plus
+          # useListenerPortAsContainerPort, so Envoy binds 80 and 443 directly -
+          # does NOT work, and fails in a way worth recording. Envoy runs as a
+          # non-root user, and a non-root process needs NET_BIND_SERVICE in its
+          # EFFECTIVE set to bind a privileged port. Kubernetes `capabilities.add`
+          # only reaches the permitted set; granting it effectively would need
+          # ambient capabilities, which Kubernetes does not support. The pod
+          # starts, reports Running, and Envoy then rejects every listener with
+          #
+          #   cannot bind '0.0.0.0:80': Permission denied
+          #
+          # leaving the Gateway with unprogrammed listeners and no clue in its
+          # status. hostPort avoids the question: the mapping happens in the CNI
+          # and the process never touches a privileged port.
+          useListenerPortAsContainerPort: false
           envoyDeployment:
-            container:
-              securityContext:
-                capabilities:
-                  add: ["NET_BIND_SERVICE"]
             patch:
               type: StrategicMerge
               value:
                 spec:
                   template:
                     spec:
-                      hostNetwork: true
-                      dnsPolicy: ClusterFirstWithHostNet
-          # Irrelevant with hostNetwork, but a LoadBalancer here would hang.
+                      containers:
+                        - name: envoy
+                          ports:
+                            - name: http
+                              containerPort: 10080
+                              hostPort: 80
+                              protocol: TCP
+                            - name: https
+                              containerPort: 10443
+                              hostPort: 443
+                              protocol: TCP
+          # Nothing routes through the Service; the host ports carry the traffic.
           envoyService:
             type: ClusterIP
 
