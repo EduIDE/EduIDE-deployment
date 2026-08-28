@@ -401,17 +401,21 @@ jobs:
 
       - name: Collect the alert webhook URLs
         env:
-          # Looked up by name rather than listed one per type, because one
-          # cluster can host installations that belong to different people and
-          # want different channels: Bonn and Mannheim share the `eduide`
-          # cluster and each has its own Discord. A channel's secretKey
-          # `discord-mannheim` reads `ALERT_WEBHOOK_DISCORD_MANNHEIM`.
+          # One JSON object mapping each channel's secretKey to its webhook
+          # URL, because one cluster can host installations belonging to
+          # different people: Bonn and Mannheim share the `eduide` cluster and
+          # each has its own Discord, so a single URL per type is not enough.
           #
-          # GitHub expressions cannot index `secrets` by a computed name, so the
-          # whole map is passed in and one key is picked out with jq. Nothing in
-          # this step echoes it, and Actions masks secret values in logs
-          # regardless.
-          ALL_SECRETS: ${{ toJSON(secrets) }}
+          #   {"discord-mannheim": "https://...", "discord-bonn": "https://..."}
+          #
+          # GitHub expressions cannot index `secrets` by a computed name, and
+          # `toJSON(secrets)` is not the way round it: Actions refuses to
+          # schedule a run that does that at all. The run completes in about a
+          # second with zero jobs and conclusion `action_required`, and no error
+          # is reported anywhere - it looks like the workflow simply did not
+          # run. It would also have handed KUBECONFIG and the wildcard private
+          # key to this step for no reason.
+          ALERT_WEBHOOKS: ${{ secrets.ALERT_WEBHOOKS }}
         run: |
           set -euo pipefail
           # A Slack or Discord webhook URL is a credential: anyone holding it can
@@ -426,6 +430,16 @@ jobs:
             echo "{}" > alert-secrets.yaml
             echo "alerting is off for ${CLUSTER}"
             exit 0
+          fi
+          if [[ -z "${ALERT_WEBHOOKS:-}" ]]; then
+            echo "::error::alerting is enabled on ${CLUSTER} but ALERT_WEBHOOKS is not set on the"
+            echo "::error::'${{ needs.resolve.outputs.environment }}' environment. It is a JSON object mapping"
+            echo "::error::each channel's secretKey to its webhook URL. See docs/monitoring-setup.md."
+            exit 1
+          fi
+          if ! printf '%s' "$ALERT_WEBHOOKS" | jq -e 'type == "object"' >/dev/null 2>&1; then
+            echo "::error::ALERT_WEBHOOKS on '${{ needs.resolve.outputs.environment }}' is not a JSON object."
+            exit 1
           fi
           # Every channel names the key it reads. A channel whose secret is not
           # set would render an AlertmanagerConfig that notifies nobody and
@@ -450,11 +464,9 @@ jobs:
               echo "::error::The prefix selects the webhook secret; the rest has to be a valid Kubernetes Secret data key."
               exit 1
             fi
-            # discord-mannheim -> ALERT_WEBHOOK_DISCORD_MANNHEIM
-            secret_name="ALERT_WEBHOOK_$(printf '%s' "$key" | tr '[:lower:]-' '[:upper:]_')"
-            value=$(printf '%s' "$ALL_SECRETS" | jq -r --arg n "$secret_name" '.[$n] // ""')
+            value=$(printf '%s' "$ALERT_WEBHOOKS" | jq -r --arg n "$key" '.[$n] // ""')
             if [[ -z "$value" ]]; then
-              MISSING+=("${key} (expected secret ${secret_name})")
+              MISSING+=("$key")
               continue
             fi
             echo "        ${key}: \"$(printf '%s' "$value" | base64 | tr -d '\n')\"" >> alert-secrets.yaml

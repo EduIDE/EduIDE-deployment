@@ -169,24 +169,30 @@ Webhook URLs are credentials. They never go in a manifest, a values file or a
 `--set`, which would put them in the process list and in Actions debug logs.
 
 1. Create the incoming webhook in Slack or Discord.
-2. Put it on the **cluster** GitHub Environment. The secret is named after the
-   channel's `secretKey`, uppercased with hyphens as underscores and prefixed
-   `ALERT_WEBHOOK_`, so one cluster can hold a different webhook per
-   installation:
+2. Put it on the **cluster** GitHub Environment in `ALERT_WEBHOOKS`, a single
+   JSON object keyed by each channel's `secretKey`:
 
-   | `secretKey` | GitHub Environment secret |
-   |---|---|
-   | `discord-mannheim` | `ALERT_WEBHOOK_DISCORD_MANNHEIM` |
-   | `discord-bonn` | `ALERT_WEBHOOK_DISCORD_BONN` |
-   | `slack-platform` | `ALERT_WEBHOOK_SLACK_PLATFORM` |
+   ```json
+   {
+     "discord-mannheim": "https://discord.com/api/webhooks/...",
+     "discord-bonn": "https://discord.com/api/webhooks/..."
+   }
+   ```
 
    ```bash
    REPO=EduIDE/EduIDE-deployment
-   gh secret set ALERT_WEBHOOK_DISCORD_MANNHEIM --repo "$REPO" --env cluster-eduide < webhook.txt
+   gh secret set ALERT_WEBHOOKS --repo "$REPO" --env cluster-eduide < webhooks.json
    ```
 
-   Pipe from a file or use `--body`; never paste a webhook URL into a shell you
-   share, and never into a manifest.
+   One object rather than one secret per channel, because GitHub expressions
+   cannot index `secrets` by a computed name and the obvious workaround does not
+   exist: **Actions refuses to schedule a run whose workflow uses
+   `toJSON(secrets)`** - it completes in about a second with zero jobs and
+   conclusion `action_required`, reporting no error at all. Passing one named
+   secret also keeps `KUBECONFIG` and the wildcard private key out of that step.
+
+   Pipe from a file; never paste a webhook URL into a shell you share, and never
+   into a manifest. Delete the file afterwards.
 
 3. Add the channel to `clusters/<name>.yaml`. The `secretKey` prefix decides
    which webhook type it is, so it must be `slack-*` for a Slack channel and
