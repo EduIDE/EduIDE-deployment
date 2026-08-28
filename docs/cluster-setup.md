@@ -85,7 +85,7 @@ Envoy Gateway can be configured to **merge gateways**: every `Gateway` using a
 GatewayClass shares one Envoy deployment and therefore one external address.
 `tum-student` is configured that way today:
 
-```
+```text
 GatewayClass envoy
   -> parametersRef: EnvoyProxy envoy-gateway-system/artemis-envoy-proxy
        mergeGateways: true
@@ -94,7 +94,7 @@ GatewayClass envoy
 
 and the EduIDE hostnames point somewhere else:
 
-```
+```text
 eduide.student.k8s.aet.cit.tum.de  ->  k8s-stud-lb3  ->  131.159.88.14   (pool lb3)
 ```
 
@@ -115,8 +115,10 @@ own `EnvoyProxy` pinned to pool `lb3`, and set `gatewayClassName` in
 `131.159.88.14`, which is what DNS already says.
 
 `bootstrap-cluster.yml` passes both from the cluster manifest, so option (b) is
-`spec.gatewayClass.create: true` plus a `spec.envoyProxy` naming the pool -
-which is exactly what `tum-production` does. See
+`spec.gatewayClass.create: true` plus a `spec.envoyProxy` block. `envoyProxy.name`
+is the name of the EnvoyProxy resource itself; the MetalLB pool goes inside it,
+under `spec.provider.kubernetes.envoyService.annotations`. That is exactly what
+`tum-production` does. See
 [envoy-gateway-setup.md](envoy-gateway-setup.md) for the MetalLB details.
 
 `clusters/tum-production.yaml` carries `spec.loadBalancerIP: 131.159.88.82`.
@@ -176,7 +178,7 @@ certificate supplied through `wildcardTLSSecret`; see
 
 Four records per environment, all pointing at the address from step 2:
 
-```
+```text
 <landing>                             the landing page
 service.<landing>                     the REST service
 instance.<landing>                    session ingress
@@ -205,7 +207,7 @@ Full instructions, including what is missing today, are in
 
 ## Step 6: bootstrap
 
-```
+```text
 Actions -> Bootstrap cluster
   cluster:       tum-student
   chart_version: 2.1.0
@@ -276,7 +278,7 @@ invalid certificate. Nothing appeared in any log.
 
 ## Step 8: deploy an environment
 
-```
+```text
 Actions -> Deploy (dispatch) -> environment: test1, dry_run: true
 ```
 
@@ -327,13 +329,22 @@ have different causes.
 **No challenges outstanding, order `errored`.** Let's Encrypt occasionally fails
 to finalize an order that has already validated:
 
-```
+```text
 Failed to finalize Order: 404 urn:ietf:params:acme:error:malformed:
 Certificate not found
 ```
 
-cert-manager retries, but only after an exponential backoff that starts at an
-hour. Clear the backoff to retry immediately:
+Confirm it is that failure before doing anything, by reading down the chain the
+`Certificate` owns - its conditions alone do not tell you:
+
+```bash
+kubectl -n eduide-system describe certificate <name>
+kubectl -n eduide-system get certificaterequest,order,challenge
+```
+
+cert-manager retries on its own, but only after an exponential backoff that
+starts at an hour. Clear the backoff to retry immediately (`--subresource`
+needs kubectl v1.24 or newer):
 
 ```bash
 kubectl -n eduide-system patch certificate <name> --type=merge --subresource=status \
@@ -341,10 +352,21 @@ kubectl -n eduide-system patch certificate <name> --type=merge --subresource=sta
 ```
 
 It issued on the first retry when this happened during the `tum-production`
-bootstrap. Nothing is wrong with the configuration; do not go looking.
+bootstrap, so one clean retry is the expected outcome and no configuration
+change is called for. If the retry fails too, the transient explanation is
+wrong: go back over the `CertificateRequest`, `Order`, `Challenge` and
+`ClusterIssuer`, and the cert-manager controller logs, before changing anything.
 
-**Challenges pending, staying pending.** That is a real problem: the name has no
-listener, or DNS does not reach the Gateway. See step 3.
+**Challenges pending, staying pending.** That is a real problem, and the error
+on the `Challenge` says which:
+
+- **HTTP 404** - something answered, but nothing routes the solver path. The
+  hostname has no listener on the Gateway, or the listener exists on a Gateway
+  the solver's HTTPRoute does not attach to.
+- **DNS, connection refused or timeout** - nothing answered at all. The name
+  does not resolve, or it resolves somewhere that is not this Gateway.
+
+See step 3.
 
 ## Known gaps
 
