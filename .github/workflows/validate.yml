@@ -25,7 +25,7 @@ jobs:
       - name: Install tools
         env:
           # renovate: datasource=github-releases depName=mikefarah/yq
-          YQ_VERSION: v4.44.3
+          YQ_VERSION: v4.53.6
         run: |
           set -euo pipefail
           sudo wget -qO /usr/local/bin/yq \
