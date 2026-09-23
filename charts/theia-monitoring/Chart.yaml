@@ -1,5 +1,0 @@
-apiVersion: v2
-name: theia-monitoring
-description: Cluster-wide monitoring resources for Theia Cloud (PodMonitors + Grafana Dashboards)
-version: 0.1.0
-appVersion: 1.0.0

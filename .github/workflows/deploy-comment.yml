@@ -1,0 +1,102 @@
+# Handle a `/deploy <environment>` request dispatched from a component repo.
+#
+# SECURITY. This path hands cluster credentials to something triggered by a
+# comment, so two rules are non-negotiable:
+#
+#   1. The component repo verifies the commenter has write access BEFORE
+#      dispatching. See .github/workflows/deploy-comment-sender.yml in each
+#      component repo.
+#   2. This workflow runs from the default branch and checks out nothing from
+#      the payload. Only image tag strings cross the trust boundary, and they
+#      are validated below.
+#
+# repository_dispatch always runs the workflow from the default branch, so
+# rule 2 holds by construction; the validation is here so a malformed or
+# hostile tag cannot reach a helm --set.
+
+name: Deploy from comment
+
+on:
+  repository_dispatch:
+    types: [deploy-request]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.v.outputs.environment }}
+      json: ${{ steps.v.outputs.json }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: v
+        env:
+          ENVIRONMENT: ${{ github.event.client_payload.environment }}
+          COMPONENT: ${{ github.event.client_payload.component }}
+          TAG: ${{ github.event.client_payload.tag }}
+        run: |
+          set -euo pipefail
+
+          # The environment must be one we actually have. This also stops any
+          # path traversal through the name.
+          if [[ ! "$ENVIRONMENT" =~ ^[a-z0-9-]+$ ]] || [[ ! -f "environments/${ENVIRONMENT}/env.yaml" ]]; then
+            echo "::error::unknown environment: ${ENVIRONMENT}"; exit 1
+          fi
+
+          # Production is never deployed from a comment.
+          tier=$(yq -r '.metadata.tier' "environments/${ENVIRONMENT}/env.yaml" 2>/dev/null \
+                 || grep -A2 '^metadata:' "environments/${ENVIRONMENT}/env.yaml" | grep tier | awk '{print $2}')
+          if [[ "$tier" == "production" ]]; then
+            echo "::error::refusing to deploy production from a comment"; exit 1
+          fi
+
+          # A tag reaches a helm --set, so constrain it to Docker tag grammar.
+          if [[ ! "$TAG" =~ ^[a-zA-Z0-9_][a-zA-Z0-9._-]{0,127}$ ]]; then
+            echo "::error::invalid image tag: ${TAG}"; exit 1
+          fi
+
+          case "$COMPONENT" in
+            EduIDE-Cloud)        key=controlPlane ;;
+            EduIDE)              key=ide ;;
+            EduIDE-Landing-Page) key=landingPage ;;
+            *) echo "::error::unknown component: ${COMPONENT}"; exit 1 ;;
+          esac
+
+          {
+            echo "environment=${ENVIRONMENT}"
+            echo "json=$(jq -cn --arg k "$key" --arg v "$TAG" '{($k): $v}')"
+          } >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: validate
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: ${{ needs.validate.outputs.environment }}
+      image_overrides: ${{ needs.validate.outputs.json }}
+    secrets: inherit
+
+  report:
+    needs: [validate, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment back on the source pull request
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.DEPLOY_BOT_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const p = context.payload.client_payload;
+            if (!p.repo || !p.pr) { core.info('no source PR to report to'); return; }
+            const ok = '${{ needs.deploy.result }}' === 'success';
+            const env = '${{ needs.validate.outputs.environment }}';
+            const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = ok
+              ? `Deployed \`${p.tag}\` to **${env}**.\n\n[Run](${url})`
+              : `Deploy of \`${p.tag}\` to **${env}** did not succeed.\n\n[Run](${url})`;
+            const [owner, repo] = p.repo.split('/');
+            await github.rest.issues.createComment({
+              owner, repo, issue_number: Number(p.pr), body,
+            });

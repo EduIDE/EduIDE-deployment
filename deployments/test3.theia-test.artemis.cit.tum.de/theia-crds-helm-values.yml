@@ -1,5 +1,0 @@
-# Name of the cert-manager ClusterIssuer used to issue TLS certificates for this deployment.
-clusterIssuer: theia-cloud-selfsigned-issuer
-
-conversion:
-  image: ghcr.io/eduide/eduide-cloud/conversion-webhook:latest

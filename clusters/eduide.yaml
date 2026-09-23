@@ -1,0 +1,123 @@
+apiVersion: eduide.dev/v1
+kind: Cluster
+metadata:
+  name: eduide
+  displayName: EduIDE cluster (installations outside TUM)
+spec:
+  # Single node k3s (parma, 131.159.88.106). Everything below was confirmed
+  # against the live cluster rather than copied from the TUM ones.
+
+  # The only class on the node. Node-local by design: a workspace volume is
+  # pinned to this node, which is fine while the cluster is one node.
+  storageClassName: local-path
+  gatewayClassName: eduide
+
+  tls:
+    landing: shared-theia-cert
+    service: shared-theia-cert
+    instances: shared-theia-cert
+    # Bought from Harica, covers bonn, mannheim and *.webview.instance under
+    # eduide.aet.cit.tum.de. ACME cannot issue a wildcard over HTTP-01.
+    webview: static-theia-cert
+    acmeHttp: true
+  acmeEmail: admin.aet@xcit.tum.de
+
+  # Nothing else owns a GatewayClass here, so this one is ours to create.
+  gatewayClass:
+    create: true
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+
+  envoyProxy:
+    create: true
+    name: eduide-envoy-proxy
+    namespace: envoy-gateway-system
+    spec:
+      logging:
+        level:
+          default: warn
+      provider:
+        type: Kubernetes
+        kubernetes:
+          # THIS CLUSTER HAS NO LOAD BALANCER. k3s runs without servicelb and
+          # there is no MetalLB, so a Service of type LoadBalancer sits pending
+          # for ever. The node's own address is what DNS publishes, so the two
+          # public ports are mapped onto it with hostPort.
+          #
+          # Envoy keeps its default port shifting and binds 10080 and 10443
+          # inside the pod; the CNI maps 80 and 443 on the host onto those.
+          #
+          # The obvious alternative - hostNetwork plus
+          # useListenerPortAsContainerPort, so Envoy binds 80 and 443 directly -
+          # does NOT work, and fails in a way worth recording. Envoy runs as a
+          # non-root user, and a non-root process needs NET_BIND_SERVICE in its
+          # EFFECTIVE set to bind a privileged port. Kubernetes `capabilities.add`
+          # only reaches the permitted set; granting it effectively would need
+          # ambient capabilities, which Kubernetes does not support. The pod
+          # starts, reports Running, and Envoy then rejects every listener with
+          #
+          #   cannot bind '0.0.0.0:80': Permission denied
+          #
+          # leaving the Gateway with unprogrammed listeners and no clue in its
+          # status. hostPort avoids the question: the mapping happens in the CNI
+          # and the process never touches a privileged port.
+          useListenerPortAsContainerPort: false
+          envoyDeployment:
+            patch:
+              type: StrategicMerge
+              value:
+                spec:
+                  template:
+                    spec:
+                      containers:
+                        - name: envoy
+                          ports:
+                            - name: http
+                              containerPort: 10080
+                              hostPort: 80
+                              protocol: TCP
+                            - name: https
+                              containerPort: 10443
+                              hostPort: 443
+                              protocol: TCP
+          # Nothing routes through the Service; the host ports carry the traffic.
+          envoyService:
+            type: ClusterIP
+
+  sharedGateway:
+    namespace: eduide-system
+    name: theia-shared-gateway
+
+  runner: ubuntu-latest
+  bootstrapEnvironment: cluster-eduide
+
+  # Scrape cert-manager so certificates can be alerted on before they lapse.
+  # cert-manager exports expiry but ships no ServiceMonitor, so nothing watches
+  # it by default. The webview wildcard is renewed by hand once a year.
+  monitorCertManager: true
+
+  # Where alerts go. The channel list is here; the webhook URLs are not - they
+  # are credentials and live in this cluster's GitHub Environment as
+  # ALERT_WEBHOOKS, a JSON object keyed by each channel's `secretKey`. One
+  # object rather than one secret per channel, so a cluster can hold a
+  # different webhook per installation without editing the workflow.
+  #
+  # `minSeverity` is what reaches the channels, not what fires. Everything below
+  # it still fires and is visible in Alertmanager and on the dashboards; it just
+  # does not page anyone. See docs/monitoring-setup.md.
+  alerting:
+    enabled: true
+    minSeverity: warning
+    # Bonn and Mannheim share this cluster and belong to different people, so
+    # each has its own Discord and neither sees the other's incidents. Alerts
+    # that belong to neither namespace - a certificate expiring, the conversion
+    # webhook failing - are cluster-scoped and go to both, because they affect
+    # both installations.
+    channels:
+      - name: mannheim
+        type: discord
+        secretKey: discord-mannheim
+        environments: [eduide-mannheim]
+      - name: bonn
+        type: discord
+        secretKey: discord-bonn
+        environments: [eduide-bonn]

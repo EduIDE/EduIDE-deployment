@@ -1,0 +1,343 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "EduIDE Cluster",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "const": "eduide.dev/v1"
+    },
+    "kind": {
+      "const": "Cluster"
+    },
+    "metadata": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "displayName": {
+          "type": "string"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "storageClassName",
+        "runner",
+        "tls"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "storageClassName": {
+          "type": "string"
+        },
+        "gatewayClassName": {
+          "type": "string"
+        },
+        "sharedGateway": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            }
+          }
+        },
+        "loadBalancerIP": {
+          "type": "string"
+        },
+        "runner": {
+          "type": "string",
+          "description": "Runner label for deploy jobs. Deploying needs to reach the API server, so this is per-cluster rather than one answer for all."
+        },
+        "bootstrapEnvironment": {
+          "type": "string"
+        },
+        "monitorCertManager": {
+          "type": "boolean",
+          "description": "Create a ServiceMonitor for cert-manager, so certificate expiry can be alerted on. cert-manager exports the metric but ships no ServiceMonitor, so nothing collects it by default."
+        },
+        "alerting": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Where alerts go. Webhook URLs are never listed here: they are credentials and live in the cluster's GitHub Environment.",
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "minSeverity": {
+              "type": "string",
+              "enum": [
+                "warning",
+                "critical"
+              ],
+              "description": "What reaches the channels, not what fires. Everything below this still fires and is visible in Alertmanager and on the dashboards."
+            },
+            "grafanaUrl": {
+              "type": "string",
+              "description": "Base URL of the Grafana serving the EduIDE dashboards, no trailing slash. Used to deep-link a notification to the affected session."
+            },
+            "channels": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name",
+                  "type",
+                  "secretKey"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "slack",
+                      "discord"
+                    ]
+                  },
+                  "secretKey": {
+                    "type": "string",
+                    "pattern": "^(slack|discord)-[A-Za-z0-9._-]*$",
+                    "maxLength": 253,
+                    "description": "Key in the webhook Secret. The prefix decides which GitHub Environment secret bootstrap reads, so it must match the channel type. The rest is restricted to what Kubernetes accepts in a Secret data key: a slash or a space here would be written into the Secret and rejected by the API server at bootstrap time."
+                  },
+                  "channel": {
+                    "type": "string",
+                    "description": "Slack channel override, e.g. \"#eduide-alerts\". Ignored for Discord, where the webhook itself names the channel."
+                  },
+                  "environments": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Namespaces whose alerts go to this channel instead of to all of them. Use when one cluster hosts installations belonging to different people. Alerts that match no scoped channel - including every cluster-scoped alert, such as a certificate expiring - still go to all channels."
+                  }
+                },
+                "allOf": [
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "slack"
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "secretKey": {
+                          "pattern": "^slack-"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "if": {
+                      "properties": {
+                        "type": {
+                          "const": "discord"
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ]
+                    },
+                    "then": {
+                      "properties": {
+                        "secretKey": {
+                          "pattern": "^discord-"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "enabled": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "enabled"
+                ]
+              },
+              "then": {
+                "required": [
+                  "channels"
+                ],
+                "properties": {
+                  "channels": {
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "tls": {
+          "type": "object",
+          "description": "TLS Secret each shared-Gateway listener role terminates with. Per cluster because the clusters issue certificates differently. A listener without a secret renders an empty certificateRef: the Gateway is accepted and simply never programs TLS for that hostname.",
+          "required": [
+            "landing",
+            "service",
+            "instances",
+            "webview"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "landing": {
+              "type": "string"
+            },
+            "service": {
+              "type": "string"
+            },
+            "instances": {
+              "type": "string"
+            },
+            "webview": {
+              "type": "string",
+              "description": "Always its own Secret: webview hosts sit two labels below the instance host, so no certificate covering the others covers them."
+            },
+            "acmeHttp": {
+              "type": "boolean",
+              "description": "Add a plain :80 listener per host for cert-manager HTTP-01 challenges. Only needed where cert-manager issues the certificates."
+            }
+          }
+        },
+        "acmeEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Contact address on the ACME account. Required when spec.tls.acmeHttp is true, because bootstrap then creates the ClusterIssuer the derived certificates reference."
+        },
+        "acmeIssuerName": {
+          "type": "string",
+          "description": "Name of the Gateway-API ACME ClusterIssuer bootstrap creates. Defaults to letsencrypt-prod-gateway.",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$",
+          "minLength": 1,
+          "maxLength": 253
+        },
+        "gatewayClass": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Whether this cluster's GatewayClass is ours to create. False when another team owns it.",
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "controllerName": {
+              "type": "string"
+            }
+          }
+        },
+        "envoyProxy": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "EnvoyProxy the GatewayClass points at. This is what pins the data plane to a load balancer address, so it must match the address DNS publishes.",
+          "properties": {
+            "create": {
+              "type": "boolean"
+            },
+            "name": {
+              "type": "string"
+            },
+            "namespace": {
+              "type": "string"
+            },
+            "spec": {
+              "type": "object"
+            }
+          }
+        },
+        "redirects": {
+          "type": "array",
+          "description": "Hostnames this cluster used to serve, permanently redirected to their new name.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "from",
+              "to",
+              "tlsSecretName"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$"
+              },
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "tlsSecretName": {
+                "type": "string"
+              },
+              "statusCode": {
+                "type": "integer",
+                "enum": [
+                  301,
+                  302
+                ]
+              }
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "tls": {
+                "properties": {
+                  "acmeHttp": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "acmeHttp"
+                ]
+              }
+            },
+            "required": [
+              "tls"
+            ]
+          },
+          "then": {
+            "required": [
+              "acmeEmail"
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

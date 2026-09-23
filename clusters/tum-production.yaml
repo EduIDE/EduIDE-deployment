@@ -1,0 +1,95 @@
+apiVersion: eduide.dev/v1
+kind: Cluster
+metadata:
+  name: tum-production
+  displayName: TUM production cluster
+spec:
+  storageClassName: csi-rbd-sc
+  gatewayClassName: envoy
+
+  # cert-manager issues one certificate per role here, so each listener
+  # references its own secret. Carried over verbatim from the hand-written
+  # shared-gateway-prod values.
+  tls:
+    landing: landing-page-cert-secret
+    service: service-cert-secret
+    instances: ws-cert-secret
+    webview: static-theia-cert
+    # HTTP-01 challenges arrive on plain :80, so every host that cert-manager
+    # renews needs an HTTP listener alongside its HTTPS one. Dropping these
+    # does not break anything until a certificate comes up for renewal.
+    acmeHttp: true
+
+  # Contact address on the ACME account. Required because acmeHttp is true:
+  # bootstrap creates the ClusterIssuer that the derived certificates point at,
+  # rather than assuming a suitable one already exists. The `letsencrypt-prod`
+  # issuer on these clusters solves over nginx Ingress only, so it cannot
+  # answer a Gateway API challenge.
+  acmeEmail: admin.aet@xcit.tum.de
+
+  # This cluster's GatewayClass and data plane are ours. tum-student's belong to
+  # Artemis, which is why these are per cluster rather than chart defaults.
+  #
+  # The EnvoyProxy pins the data plane to MetalLB pool `ingress`, which is the
+  # address every production hostname resolves to. A Gateway on any other
+  # address comes up Programmed=True and is reachable by nobody.
+  gatewayClass:
+    create: true
+    controllerName: gateway.envoyproxy.io/gatewayclass-controller
+  envoyProxy:
+    create: true
+    name: theia-shared-gateway
+    namespace: envoy-gateway-system
+    spec:
+      logging:
+        level:
+          default: warn
+      provider:
+        type: Kubernetes
+        kubernetes:
+          envoyService:
+            annotations:
+              metallb.io/address-pool: ingress
+              metallb.io/loadBalancerIPs: 131.159.88.82
+            externalTrafficPolicy: Local
+            type: LoadBalancer
+
+  # The installation was called `theia` until 2026-08. The old hostname is in
+  # bookmarks and in Artemis exercise configurations, so it keeps answering and
+  # 301s to the new one, path and query intact.
+  redirects:
+    - name: legacy-landing
+      from: theia.artemis.cit.tum.de
+      to: eduide.artemis.cit.tum.de
+      tlsSecretName: legacy-landing-cert-secret
+
+  sharedGateway:
+    namespace: eduide-system
+    name: theia-shared-gateway
+
+  # This cluster runs its own GatewayClass and EnvoyProxy with a MetalLB
+  # address, and issues certificates through letsencrypt-prod-gateway, unlike
+  # the test cluster where the wildcard secrets are managed by hand.
+  loadBalancerIP: 131.159.88.82
+
+  runner: ubuntu-latest
+  bootstrapEnvironment: cluster-tum-production
+
+  # Scrape cert-manager so certificates can be alerted on before they lapse.
+  # cert-manager exports expiry but ships no ServiceMonitor, so nothing watches
+  # it by default. The webview wildcard is renewed by hand once a year.
+  monitorCertManager: true
+
+  # Where alerts go. The channel list is here; the webhook URLs are not - they
+  # are credentials and live in this cluster's GitHub Environment as
+  # ALERT_WEBHOOKS, a JSON object keyed by each channel's `secretKey`. One
+  # object rather than one secret per channel, so a cluster can hold a
+  # different webhook per installation without editing the workflow.
+  #
+  # `minSeverity` is what reaches the channels, not what fires. Everything below
+  # it still fires and is visible in Alertmanager and on the dashboards; it just
+  # does not page anyone. See docs/monitoring-setup.md.
+  alerting:
+    enabled: false
+    minSeverity: warning
+    channels: []

@@ -1,0 +1,118 @@
+# Helm values for the mannheim environment.
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#
+# _base.yaml carries what is identical everywhere; this file carries what is
+# not. Anything appearing here for more than one environment belongs in
+# _base.yaml instead.
+#
+# Deployment metadata - which cluster, which namespace, which chart version -
+# is in env.yaml next door, because it configures the deploy rather than the
+# chart.
+# The Gradle/Maven dependency cache is not deployed here. The operator's
+# enableBuildCaching and enableDependencyCaching are false in every
+# environment, so no session ever reached it - on a production installation
+# that is a Redis, a cache server and a 20Gi reposilite PVC serving nobody.
+# The chart declares it with `condition: eduide-shared-cache.enabled`, so the
+# one key switches off the subchart, its vendored reposilite and the PVC.
+
+app:
+  name: EduIDE Mannheim
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: mannheim-landing
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: mannheim-service
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: mannheim-instances
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: mannheim-webview
+landingPage:
+  # Workspaces persist here, so a launch must not be ephemeral. The chart-wide
+  # default in _base.yaml is `true`, which would throw the volume away with the
+  # session.
+  ephemeralStorage: false
+  appDefinition: thm-java-25-latest
+  infoTitle: Welcome to EduIDE (Mannheim)
+  footerLinks:
+    attribution:
+      version: Mannheim-v1.0.0
+hosts:
+  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
+  #   mannheim.eduide.aet.cit.tum.de                      landing page
+  #   service.mannheim.eduide.aet.cit.tum.de              REST service
+  #   instance.mannheim.eduide.aet.cit.tum.de             session ingress
+  #   *.webview.instance.mannheim.eduide.aet.cit.tum.de   session webviews
+  # --- end hostnames
+  configuration:
+    baseHost: eduide.aet.cit.tum.de
+    service: service.mannheim
+    landing: mannheim
+    instance: instance.mannheim
+  allWildcardInstances:
+  - '*.webview.'
+keycloak:
+  enable: true
+  authUrl: https://keycloak.aet.cit.tum.de/
+  realm: external_register
+  clientId: eduide
+eduide-shared-cache:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+# Mannheim offers the TH Mannheim Java 25 image only.
+# The chart ships eight; the rest are removed rather than hidden, so nothing is
+# rendered, preloaded or offered for them.
+appDefinitions:
+  # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
+  # These render from values on every deploy, unlike minInstances which is read
+  # back from the live resource.
+  defaults:
+    limitsCpu: "4"
+    limitsMemory: 3000M
+    # Minutes. 3 hours.
+    timeout: 180
+  apps:
+    c-latest: null
+    c-templates-latest: null
+    java-17-latest: null
+    java-17-templates-latest: null
+    javascript-latest: null
+    ocaml-latest: null
+    python-latest: null
+    rust-latest: null
+    # TH Mannheim's own Java 25 image. Still a pull request in EduIDE (#170),
+    # so only pr-170 tags exist - the deploy passes ide_tag explicitly until it
+    # merges and a release publishes a numbered tag.
+    thm-java-25-latest:
+      # Ten sessions kept warm. Only a bootstrap default: the chart reads the
+      # live value back on every upgrade so the admin scaling API is not reset,
+      # so changing this alone does nothing to an AppDefinition that already
+      # exists - patch the live resource too.
+      minInstances: 10
+      image: eduide/thm-java-25
+      landingPage:
+        label: Java 25
+        # The landing page derives the icon from the label when this is unset:
+        # "Java 25" becomes /assets/logos/java-25-logo.png, which it does not
+        # bundle, so the tile rendered with a broken image. Named explicitly to
+        # the general Java logo it does ship.
+        image: java-logo.png
+# Reap a workspace this long after its last session. Default is 14 days.
+theia-workspace-garbage-collector:
+  enabled: true
+  env:
+    WORKSPACE_TTL: "12960000s"
+
+# Scraped by the cluster's PodMonitors. On by default; stated so it is a
+# decision rather than an accident.
+monitoring:
+  enabled: true

@@ -1,0 +1,121 @@
+# Helm values for the bonn environment.
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#
+# _base.yaml carries what is identical everywhere; this file carries what is
+# not. Anything appearing here for more than one environment belongs in
+# _base.yaml instead.
+#
+# Deployment metadata - which cluster, which namespace, which chart version -
+# is in env.yaml next door, because it configures the deploy rather than the
+# chart.
+# The Gradle/Maven dependency cache is not deployed here. The operator's
+# enableBuildCaching and enableDependencyCaching are false in every
+# environment, so no session ever reached it - on a production installation
+# that is a Redis, a cache server and a 20Gi reposilite PVC serving nobody.
+# The chart declares it with `condition: eduide-shared-cache.enabled`, so the
+# one key switches off the subchart, its vendored reposilite and the PVC.
+
+app:
+  name: EduIDE Bonn
+gateway:
+  parentRefs:
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: bonn-landing
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: bonn-service
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: bonn-instances
+  - name: theia-shared-gateway
+    namespace: eduide-system
+    sectionName: bonn-webview
+landingPage:
+  # Workspaces persist here, so a launch must not be ephemeral. The chart-wide
+  # default in _base.yaml is `true`, which would throw the volume away with the
+  # session.
+  ephemeralStorage: false
+  appDefinition: javascript-latest
+  infoTitle: Welcome to EduIDE (Bonn)
+  footerLinks:
+    attribution:
+      version: Bonn-v1.0.0
+hosts:
+  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
+  #   bonn.eduide.aet.cit.tum.de                      landing page
+  #   service.bonn.eduide.aet.cit.tum.de              REST service
+  #   instance.bonn.eduide.aet.cit.tum.de             session ingress
+  #   *.webview.instance.bonn.eduide.aet.cit.tum.de   session webviews
+  # --- end hostnames
+  configuration:
+    baseHost: eduide.aet.cit.tum.de
+    service: service.bonn
+    landing: bonn
+    instance: instance.bonn
+  allWildcardInstances:
+  - '*.webview.'
+# Keycloak is not configured for Bonn yet - the realm is still to be decided.
+#
+# allowUnauthenticated says so explicitly. Without it the chart refuses to
+# render, because the oauth2-proxy ConfigMaps are emitted regardless of
+# keycloak.enable and would otherwise carry the chart's placeholder issuer -
+# a proxy pointed at a host that does not exist, so sessions fail rather than
+# run unauthenticated.
+#
+# THIS INSTALLATION HAS NO AUTHENTICATION. Do not expose it until the block
+# below is filled in and this flag removed.
+keycloak:
+  allowUnauthenticated: true
+# keycloak:
+#   enable: true
+#   authUrl: https://keycloak.aet.cit.tum.de/
+#   realm: <realm>
+#   clientId: eduide
+eduide-shared-cache:
+  enabled: false
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+# Bonn offers Javascript only.
+# The chart ships eight; the rest are removed rather than hidden, so nothing is
+# rendered, preloaded or offered for them.
+appDefinitions:
+  # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
+  # These render from values on every deploy, unlike minInstances which is read
+  # back from the live resource.
+  defaults:
+    limitsCpu: "4"
+    limitsMemory: 3000M
+    # Minutes. 3 hours.
+    timeout: 180
+  apps:
+    c-latest: null
+    c-templates-latest: null
+    java-17-latest: null
+    java-17-templates-latest: null
+    ocaml-latest: null
+    python-latest: null
+    rust-latest: null
+    javascript-latest:
+      # Ten sessions kept warm. Only a bootstrap default: the chart reads the
+      # live value back on every upgrade so the admin scaling API is not reset,
+      # so changing this alone does nothing to an AppDefinition that already
+      # exists - patch the live resource too.
+      minInstances: 10
+      image: eduide/javascript
+      landingPage:
+        label: Javascript
+# Reap a workspace this long after its last session. Default is 14 days.
+theia-workspace-garbage-collector:
+  enabled: true
+  env:
+    WORKSPACE_TTL: "1209600s"
+
+# Scraped by the cluster's PodMonitors. On by default; stated so it is a
+# decision rather than an accident.
+monitoring:
+  enabled: true
