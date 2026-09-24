@@ -43,6 +43,20 @@ operator:
 
 landingPage:
   ephemeralStorage: true
+  # Every installation we run is on TUM infrastructure, so TUM is the
+  # controller for all of them and this belongs here rather than per
+  # environment. The chart ships obvious placeholders ("Example University")
+  # precisely so another university deploying EduIDE does not publish a
+  # statement naming us - which is why these values live in this repo and not
+  # in the chart.
+  privacy:
+    controller:
+      organisation: Technische Universität München (TUM)
+      representative: Prof. Dr. Stephan Krusche
+      address: Boltzmannstrasse 3, 85748 Garching
+      email: beauftragter(at)datenschutz.tum.de
+    dataProtectionOfficer:
+      email: datenschutz(at)tum.de
   appDefinition: java-17-templates-latest
   infoText: ' '
   loadingText: Preparing your personal Online IDE...
