@@ -38,6 +38,17 @@ landingPage:
   # default in _base.yaml is `true`, which would throw the volume away with the
   # session.
   ephemeralStorage: false
+  privacy:
+    # TH Mannheim evaluates anonymised usage data from this installation for
+    # research. Stating it is a legal requirement, not a preference - it is a
+    # processing purpose, so it is off everywhere it has no basis.
+    #
+    # The retention figures the privacy page shows are NOT set here. The chart
+    # derives them from the settings that produce them - the 150 day
+    # WORKSPACE_TTL below, ephemeralStorage above, appDefinitions.defaults.timeout
+    # - so this installation cannot end up publishing a retention period it does
+    # not keep.
+    scientificUse: true
   appDefinition: thm-java-25-latest
   infoTitle: Welcome to EduIDE (Mannheim)
   footerLinks:
