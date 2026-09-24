@@ -14,7 +14,7 @@ that reports itself healthy and serves nothing.
 | | Who does it |
 |---|---|
 | Gateway API CRDs, Envoy Gateway, cert-manager, storage | **you**, once per cluster |
-| A GatewayClass whose address matches DNS - a load balancer's, or the node's | **you** |
+| A data plane answering on the address DNS publishes - a load balancer's, or the node's | **you** |
 | The ACME `ClusterIssuer` | `Bootstrap cluster`, from `spec.acmeEmail` |
 | The GatewayClass and its EnvoyProxy | `Bootstrap cluster`, from `spec.gatewayClass` and `spec.envoyProxy` |
 | Redirects from hostnames you used to serve | `Bootstrap cluster`, from `spec.redirects` |
@@ -78,7 +78,7 @@ raising with whoever owns the cluster. The deploy sidesteps it by always naming
 every node, so the default set of eight is roughly 20 GB per node, once. Budget
 it before the first bootstrap rather than discovering it as disk pressure.
 
-## Step 2: decide which load balancer address serves EduIDE
+## Step 2: decide which address serves EduIDE
 
 This is the step that produces a healthy-looking cluster that serves nothing,
 so do it before anything else.
@@ -104,7 +104,7 @@ So a Gateway created with `gatewayClassName: envoy` on that cluster comes up
 `Programmed=True`, is served on `131.159.88.15`, and is unreachable at every
 name DNS actually publishes. Nothing reports an error.
 
-There are two ways out, and it is a decision, not a default:
+There are three ways out, and it is a decision, not a default:
 
 **(a) Join the existing merged gateway.** Ask for the EduIDE DNS names to point
 at `131.159.88.15` instead. Nothing in this repository changes. EduIDE then
