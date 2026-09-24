@@ -42,6 +42,11 @@ gateway:
 operator:
   replicas: 3
 landingPage:
+  privacy:
+    # Anonymised usage data from this installation is evaluated for research.
+    # A processing purpose rather than a preference, so it is stated only on the
+    # production installations that have a basis for it, not on test or staging.
+    scientificUse: true
   sentry:
     enable: false
   footerLinks:
