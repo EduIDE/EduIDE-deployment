@@ -1,7 +1,9 @@
 # Preparing a cluster
 
-What has to exist on a TUM cluster before EduIDE can be deployed to it, which
-parts `Bootstrap cluster` does for you, and which parts it does not.
+What has to exist on a cluster before EduIDE can be deployed to it, which parts
+`Bootstrap cluster` does for you, and which parts it does not. Written around
+the TUM clusters, but the `eduide` cluster is not one of them and the places
+that differ say so.
 
 Read this end to end before bootstrapping a cluster for the first time. Two of
 the manual steps below cannot be discovered by trying: they produce a cluster
@@ -12,7 +14,7 @@ that reports itself healthy and serves nothing.
 | | Who does it |
 |---|---|
 | Gateway API CRDs, Envoy Gateway, cert-manager, storage | **you**, once per cluster |
-| A GatewayClass whose load balancer address matches DNS | **you** |
+| A GatewayClass whose address matches DNS - a load balancer's, or the node's | **you** |
 | The ACME `ClusterIssuer` | `Bootstrap cluster`, from `spec.acmeEmail` |
 | The GatewayClass and its EnvoyProxy | `Bootstrap cluster`, from `spec.gatewayClass` and `spec.envoyProxy` |
 | Redirects from hostnames you used to serve | `Bootstrap cluster`, from `spec.redirects` |
@@ -114,12 +116,32 @@ own `EnvoyProxy` pinned to pool `lb3`, and set `gatewayClassName` in
 `clusters/tum-student.yaml` to match. EduIDE then has its own data plane on
 `131.159.88.14`, which is what DNS already says.
 
-`bootstrap-cluster.yml` passes both from the cluster manifest, so option (b) is
-`spec.gatewayClass.create: true` plus a `spec.envoyProxy` block. `envoyProxy.name`
-is the name of the EnvoyProxy resource itself; the MetalLB pool goes inside it,
-under `spec.provider.kubernetes.envoyService.annotations`. That is exactly what
+**(c) There is no load balancer at all.** A single node cluster outside TUM may
+have neither MetalLB nor servicelb, and then a Service of type `LoadBalancer`
+sits `Pending` for ever while DNS publishes the node's own address. Bind the two
+public ports on the node instead: `envoyService.type: ClusterIP`, and a
+`StrategicMerge` patch on the Envoy Deployment giving its container `hostPort: 80`
+and `hostPort: 443`. The `eduide` cluster does this, and
+`clusters/eduide.yaml` carries the whole story - including why hostNetwork plus
+`useListenerPortAsContainerPort` is the wrong answer: Envoy runs as non-root,
+Kubernetes cannot grant `NET_BIND_SERVICE` effectively, and every listener then
+fails with `cannot bind '0.0.0.0:80': Permission denied` while the pod reports
+`Running`.
+
+`bootstrap-cluster.yml` passes both from the cluster manifest, so options (b) and
+(c) are `spec.gatewayClass.create: true` plus a `spec.envoyProxy` block.
+`envoyProxy.name` is the name of the EnvoyProxy resource itself; for (b) the
+MetalLB pool goes inside it, under
+`spec.provider.kubernetes.envoyService.annotations`. That is exactly what
 `tum-production` does. See
 [envoy-gateway-setup.md](envoy-gateway-setup.md) for the MetalLB details.
+
+**State the data plane's replica count, whichever option you pick.** Envoy
+Gateway reconciles the Envoy Deployment's replicas only while the EnvoyProxy
+names them; left unset it writes the field once and never looks again, so one
+`kubectl scale --replicas=0` takes every Gateway on the class down until
+somebody scales it back by hand. The chart defaults it to 1 - do not override it
+with nothing.
 
 `clusters/tum-production.yaml` carries `spec.loadBalancerIP: 131.159.88.82`.
 **Nothing reads it.** It records the intent; it does not enforce it.
