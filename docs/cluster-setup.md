@@ -139,13 +139,18 @@ MetalLB pool goes inside it, under
 `tum-production` does. See
 [envoy-gateway-setup.md](envoy-gateway-setup.md) for the MetalLB details.
 
-**State the data plane's replica count, whichever option you pick.** Envoy
-Gateway reconciles the Envoy Deployment's replicas only while the EnvoyProxy
-names them; left unset it writes the field once and never looks again, so one
+**On (b) and (c), state the data plane's replica count.** Envoy Gateway
+reconciles the Envoy Deployment's replicas only while the EnvoyProxy names them;
+left unset it writes the field once and never looks again, so one
 `kubectl scale --replicas=0` takes every Gateway on the class down until
 somebody scales it back by hand. That is what took Bonn and Mannheim off the air
 on 2026-09-23. Put `replicas` in the `envoyDeployment` block, as
-`clusters/eduide.yaml` now does.
+`clusters/eduide.yaml` does.
+
+Option (a) has no such block here, because the EnvoyProxy belongs to whoever
+owns the merged gateway. The exposure does not go away - it moves. Ask them
+whether their EnvoyProxy states its replicas, and remember that scaling that
+data plane to zero takes EduIDE down with everything else sharing it.
 
 `clusters/tum-production.yaml` carries `spec.loadBalancerIP: 131.159.88.82`.
 **Nothing reads it.** It records the intent; it does not enforce it.
