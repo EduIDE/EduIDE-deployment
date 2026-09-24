@@ -129,7 +129,10 @@ fails with `cannot bind '0.0.0.0:80': Permission denied` while the pod reports
 `Running`.
 
 `bootstrap-cluster.yml` passes both from the cluster manifest, so options (b) and
-(c) are `spec.gatewayClass.create: true` plus a `spec.envoyProxy` block.
+(c) are `spec.gatewayClass.create: true` plus a `spec.envoyProxy` block that
+**sets `create: true` itself**. The chart defaults `envoyProxy.create` to false,
+so a block without it renders no EnvoyProxy at all while the GatewayClass still
+gets a `parametersRef` naming one - a dangling reference, and no data plane.
 `envoyProxy.name` is the name of the EnvoyProxy resource itself; for (b) the
 MetalLB pool goes inside it, under
 `spec.provider.kubernetes.envoyService.annotations`. That is exactly what
@@ -140,8 +143,9 @@ MetalLB pool goes inside it, under
 Gateway reconciles the Envoy Deployment's replicas only while the EnvoyProxy
 names them; left unset it writes the field once and never looks again, so one
 `kubectl scale --replicas=0` takes every Gateway on the class down until
-somebody scales it back by hand. The chart defaults it to 1 - do not override it
-with nothing.
+somebody scales it back by hand. That is what took Bonn and Mannheim off the air
+on 2026-09-23. Put `replicas` in the `envoyDeployment` block, as
+`clusters/eduide.yaml` now does.
 
 `clusters/tum-production.yaml` carries `spec.loadBalancerIP: 131.159.88.82`.
 **Nothing reads it.** It records the intent; it does not enforce it.
@@ -151,10 +155,12 @@ Whichever option is chosen, verify it after bootstrap:
 ```bash
 kubectl -n eduide-system get gateway theia-shared-gateway \
   -o jsonpath='{.status.addresses[*].value}{"\n"}'
-dig +short eduide.student.k8s.aet.cit.tum.de A
+dig +short <the landing host of an environment on this cluster> A
 ```
 
-Those two must end at the same address.
+Those two must end at the same address. On a cluster serving option (c) the
+Gateway's address is the Service's ClusterIP, which DNS never publishes - check
+the node's own address instead, and that something answers on `:443` there.
 
 ## Step 3: the ACME issuer
 
@@ -215,7 +221,7 @@ Current state:
 |---|---|
 | `*.eduide.student.k8s.aet.cit.tum.de` | `131.159.88.14` |
 | `eduide.artemis.cit.tum.de` | `131.159.88.82` |
-| `bonn.eduide.aet.cit.tum.de`, `mannheim.…` | **not yet** |
+| `bonn.eduide.aet.cit.tum.de`, `mannheim.…` | `131.159.88.106` (parma itself) |
 
 ## Step 5: the GitHub Environment
 

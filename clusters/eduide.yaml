@@ -62,6 +62,12 @@ spec:
           # and the process never touches a privileged port.
           useListenerPortAsContainerPort: false
           envoyDeployment:
+            # Envoy Gateway reconciles this field only while it is stated here.
+            # Left out, the controller writes it once when it creates the
+            # Deployment and never looks again, so a manual scale to zero is
+            # permanent - which is how both installations went dark on
+            # 2026-09-23, with every pod healthy and nothing listening on :443.
+            replicas: 1
             patch:
               type: StrategicMerge
               value:
