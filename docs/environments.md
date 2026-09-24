@@ -115,22 +115,6 @@ deploy, so confirm them with the university before the first deploy.
 **Secrets are not here.** `clientSecret` and `cookieSecret` come from the
 environment's GitHub Environment secrets, never from a file in this repo.
 
-### A different provider entirely
-
-The chart also supports a generic OIDC provider, added for Gitea and mutually
-exclusive with Keycloak:
-
-```yaml
-keycloak:
-  enable: false
-gitea:
-  enable: true
-  issuerUrl: https://git.example.edu
-  clientId: eduide
-```
-
-The chart refuses to render if both are enabled at once.
-
 ## Adding an environment
 
 ### 1. `environments/<name>/env.yaml`
