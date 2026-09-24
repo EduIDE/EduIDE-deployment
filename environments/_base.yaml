@@ -54,7 +54,7 @@ landingPage:
       organisation: Technische Universität München (TUM)
       representative: Prof. Dr. Stephan Krusche
       address: Boltzmannstrasse 3, 85748 Garching
-      email: beauftragter(at)datenschutz.tum.de
+      email: support.aet@xcit.tum.de
     dataProtectionOfficer:
       email: datenschutz(at)tum.de
   appDefinition: java-17-templates-latest
