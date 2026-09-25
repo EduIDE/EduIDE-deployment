@@ -25,7 +25,9 @@ An environment is one namespace on one cluster.
 `environments/`, the GitHub Environment and the landing host are the same
 string, so there is nothing to map and nothing to keep in sync.
 
-The `eduide` cluster is not provisioned yet.
+The `eduide` cluster is `parma.aet.cit.tum.de`, a single node k3s serving Bonn
+and Mannheim since 2026-08-28. It has no load balancer, so its data plane
+binds the node's ports with `hostPort`; `clusters/eduide.yaml` says why.
 
 The charts live in **EduIDE-Helm** and are pulled from
 `oci://ghcr.io/eduide/charts`. Chart templates are not edited here.

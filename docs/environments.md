@@ -38,11 +38,11 @@ base sets.
 |---|---|---|
 | `tum-student` | `test1.…`, `test2.…`, `test3.…`, `e2e.…`, `staging.eduide.student.k8s.aet.cit.tum.de` | everything non-production |
 | `tum-production` | `eduide.artemis.cit.tum.de` | TUM's own installation |
-| `eduide` | `bonn.eduide.aet.cit.tum.de`, `mannheim.eduide.aet.cit.tum.de` | other universities. **Not provisioned yet.** |
+| `eduide` | `bonn.eduide.aet.cit.tum.de`, `mannheim.eduide.aet.cit.tum.de` | other universities. Single node k3s (`parma`), no load balancer |
 
-The two `eduide` ones exist as reviewable configuration before the cluster does.
-Deploying one stops at the cluster identity check until that cluster has been
-bootstrapped and the GitHub Environment holds a `KUBECONFIG`.
+An environment can be written and reviewed before its cluster exists. Deploying
+one stops at the cluster identity check until that cluster has been bootstrapped
+and the GitHub Environment holds a `KUBECONFIG`.
 
 ## Hostnames
 
@@ -114,22 +114,6 @@ deploy, so confirm them with the university before the first deploy.
 
 **Secrets are not here.** `clientSecret` and `cookieSecret` come from the
 environment's GitHub Environment secrets, never from a file in this repo.
-
-### A different provider entirely
-
-The chart also supports a generic OIDC provider, added for Gitea and mutually
-exclusive with Keycloak:
-
-```yaml
-keycloak:
-  enable: false
-gitea:
-  enable: true
-  issuerUrl: https://git.example.edu
-  clientId: eduide
-```
-
-The chart refuses to render if both are enabled at once.
 
 ## Adding an environment
 

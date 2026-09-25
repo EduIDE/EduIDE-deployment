@@ -26,7 +26,11 @@ An environment is one namespace on one cluster.
 `environments/`, the GitHub Environment and the landing host are the same
 string, so there is nothing to map and nothing to keep in sync.
 
-The `eduide` cluster is **not provisioned yet**.
+The `eduide` cluster is `parma.aet.cit.tum.de` (131.159.88.106), a single
+node k3s serving Bonn and Mannheim since 2026-08-28. It has **no load
+balancer** - the Envoy data plane binds the node's own `:80` and `:443` with
+`hostPort`. `clusters/eduide.yaml` records why, and why the obvious
+alternative does not work.
 
 Namespaces stay short - `eduide-test1`, `eduide-tum-production` - because a
 Kubernetes namespace cannot contain dots. `spec.namespace` in each `env.yaml`

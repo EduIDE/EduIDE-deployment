@@ -9,7 +9,9 @@ step 2 of it.
 
 ## The traffic path
 
-1. DNS points the EduIDE hostnames at Envoy Gateway's load balancer address.
+1. DNS points the EduIDE hostnames at the address Envoy Gateway's data plane
+   answers on - a load balancer's, or the node's own where the cluster has no
+   load balancer at all. See step 2 of [cluster-setup.md](cluster-setup.md).
 2. Envoy Gateway watches Gateway API resources and programs Envoy.
 3. `Bootstrap cluster` creates one shared `Gateway` in `eduide-system`, with
    four listeners per environment.

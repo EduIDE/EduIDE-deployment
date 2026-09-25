@@ -1,7 +1,9 @@
 # Preparing a cluster
 
-What has to exist on a TUM cluster before EduIDE can be deployed to it, which
-parts `Bootstrap cluster` does for you, and which parts it does not.
+What has to exist on a cluster before EduIDE can be deployed to it, which parts
+`Bootstrap cluster` does for you, and which parts it does not. Written around
+the TUM clusters, but the `eduide` cluster is not one of them and the places
+that differ say so.
 
 Read this end to end before bootstrapping a cluster for the first time. Two of
 the manual steps below cannot be discovered by trying: they produce a cluster
@@ -12,7 +14,7 @@ that reports itself healthy and serves nothing.
 | | Who does it |
 |---|---|
 | Gateway API CRDs, Envoy Gateway, cert-manager, storage | **you**, once per cluster |
-| A GatewayClass whose load balancer address matches DNS | **you** |
+| A data plane answering on the address DNS publishes - a load balancer's, or the node's | **you** |
 | The ACME `ClusterIssuer` | `Bootstrap cluster`, from `spec.acmeEmail` |
 | The GatewayClass and its EnvoyProxy | `Bootstrap cluster`, from `spec.gatewayClass` and `spec.envoyProxy` |
 | Redirects from hostnames you used to serve | `Bootstrap cluster`, from `spec.redirects` |
@@ -76,7 +78,7 @@ raising with whoever owns the cluster. The deploy sidesteps it by always naming
 every node, so the default set of eight is roughly 20 GB per node, once. Budget
 it before the first bootstrap rather than discovering it as disk pressure.
 
-## Step 2: decide which load balancer address serves EduIDE
+## Step 2: decide which address serves EduIDE
 
 This is the step that produces a healthy-looking cluster that serves nothing,
 so do it before anything else.
@@ -102,7 +104,7 @@ So a Gateway created with `gatewayClassName: envoy` on that cluster comes up
 `Programmed=True`, is served on `131.159.88.15`, and is unreachable at every
 name DNS actually publishes. Nothing reports an error.
 
-There are two ways out, and it is a decision, not a default:
+There are three ways out, and it is a decision, not a default:
 
 **(a) Join the existing merged gateway.** Ask for the EduIDE DNS names to point
 at `131.159.88.15` instead. Nothing in this repository changes. EduIDE then
@@ -114,12 +116,41 @@ own `EnvoyProxy` pinned to pool `lb3`, and set `gatewayClassName` in
 `clusters/tum-student.yaml` to match. EduIDE then has its own data plane on
 `131.159.88.14`, which is what DNS already says.
 
-`bootstrap-cluster.yml` passes both from the cluster manifest, so option (b) is
-`spec.gatewayClass.create: true` plus a `spec.envoyProxy` block. `envoyProxy.name`
-is the name of the EnvoyProxy resource itself; the MetalLB pool goes inside it,
-under `spec.provider.kubernetes.envoyService.annotations`. That is exactly what
+**(c) There is no load balancer at all.** A single node cluster outside TUM may
+have neither MetalLB nor servicelb, and then a Service of type `LoadBalancer`
+sits `Pending` for ever while DNS publishes the node's own address. Bind the two
+public ports on the node instead: `envoyService.type: ClusterIP`, and a
+`StrategicMerge` patch on the Envoy Deployment giving its container `hostPort: 80`
+and `hostPort: 443`. The `eduide` cluster does this, and
+`clusters/eduide.yaml` carries the whole story - including why hostNetwork plus
+`useListenerPortAsContainerPort` is the wrong answer: Envoy runs as non-root,
+Kubernetes cannot grant `NET_BIND_SERVICE` effectively, and every listener then
+fails with `cannot bind '0.0.0.0:80': Permission denied` while the pod reports
+`Running`.
+
+`bootstrap-cluster.yml` passes both from the cluster manifest, so options (b) and
+(c) are `spec.gatewayClass.create: true` plus a `spec.envoyProxy` block that
+**sets `create: true` itself**. The chart defaults `envoyProxy.create` to false,
+so a block without it renders no EnvoyProxy at all while the GatewayClass still
+gets a `parametersRef` naming one - a dangling reference, and no data plane.
+`envoyProxy.name` is the name of the EnvoyProxy resource itself; for (b) the
+MetalLB pool goes inside it, under
+`spec.provider.kubernetes.envoyService.annotations`. That is exactly what
 `tum-production` does. See
 [envoy-gateway-setup.md](envoy-gateway-setup.md) for the MetalLB details.
+
+**On (b) and (c), state the data plane's replica count.** Envoy Gateway
+reconciles the Envoy Deployment's replicas only while the EnvoyProxy names them;
+left unset it writes the field once and never looks again, so one
+`kubectl scale --replicas=0` takes every Gateway on the class down until
+somebody scales it back by hand. That is what took Bonn and Mannheim off the air
+on 2026-09-23. Put `replicas` in the `envoyDeployment` block, as
+`clusters/eduide.yaml` does.
+
+Option (a) has no such block here, because the EnvoyProxy belongs to whoever
+owns the merged gateway. The exposure does not go away - it moves. Ask them
+whether their EnvoyProxy states its replicas, and remember that scaling that
+data plane to zero takes EduIDE down with everything else sharing it.
 
 `clusters/tum-production.yaml` carries `spec.loadBalancerIP: 131.159.88.82`.
 **Nothing reads it.** It records the intent; it does not enforce it.
@@ -129,10 +160,12 @@ Whichever option is chosen, verify it after bootstrap:
 ```bash
 kubectl -n eduide-system get gateway theia-shared-gateway \
   -o jsonpath='{.status.addresses[*].value}{"\n"}'
-dig +short eduide.student.k8s.aet.cit.tum.de A
+dig +short <the landing host of an environment on this cluster> A
 ```
 
-Those two must end at the same address.
+Those two must end at the same address. On a cluster serving option (c) the
+Gateway's address is the Service's ClusterIP, which DNS never publishes - check
+the node's own address instead, and that something answers on `:443` there.
 
 ## Step 3: the ACME issuer
 
@@ -193,7 +226,7 @@ Current state:
 |---|---|
 | `*.eduide.student.k8s.aet.cit.tum.de` | `131.159.88.14` |
 | `eduide.artemis.cit.tum.de` | `131.159.88.82` |
-| `bonn.eduide.aet.cit.tum.de`, `mannheim.…` | **not yet** |
+| `bonn.eduide.aet.cit.tum.de`, `mannheim.…` | `131.159.88.106` (parma itself) |
 
 ## Step 5: the GitHub Environment
 
