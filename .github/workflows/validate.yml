@@ -94,11 +94,26 @@ jobs:
       # that it still runs on a laptop with no helm. In CI an unreachable chart
       # is a failure, not a skip, or the render coverage disappears without
       # anything turning red.
+      # Every version any environment selects, not one environment's. A bump
+      # reaches staging and production before the test environments, so reading
+      # test1's version meant the chart a production manifest asked for was the
+      # one thing never checked.
       - name: Chart every environment renders against is reachable
         run: |
           set -euo pipefail
-          version="$(yq -r '.spec.platform.chartVersion' environments/test1.eduide.student.k8s.aet.cit.tum.de/env.yaml)"
-          helm show chart oci://ghcr.io/eduide/charts/eduide --version "$version" >/dev/null
+          fail=0
+          # Read each file on its own: yq separates multiple documents with ---,
+          # which would otherwise come back as a version to look up.
+          versions="$(for f in environments/*/env.yaml; do yq -r '.spec.platform.chartVersion' "$f"; done | sort -u)"
+          for version in $versions; do
+            if helm show chart oci://ghcr.io/eduide/charts/eduide --version "$version" >/dev/null 2>&1; then
+              echo "chart $version is published"
+            else
+              echo "::error::chart $version is not published; no environment can deploy it"
+              fail=1
+            fi
+          done
+          exit $fail
 
       - name: Deploy logic tests
         run: ./scripts/test-deploy-logic.sh
