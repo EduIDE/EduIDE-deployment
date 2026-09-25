@@ -83,14 +83,6 @@ eduide-shared-cache:
 # The chart ships eight; the rest are removed rather than hidden, so nothing is
 # rendered, preloaded or offered for them.
 
-# thm-java-25 is unmerged in EduIDE (#170), so only pr-170 tags exist and no
-# numbered release publishes it yet. Pin this installation's IDE images to that
-# tag in-repo instead of passing ide_tag at deploy time. Mannheim offers only
-# thm-java-25, so this moves that one image and nothing else. Drop this block
-# once #170 merges and a release publishes a numbered tag.
-versions:
-  ide: pr-170
-
 appDefinitions:
   # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
   # These render from values on every deploy, unlike minInstances which is read
@@ -109,9 +101,9 @@ appDefinitions:
     ocaml-latest: null
     python-latest: null
     rust-latest: null
-    # TH Mannheim's own Java 25 image. Still a pull request in EduIDE (#170),
-    # so only pr-170 tags exist - pinned via versions.ide above until it merges
-    # and a release publishes a numbered tag.
+    # TH Mannheim's own Java 25 image. In EduIDE's build matrix since #170, so
+    # it carries the same numbered tag as every other IDE image and needs no
+    # pin of its own.
     thm-java-25-latest:
       # Ten sessions kept warm. Only a bootstrap default: the chart reads the
       # live value back on every upgrade so the admin scaling API is not reset,
