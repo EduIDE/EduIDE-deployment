@@ -367,9 +367,50 @@ host is `eduide` but its Gateway sections are `prod-*`; the `e2e.` one's are `e2
 Getting this wrong attaches routes to sections that do not exist, and nothing
 fails until traffic does.
 
+**A Workspace resource does not mean the files persist.** With
+`operator.eagerStart`, a session runs on a prewarmed instance pod, and that pod
+never mounts the workspace PVC - the PVC stays `Pending` for good. The files
+live in the pod and are lost whenever the pod is recycled: after the
+inactivity timeout, after `appDefinitions.defaults.timeout`, or on an image
+update. An environment that promises persistent workspaces
+(`landingPage.ephemeralStorage: false`) must also set
+`operator.eagerStart: false`, as Bonn and Mannheim do. Setting the flag is
+not the whole change - see [Switching an environment to lazy start](#switching-an-environment-to-lazy-start).
+
 **The `e2e.` environment is not for people.** It follows `main` and the functional tests run
 against it automatically. Point manual work at `staging` instead, or a red build
 there stops meaning anything.
+
+## Switching an environment to lazy start
+
+The deploy only changes the operator's arguments. The lazy operator never
+touches the warm pool, and the pool's `instance-*` Deployments, Services and
+ConfigMaps belong to the AppDefinition, so they keep running - and keep
+reserving CPU and memory - until someone deletes them. A production deploy
+cannot do it for you: `clean_install` is refused there.
+
+1. **Deploy when no session is running.** A session open during the switch
+   still runs on a prewarmed pod and loses its files one last time. Check with
+   `kubectl -n <ns> get sessions.theia.cloud`.
+2. **Silence `EduIDEWarmPoolEmpty`** for the environment, matching on
+   `eduide_namespace`. It is critical and fires once the pool is gone, until
+   the old replica samples leave its history window.
+3. **Deploy** as usual. The operator restarts without `--eagerStart`.
+4. **Delete the pool.** Everything the pool created is named `instance-<n>-…`;
+   lazy sessions name theirs `session-…`, so the prefix cannot catch one:
+
+   ```bash
+   NS=eduide-mannheim
+   for kind in deployment service configmap; do
+     kubectl -n "$NS" get "$kind" -o name | grep "/instance-" \
+       | xargs -r kubectl -n "$NS" delete
+   done
+   ```
+
+5. **Check** that a new session creates a `session-…` Deployment and that its
+   workspace PVC goes from `Pending` to `Bound`.
+
+Files already lost stay lost: the prewarmed pods never had a volume.
 
 ## Checking a change
 
