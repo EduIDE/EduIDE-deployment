@@ -66,7 +66,9 @@ hosts:
 # never mounts the workspace PVC - only the lazy session handler does - so
 # with eagerStart every file lived in the pod and was gone once the pod was
 # recycled: after the inactivity timeout, the 3 hour session timeout, or an
-# image update. The price is a slower first start.
+# image update. The price is a slower first start. Switching also needs the
+# warm pool removed by hand: docs/environments.md, "Switching an environment
+# to lazy start".
 operator:
   eagerStart: false
 # Keycloak is not configured for Bonn yet - the realm is still to be decided.
