@@ -367,6 +367,15 @@ host is `eduide` but its Gateway sections are `prod-*`; the `e2e.` one's are `e2
 Getting this wrong attaches routes to sections that do not exist, and nothing
 fails until traffic does.
 
+**A Workspace resource does not mean the files persist.** With
+`operator.eagerStart`, a session runs on a prewarmed instance pod, and that pod
+never mounts the workspace PVC - the PVC stays `Pending` for good. The files
+live in the pod and are lost whenever the pod is recycled: after the
+inactivity timeout, after `appDefinitions.defaults.timeout`, or on an image
+update. An environment that promises persistent workspaces
+(`landingPage.ephemeralStorage: false`) must also set
+`operator.eagerStart: false`, as Bonn and Mannheim do.
+
 **The `e2e.` environment is not for people.** It follows `main` and the functional tests run
 against it automatically. Point manual work at `staging` instead, or a red build
 there stops meaning anything.

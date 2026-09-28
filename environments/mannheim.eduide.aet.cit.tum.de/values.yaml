@@ -68,6 +68,13 @@ hosts:
     instance: instance.mannheim
   allWildcardInstances:
   - '*.webview.'
+# Sessions start on demand here, not from the warm pool. A prewarmed instance
+# never mounts the workspace PVC - only the lazy session handler does - so
+# with eagerStart every file lived in the pod and was gone once the pod was
+# recycled: after the inactivity timeout, the 3 hour session timeout, or an
+# image update. The price is a slower first start.
+operator:
+  eagerStart: false
 keycloak:
   enable: true
   authUrl: https://keycloak.aet.cit.tum.de/
@@ -105,7 +112,9 @@ appDefinitions:
     # it carries the same numbered tag as every other IDE image and needs no
     # pin of its own.
     thm-java-25-latest:
-      # Ten sessions kept warm. Only a bootstrap default: the chart reads the
+      # Unused while operator.eagerStart is false above: nothing is kept warm.
+      # Left at ten so turning the pool back on restores it. Only a bootstrap
+      # default: the chart reads the
       # live value back on every upgrade so the admin scaling API is not reset,
       # so changing this alone does nothing to an AppDefinition that already
       # exists - patch the live resource too.

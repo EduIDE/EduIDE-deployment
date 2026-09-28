@@ -179,6 +179,25 @@ for f in "$ROOT"/environments/*/env.yaml; do
   fi
 done
 
+# --- persistent workspaces start lazily ------------------------------------
+# A prewarmed instance never mounts the workspace PVC, so with eagerStart the
+# files live in the pod and die with it. Bonn and Mannheim promised persistent
+# workspaces this way for a month and kept none.
+echo
+echo "=== persistent workspaces start lazily ==="
+for f in "$ROOT"/environments/*/env.yaml; do
+  env=$(basename "$(dirname "$f")")
+  merged=$(yq eval-all '. as $item ireduce ({}; . * $item)' \
+             "$ROOT/environments/_base.yaml" "$ROOT/environments/$env/values.yaml")
+  [[ "$(yq -r '.landingPage.ephemeralStorage' <<<"$merged")" == "false" ]] || continue
+  e=$(yq -r '.operator.eagerStart' <<<"$merged")
+  if [[ "$e" == "false" ]]; then
+    ok "$env persists workspaces and starts lazily"
+  else
+    bad "$env persists workspaces but sets operator.eagerStart" "operator.eagerStart=$e"
+  fi
+done
+
 # --- no duplicate keys in a values file ------------------------------------
 # YAML keeps the LAST of two identical keys and says nothing. Writing a second
 # `service:` block silently dropped service.authToken from _base.yaml, and the
