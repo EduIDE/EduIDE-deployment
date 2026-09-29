@@ -424,6 +424,42 @@ for v in "$ROOT"/environments/*/values.yaml; do
   fi
 done
 
+# --- maintenance scales the landing page back to what Helm would -----------
+# maintenance.yml turns maintenance off by scaling the landing page back up. It
+# must pick the same count Helm would, or the next deploy changes it again.
+echo
+echo "=== maintenance restores the landing page replicas ==="
+T=$(mktemp -d)
+mkdir -p "$T/scripts" "$T/environments/a" "$T/environments/b"
+cp "$ROOT/scripts/landing-replicas.sh" "$T/scripts/"
+replicas() { "$T/scripts/landing-replicas.sh" "$1" 2>/dev/null; }
+printf 'app:\n  id: x\n' > "$T/environments/_base.yaml"
+printf 'landingPage:\n  appDefinition: y\n' > "$T/environments/a/values.yaml"
+[[ "$(replicas a)" == "1" ]] && ok "chart default when nobody sets it" || bad "chart default" "$(replicas a)"
+printf 'landingPage:\n  replicas: 2\n' > "$T/environments/_base.yaml"
+[[ "$(replicas a)" == "2" ]] && ok "_base.yaml applies" || bad "_base.yaml" "$(replicas a)"
+printf 'landingPage:\n  replicas: 3\n' > "$T/environments/b/values.yaml"
+[[ "$(replicas b)" == "3" ]] && ok "environment overrides _base.yaml" || bad "environment override" "$(replicas b)"
+replicas nope >/dev/null && bad "unknown environment accepted" "" || ok "unknown environment rejected"
+rm -rf "$T"
+for f in "$ROOT"/environments/*/env.yaml; do
+  env=$(basename "$(dirname "$f")")
+  n=$("$ROOT/scripts/landing-replicas.sh" "$env" 2>/dev/null)
+  [[ "$n" =~ ^[1-9][0-9]*$ ]] && ok "$env: landing page returns with $n" || bad "$env: bad landing replica count" "'$n'"
+done
+
+# --- no PodDisruptionBudgets on the single-node cluster ---------------------
+# On parma (cluster `eduide`) a PDB makes every drain hang, see the comment in
+# the bonn and mannheim values files.
+echo
+echo "=== no PodDisruptionBudgets on the single-node cluster ==="
+for f in "$ROOT"/environments/*/env.yaml; do
+  [[ "$(yq -r '.spec.cluster' "$f")" == "eduide" ]] || continue
+  env=$(basename "$(dirname "$f")")
+  pdb=$(yq -r '.podDisruptionBudget.enabled' "$ROOT/environments/$env/values.yaml")
+  [[ "$pdb" == "false" ]] && ok "$env: PDBs off" || bad "$env: PDBs must be off on parma" "podDisruptionBudget.enabled is '$pdb'"
+done
+
 echo
 [[ $FAILED -eq 0 ]] && echo "ALL PASS" || echo "SOME FAILED"
 exit $FAILED
