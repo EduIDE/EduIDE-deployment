@@ -135,3 +135,9 @@ theia-workspace-garbage-collector:
 # decision rather than an accident.
 monitoring:
   enabled: true
+
+# parma is a single node. A PodDisruptionBudget there makes `kubectl drain`
+# wait forever: the evicted replica cannot be rescheduled on the cordoned node,
+# so the budget never allows evicting the other one.
+podDisruptionBudget:
+  enabled: false
