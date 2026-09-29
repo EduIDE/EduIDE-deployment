@@ -42,6 +42,9 @@ operator:
   eagerStart: true
 
 landingPage:
+  # Two pods so a node going away or a deploy never leaves the landing page
+  # without a ready one. Needs chart >= 2.4.0; older charts ignore it.
+  replicas: 2
   ephemeralStorage: true
   # Every installation we run is on TUM infrastructure, so TUM is the
   # controller for all of them and this belongs here rather than per
@@ -77,6 +80,9 @@ landingPage:
       text: About
       url: https://aet.cit.tum.de/
 service:
+  # Same reason as landingPage.replicas. The service keeps its state in the
+  # cluster, so two pods are safe.
+  replicas: 2
   # Public spam-mitigation token shared with the landing page, not a secret.
   # Same value the installations have always used; changing it gains nothing.
   authToken: nJV3nKZmpxTD4wu2

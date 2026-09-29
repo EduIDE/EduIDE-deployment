@@ -1,0 +1,132 @@
+# Show the maintenance page on an environment, or take it down again.
+#
+# The eduide chart (>= 2.4.0) already answers every 502/503/504 on the landing
+# route with a static "EduIDE is currently unavailable" page, served by Envoy.
+# So maintenance mode is nothing more than the landing page having no pods:
+#   on   scales landing-page-deployment to 0
+#   off  scales it back to landingPage.replicas (scripts/landing-replicas.sh)
+#
+# Worth knowing:
+#   - The next deploy ends maintenance, because Helm sets the replicas again.
+#   - Only the landing page goes away. Running sessions and the REST service
+#     are untouched, so students already in an IDE keep working.
+
+name: Maintenance page
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        required: true
+        type: choice
+        options: [test1.eduide.student.k8s.aet.cit.tum.de, test2.eduide.student.k8s.aet.cit.tum.de, test3.eduide.student.k8s.aet.cit.tum.de, e2e.eduide.student.k8s.aet.cit.tum.de, staging.eduide.student.k8s.aet.cit.tum.de, eduide.artemis.cit.tum.de, bonn.eduide.aet.cit.tum.de, mannheim.eduide.aet.cit.tum.de]
+      mode:
+        required: true
+        type: choice
+        options: ["on", "off"]
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.r.outputs.runner }}
+      namespace: ${{ steps.r.outputs.namespace }}
+      cluster: ${{ steps.r.outputs.cluster }}
+      landing: ${{ steps.r.outputs.landing }}
+      replicas: ${{ steps.r.outputs.replicas }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - id: r
+        run: |
+          set -euo pipefail
+          M="environments/${{ inputs.environment }}/env.yaml"
+          [[ -f "$M" ]] || { echo "::error::no such environment: ${{ inputs.environment }}"; exit 1; }
+          C=$(yq -r '.spec.cluster' "$M")
+          V="environments/${{ inputs.environment }}/values.yaml"
+          {
+            echo "cluster=$C"
+            echo "namespace=$(yq -r '.spec.namespace' "$M")"
+            echo "runner=$(yq -r '.spec.runner // "ubuntu-latest"' "clusters/$C.yaml")"
+            echo "landing=$(yq -r '.hosts.configuration | .landing + "." + .baseHost' "$V")"
+            echo "replicas=$(./scripts/landing-replicas.sh "${{ inputs.environment }}")"
+          } >> "$GITHUB_OUTPUT"
+
+  maintenance:
+    needs: resolve
+    runs-on: ${{ needs.resolve.outputs.runner }}
+    environment: ${{ inputs.environment }}
+    concurrency:
+      # Shares a group with Deploy, so it cannot race an upgrade.
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      KUBECONFIG: ${{ github.workspace }}/kubeconfig
+      NS: ${{ needs.resolve.outputs.namespace }}
+      URL: https://${{ needs.resolve.outputs.landing }}/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+      - name: Set up kubeconfig
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null "$KUBECONFIG"
+          printf '%s' '${{ secrets.KUBECONFIG }}' > "$KUBECONFIG"
+
+      - name: Assert we are pointed at the right cluster
+        run: |
+          set -euo pipefail
+          FOUND=$(kubectl -n eduide-system get configmap eduide-cluster-identity \
+                    -o jsonpath='{.data.clusterName}' 2>/dev/null || true)
+          if [[ "$FOUND" != "${{ needs.resolve.outputs.cluster }}" ]]; then
+            echo "::error::expected cluster '${{ needs.resolve.outputs.cluster }}', this KUBECONFIG reaches '${FOUND:-an unbootstrapped cluster}'"
+            exit 1
+          fi
+
+      - name: The chart serves the maintenance page
+        if: ${{ inputs.mode == 'on' }}
+        run: |
+          set -euo pipefail
+          # Without the policy, scaling to 0 shows Envoy's raw error instead.
+          if ! kubectl -n "$NS" get backendtrafficpolicy landing-maintenance-page >/dev/null 2>&1; then
+            echo "::error::no landing-maintenance-page policy in $NS. Deploy chart >= 2.4.0 with maintenancePage.enabled first."
+            exit 1
+          fi
+
+      - name: Turn maintenance on
+        if: ${{ inputs.mode == 'on' }}
+        run: |
+          set -euo pipefail
+          kubectl -n "$NS" scale deploy/landing-page-deployment --replicas=0
+          kubectl -n "$NS" wait --for=delete pod -l app=landing-page --timeout=2m
+
+      - name: Turn maintenance off
+        if: ${{ inputs.mode == 'off' }}
+        run: |
+          set -euo pipefail
+          kubectl -n "$NS" scale deploy/landing-page-deployment --replicas=${{ needs.resolve.outputs.replicas }}
+          kubectl -n "$NS" rollout status deploy/landing-page-deployment --timeout=5m
+
+      - name: Check what visitors see
+        run: |
+          set -euo pipefail
+          # Envoy needs a moment to notice the endpoints changed.
+          want=$([[ "${{ inputs.mode }}" == "on" ]] && echo 503 || echo 200)
+          for _ in $(seq 1 12); do
+            code=$(curl -s -o page.html -w '%{http_code}' --max-time 10 "$URL" || echo 000)
+            if [[ "$code" == "$want" ]]; then break; fi
+            sleep 5
+          done
+          if [[ "$code" != "$want" ]]; then
+            echo "::error::$URL answered $code, expected $want"; exit 1
+          fi
+          if [[ "$want" == 503 ]] && ! grep -q "EduIDE is currently unavailable" page.html; then
+            echo "::error::$URL answered 503 but not with the maintenance page"; exit 1
+          fi
+          echo "### Maintenance ${{ inputs.mode }}: $URL answers $code" >> "$GITHUB_STEP_SUMMARY"
