@@ -51,5 +51,18 @@ keycloak:
   authUrl: https://keycloak-test.aet.cit.tum.de/
   realm: tum
   clientId: eduide
+# TEMPORARY - security integration test (plans/2026-10-12-security-integration-test.md).
+# Revert this block after the test.
 eduide-shared-cache:
-  enabled: true
+  # Disabled for this test: shared-cache #40 couples app code with new chart
+  # templates not in the pinned 0.5.3 subchart, so it is validated standalone.
+  enabled: false
+# Exercise the activity-tracker fix (#140): ping every minute and let a session
+# time out quickly, so a frozen lastActivity from a failed poll would delete it
+# fast if the bug were still present.
+monitor:
+  activityTracker:
+    interval: 1
+appDefinitions:
+  defaults:
+    timeout: 15
