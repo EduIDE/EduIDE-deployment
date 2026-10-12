@@ -57,6 +57,14 @@ eduide-shared-cache:
   # Disabled for this test: shared-cache #40 couples app code with new chart
   # templates not in the pinned 0.5.3 subchart, so it is validated standalone.
   enabled: false
+# Helm #49 regression workaround: its scoped RBAC defaults the operator to a
+# namespaced RoleBinding, but the operator lists cluster-scoped
+# customresourcedefinitions (and persistentvolumes) at startup and 403-crashes.
+# clusterWideRbac=true restores the pre-#49 ClusterRoleBinding so the rest of the
+# stack can be tested. #49 needs a proper fix (a minimal cluster-scoped
+# ClusterRole for CRD-read + PV) before merge.
+operator:
+  clusterWideRbac: true
 # Exercise the activity-tracker fix (#140): ping every minute and let a session
 # time out quickly, so a frozen lastActivity from a failed poll would delete it
 # fast if the bug were still present.
