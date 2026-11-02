@@ -33,10 +33,17 @@ spec:
 
 **Production and staging go in separate pull requests.** Not a style
 preference: bundling them means production cannot be reverted without also
-reverting the environment that proved it. `renovate.json` enforces the same
-split for automated bumps, and production bumps never arrive unasked - somebody
-ticks the box on the Dependency Dashboard, because bumping `chartVersion` in a
+reverting the environment that proved it. `renovate.json` encodes the same
+split for automated bumps - production behind `dependencyDashboardApproval`, so
+a production bump never arrives unasked, because bumping `chartVersion` in a
 production environment *is* the release procedure.
+
+Its `matchFileNames` patterns have to name the environment directories
+literally, and the directories are hostnames. Renaming one silently detaches
+its rules: after the rename to hostnames the patterns still read
+`environments/bonn/**`, matched nothing for weeks, and production bumps lost
+their approval gate without anything failing. If you rename an environment,
+grep `renovate.json` for the old name.
 
 The three production installations:
 
@@ -61,8 +68,16 @@ an hour.
 
 ```bash
 gh run list --repo EduIDE/EduIDE --event release --limit 1
-docker manifest inspect ghcr.io/eduide/eduide/java-17:1.3.0
+docker manifest inspect ghcr.io/eduide/eduide/java-17:1.3.0   # one image, as a spot check
 ```
+
+One image passing proves only that one image. The chart pins three sets - every
+IDE image at `appVersion`, the cloud images at `versions.cloud`, the landing
+page at `versions.landingPage` - and the release page for the chart version
+lists all three. Since EduIDE-Helm's release workflow verifies the whole set
+before publishing a chart, a chart version that has a release page has already
+had every pinned image checked; the spot check above is for a chart published
+before that existed, or when you want to see it yourself.
 
 **It renders.** Point the tests at the version the environment will actually
 install:
