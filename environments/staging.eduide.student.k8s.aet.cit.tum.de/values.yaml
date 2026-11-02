@@ -53,3 +53,14 @@ keycloak:
   clientId: eduide
 eduide-shared-cache:
   enabled: true
+# This environment offers only Java and JavaScript. The other chart-default
+# apps are pruned by nulling them. appDefinitions.apps is the single source for
+# the offered apps, the preloaded images and the landing page list, so nulling
+# here drops them from all three (see AGENTS.md "do not list app definitions").
+appDefinitions:
+  apps:
+    c-latest: null
+    c-templates-latest: null
+    ocaml-latest: null
+    python-latest: null
+    rust-latest: null

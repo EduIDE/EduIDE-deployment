@@ -18,7 +18,7 @@ An environment is one namespace on one cluster.
 
 | Cluster | Environments |
 |---|---|
-| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`test3.…`<br>`e2e.…`<br>`staging.…` |
+| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`e2e.…`<br>`staging.…` |
 | `tum-production` | `eduide.artemis.cit.tum.de` |
 | `eduide` | `bonn.eduide.aet.cit.tum.de`<br>`mannheim.eduide.aet.cit.tum.de` |
 

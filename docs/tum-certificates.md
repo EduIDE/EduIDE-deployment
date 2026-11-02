@@ -45,7 +45,6 @@ One per landing host, since the webview names sit two labels below it.
 |---|---|
 | `test1.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.test1.eduide.student.k8s.aet.cit.tum.de` |
 | `test2.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.test2.eduide.student.k8s.aet.cit.tum.de` |
-| `test3.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.test3.eduide.student.k8s.aet.cit.tum.de` |
 | `e2e.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.e2e.eduide.student.k8s.aet.cit.tum.de` |
 | `staging.eduide.student.k8s.aet.cit.tum.de` | `*.webview.instance.staging.eduide.student.k8s.aet.cit.tum.de` |
 | `eduide.artemis.cit.tum.de` | `*.webview.instance.eduide.artemis.cit.tum.de` |
