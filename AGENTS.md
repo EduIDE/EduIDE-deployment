@@ -171,6 +171,15 @@ vendored reposilite chart with its own key), so the deploy sets both;
 `test-deploy-logic.sh` renders every environment against a sentinel and fails if
 any storage key escapes the cluster default.
 
+**The preloading node pool is a cluster property too.** `tum-student` has small
+workers that cannot hold the preloaded images, so `spec.preloadingNodeSelector`
+in `clusters/tum-student.yaml` limits the DaemonSet to the large ones, and the
+deploy renders it into the same values file as the storage class. An environment
+must not set it, and `_base.yaml` must not either, because that reaches
+production and parma. A chart below 2.6.0 ignores the key without a word. The
+namespace annotation that goes with it is not in this repo, see "Node pool on
+`tum-student`" in `docs/environments.md`.
+
 **The dependency cache is off in production.** `eduide-shared-cache.enabled: false` in
 all three production installations, asserted by `test-deploy-logic.sh`. Nothing
 consumes it anywhere today regardless: the operator's `enableBuildCaching` and

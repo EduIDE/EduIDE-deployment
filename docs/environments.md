@@ -191,6 +191,40 @@ in Keycloak for every one of the four hosts, on a client matching `clientId`.
 See [cluster-setup.md](cluster-setup.md), [tum-certificates.md](tum-certificates.md)
 and [keycloak-setup.md](keycloak-setup.md).
 
+### 6. Node pool on `tum-student`
+
+Only for an environment on `tum-student`. The 9 workers labelled
+`aet.cit.tum.de/pool=eduide` have 244 GiB root disks, the other 16 have 93 to
+96 GiB and cannot hold the preloaded images. Two things keep EduIDE on the large
+ones:
+
+- **The chart value is automatic.** The deploy sets `preloading.nodeSelector` from
+  `spec.preloadingNodeSelector` in `clusters/tum-student.yaml`. Do not copy it into
+  `values.yaml`. Check that the environment's `chartVersion` is 2.6.0 or later,
+  because older charts ignore the key and the DaemonSet runs on every node.
+- **The namespace annotation is manual, and nothing fails without it.** It is what
+  pins sessions, because `AppDefinition` has no placement field. It relies on the
+  `PodNodeSelector` admission plugin, which is enabled on the API servers:
+
+  ```bash
+  kubectl annotate namespace <namespace> \
+    scheduler.alpha.kubernetes.io/node-selector=aet.cit.tum.de/pool=eduide
+  ```
+
+Annotate only once `kubectl -n <namespace> get daemonset image-preloading` shows
+the selector under `NODE SELECTOR`. An annotated namespace whose DaemonSet has no
+selector leaves preloading pods `Pending` on every small node, and that includes
+a `Rollback` to a revision from before 2.6.0.
+
+The annotation applies to new pods only, so restart the workloads afterwards.
+`eduide-shared-cache-reposilite` cannot be restarted with `rollout restart` when
+it has to change nodes: it has a `ReadWriteOnce` volume and a rolling strategy, so
+the new pod waits for the volume and the old pod waits for the new pod. Scale it
+to 0 and back to 1 instead.
+
+Without a label on any node the selector matches nothing, and the DaemonSet
+reports `0` desired while looking healthy.
+
 ## Versions
 
 One number per source repository, and one chart version over the lot:
@@ -225,6 +259,9 @@ preload one addressed by array index. Production offered `c-templates` while
 preloading everything except `c-templates`, so students picking it waited for a
 cold multi-gigabyte pull. `test-app-consistency.sh` in EduIDE-Helm asserts the
 three agree.
+
+On `tum-student`, "every node" means every node of the pool, see
+[Node pool on `tum-student`](#6-node-pool-on-tum-student).
 
 ## Monitoring
 
