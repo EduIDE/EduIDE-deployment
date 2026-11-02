@@ -195,35 +195,42 @@ and [keycloak-setup.md](keycloak-setup.md).
 
 Only for an environment on `tum-student`. The 9 workers labelled
 `aet.cit.tum.de/pool=eduide` have 244 GiB root disks, the other 16 have 93 to
-96 GiB and cannot hold the preloaded images. Two things keep EduIDE on the large
-ones:
+96 GiB and cannot hold the preloaded images.
 
-- **The chart value is automatic.** The deploy sets `preloading.nodeSelector` from
-  `spec.preloadingNodeSelector` in `clusters/tum-student.yaml`. Do not copy it into
-  `values.yaml`. Check that the environment's `chartVersion` is 2.6.0 or later,
-  because older charts ignore the key and the DaemonSet runs on every node.
-- **The namespace annotation is manual, and nothing fails without it.** It is what
-  pins sessions, because `AppDefinition` has no placement field. It relies on the
-  `PodNodeSelector` admission plugin, which is enabled on the API servers:
+**The chart value is what solves the disk problem, and it is automatic.** The
+deploy sets `preloading.nodeSelector` from `spec.preloadingNodeSelector` in
+`clusters/tum-student.yaml`. Do not copy it into `values.yaml`. Check that the
+environment's `chartVersion` is 2.6.0 or later, because older charts ignore the
+key and the DaemonSet runs on every node.
 
-  ```bash
-  kubectl annotate namespace <namespace> \
-    scheduler.alpha.kubernetes.io/node-selector=aet.cit.tum.de/pool=eduide
-  ```
+Confirm it with `kubectl -n <namespace> get daemonset image-preloading`, which
+shows the selector under `NODE SELECTOR`. If no node carries the label, the
+selector matches nothing and the DaemonSet reports `0` desired while looking
+healthy.
 
-Annotate only once `kubectl -n <namespace> get daemonset image-preloading` shows
-the selector under `NODE SELECTOR`. An annotated namespace whose DaemonSet has no
-selector leaves preloading pods `Pending` on every small node, and that includes
-a `Rollback` to a revision from before 2.6.0.
+**Sessions are not pinned yet, and how to pin them is undecided.** `AppDefinition`
+has no placement field, so a session can land on any worker, where it pulls its
+image cold. The two options are the `PodNodeSelector` admission plugin with a
+namespace annotation, or an operator flag that does not exist yet.
 
-The annotation applies to new pods only, so restart the workloads afterwards.
-`eduide-shared-cache-reposilite` cannot be restarted with `rollout restart` when
-it has to change nodes: it has a `ReadWriteOnce` volume and a rolling strategy, so
-the new pod waits for the volume and the old pod waits for the new pod. Scale it
-to 0 and back to 1 instead.
+`PodNodeSelector` is not enabled on `tum-student`. Until it is, this annotation
+has no effect:
 
-Without a label on any node the selector matches nothing, and the DaemonSet
-reports `0` desired while looking healthy.
+```bash
+kubectl annotate namespace <namespace> \
+  scheduler.alpha.kubernetes.io/node-selector=aet.cit.tum.de/pool=eduide
+```
+
+If that route is chosen, three things apply once the plugin is enabled:
+
+- Annotate only after the DaemonSet shows the selector. An annotated namespace
+  whose DaemonSet has no selector leaves preloading pods `Pending` on every small
+  node, and that includes a `Rollback` to a revision from before 2.6.0.
+- The annotation applies to new pods only, so restart the workloads afterwards.
+- `eduide-shared-cache-reposilite` cannot be restarted with `rollout restart` when
+  it has to change nodes: it has a `ReadWriteOnce` volume and a rolling strategy,
+  so the new pod waits for the volume and the old pod waits for the new pod. Scale
+  it to 0 and back to 1 instead.
 
 ## Versions
 

@@ -176,9 +176,11 @@ workers that cannot hold the preloaded images, so `spec.preloadingNodeSelector`
 in `clusters/tum-student.yaml` limits the DaemonSet to the large ones, and the
 deploy renders it into the same values file as the storage class. An environment
 must not set it, and `_base.yaml` must not either, because that reaches
-production and parma. A chart below 2.6.0 ignores the key without a word. The
-namespace annotation that goes with it is not in this repo, see "Node pool on
-`tum-student`" in `docs/environments.md`.
+production and parma. A chart below 2.6.0 ignores the key without a word. This
+value is what solves the disk problem. Sessions are not pinned yet: `PodNodeSelector`
+is not enabled on the cluster, and whether to pin them that way or through an
+operator flag is undecided, see "Node pool on `tum-student`" in
+`docs/environments.md`.
 
 **The dependency cache is off in production.** `eduide-shared-cache.enabled: false` in
 all three production installations, asserted by `test-deploy-logic.sh`. Nothing

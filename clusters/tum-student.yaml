@@ -10,8 +10,7 @@ spec:
   # Preload onto the large workers only. Each environment preloads ~9 images,
   # the exited init containers keep them in use so image GC cannot free them,
   # and that filled the 93 to 96 GiB root disks of the small workers. See
-  # "Node pool on tum-student" in docs/environments.md for the namespace
-  # annotation that has to go with this.
+  # "Node pool on tum-student" in docs/environments.md.
   preloadingNodeSelector:
     aet.cit.tum.de/pool: eduide
 
