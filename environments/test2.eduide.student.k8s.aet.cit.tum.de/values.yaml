@@ -63,6 +63,14 @@ eduide-shared-cache:
 monitor:
   activityTracker:
     interval: 1
+# Lazy sessions (no prewarm) for this test. The eager/prewarm path injects the
+# scorpio env (ARTEMIS_TOKEN/URL, GIT_URI) via the data-bridge, which is not
+# reliably reaching scorpio's extension host, so autoclone and auth fail. Lazy
+# sessions set SCORPIO_THEIA_ENV_STRATEGY="" and pass the env as pod env vars,
+# which scorpio reads directly (ProcessEnvStrategy). Re-enable prewarm once the
+# data-bridge eager-injection path is fixed.
+operator:
+  eagerStart: false
 appDefinitions:
   defaults:
     timeout: 15
