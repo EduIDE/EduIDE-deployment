@@ -14,7 +14,7 @@ here, and a chart release in EduIDE-Helm before it.
 ```
 EduIDE            release v1.3.0        images published as 1.3.0
 EduIDE-Helm       chart 2.3.0           appVersion 1.3.0
-EduIDE-deployment chartVersion: 2.3.0   merging this IS the deploy
+EduIDE-deployment chartVersion: 2.3.0   merge records it, a dispatch deploys it
 ```
 
 Getting this backwards - trying to move the IDE version from here alone - leads
@@ -125,6 +125,21 @@ The `e2e.` environment follows `main` automatically and is not somewhere to
 point manual work; `staging.` is the manual one.
 
 ## After merging
+
+**Merging records the version. It does not deploy it.** Only `e2e` deploys on
+merge, from `deploy-e2e.yml` watching `environments/**` on main. Every other
+environment, production included, waits for Actions -> **Deploy environment**
+run against it:
+
+```bash
+gh workflow run deploy-dispatch.yml --repo EduIDE/EduIDE-deployment \
+  -f environment=eduide.artemis.cit.tum.de
+```
+
+Leave the chart-version input blank and it uses the environment's own pin, which
+is the one you just merged. Until that run, the environment serves the old
+version with a merged manifest claiming the new one - which is exactly how a
+release looks done and is not.
 
 The deploy asserts which cluster it reached before touching anything, shows a
 `helm diff`, and runs `--wait --atomic`. A failed upgrade rolls back on its own.
