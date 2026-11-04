@@ -52,4 +52,18 @@ keycloak:
   realm: tum
   clientId: eduide
 eduide-shared-cache:
-  enabled: true
+  # Disabled for this test, same as test2: shared-cache #40 couples app code with
+  # new chart templates not in the pinned 0.5.3 subchart.
+  enabled: false
+# Temporary: test the non-prewarmed path, where env reaches sessions as pod env vars.
+operator:
+  eagerStart: false
+# This cluster's pod and service CIDRs (198.18.0.0/16, 198.19.0.0/16) are outside
+# the chart's private range defaults.
+networkPolicies:
+  privateEgressCidrs:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 100.64.0.0/10
+  - 198.18.0.0/15
