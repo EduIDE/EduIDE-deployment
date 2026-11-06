@@ -258,8 +258,8 @@ activity tracker and unrelated.
 ## The dependency cache
 
 `eduide-shared-cache` deploys a Gradle build cache, a Redis and a reposilite
-Maven proxy with a 20Gi PVC. It is **off in all three production
-installations** and on in test and staging.
+Maven proxy with a 20Gi PVC. It is **off in every environment** (test and
+staging too since 2026-11-06).
 
 ```yaml
 eduide-shared-cache:
