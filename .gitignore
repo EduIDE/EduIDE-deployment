@@ -1,3 +1,5 @@
 **.tgz
-.claude
+# Local Claude state stays out; skills are shared, so they are tracked.
+.claude/*
+!.claude/skills/
 *.DS_Store

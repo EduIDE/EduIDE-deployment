@@ -21,11 +21,11 @@
 
   "packageRules": [
     {
-      "description": "Production moves only when a human ticks it on the Dependency Dashboard. Bumping chartVersion in a production environment IS the release procedure - README says so under 'Move production' - so a PR here is not a dependency update that happens to touch production, it is a production deploy waiting for a merge. It must never appear unasked.",
+      "description": "Patterns name the environment directories literally, and those directories are hostnames - the rename to hostnames left these matching nothing, so production bumps lost this gate silently. Grep here when renaming an environment. Production moves only when a human ticks it on the Dependency Dashboard. Bumping chartVersion in a production environment IS the release procedure - README says so under 'Move production' - so a PR here is not a dependency update that happens to touch production, it is a production deploy waiting for a merge. It must never appear unasked.",
       "matchFileNames": [
-        "environments/tum-production/**",
-        "environments/bonn/**",
-        "environments/mannheim/**"
+        "environments/eduide.artemis.cit.tum.de/**",
+        "environments/bonn.eduide.aet.cit.tum.de/**",
+        "environments/mannheim.eduide.aet.cit.tum.de/**"
       ],
       "dependencyDashboardApproval": true,
       "groupName": "production chart version",
@@ -35,11 +35,10 @@
     {
       "description": "Staging and the test environments batch into one PR. Kept apart from the production group on purpose: bundling the two would mean production could not be reverted without also reverting the environments it is supposed to have been proven on first.",
       "matchFileNames": [
-        "environments/staging/**",
-        "environments/e2e-test/**",
-        "environments/test1/**",
-        "environments/test2/**",
-        "environments/test3/**"
+        "environments/staging.eduide.student.k8s.aet.cit.tum.de/**",
+        "environments/e2e.eduide.student.k8s.aet.cit.tum.de/**",
+        "environments/test1.eduide.student.k8s.aet.cit.tum.de/**",
+        "environments/test2.eduide.student.k8s.aet.cit.tum.de/**"
       ],
       "groupName": "staging and test chart version",
       "groupSlug": "chart-test",

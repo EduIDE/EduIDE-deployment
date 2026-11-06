@@ -38,6 +38,8 @@ landingPage:
   # default in _base.yaml is `true`, which would throw the volume away with the
   # session.
   ephemeralStorage: false
+  # No trustedArtemisHosts until this installation's Artemis server is known,
+  # so its links still need a Launch click.
   privacy:
     # Anonymised usage data from this installation is evaluated for research.
     # A processing purpose rather than a preference, so it is stated only on the
