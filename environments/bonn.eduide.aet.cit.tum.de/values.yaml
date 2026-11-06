@@ -45,9 +45,6 @@ landingPage:
     scientificUse: true
   appDefinition: javascript-latest
   infoTitle: Welcome to EduIDE (Bonn)
-  footerLinks:
-    attribution:
-      version: Bonn-v1.0.0
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
   #   bonn.eduide.aet.cit.tum.de                      landing page
