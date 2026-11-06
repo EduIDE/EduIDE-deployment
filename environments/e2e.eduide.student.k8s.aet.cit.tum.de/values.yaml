@@ -30,9 +30,6 @@ gateway:
 operator:
   sessionsPerUser: 1000
 landingPage:
-  footerLinks:
-    attribution:
-      version: E2E
   infoTitle: Welcome to EduIDE Cloud (E2E test target)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)

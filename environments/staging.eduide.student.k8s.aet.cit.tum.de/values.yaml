@@ -28,9 +28,6 @@ gateway:
     namespace: eduide-system
     sectionName: staging-webview
 landingPage:
-  footerLinks:
-    attribution:
-      version: Staging-v1.0.0
   infoTitle: Welcome to EduIDE Cloud (Staging)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
