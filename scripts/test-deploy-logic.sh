@@ -161,6 +161,37 @@ else
   echo "  SKIP  chart $CHART not reachable (set EDUIDE_CHART to a local checkout)"
 fi
 
+# --- the preloading node pool follows the cluster --------------------------
+# _base.yaml also reaches tum-production and parma, which have no such pool, and
+# a selector matching no node leaves a DaemonSet that looks healthy and preloads
+# nothing. So the value is stated once per cluster and nowhere else.
+echo
+echo "=== preloading node pool follows the cluster ==="
+for cf in "$ROOT"/clusters/*.yaml; do
+  cluster=$(yq -r '.metadata.name' "$cf")
+  # The same expression the Cluster defaults step in deploy.yml uses.
+  got=$(printf 'preloading:\n  nodeSelector: %s\n' "$(yq -o=json -I=0 '.spec.preloadingNodeSelector // {}' "$cf")" \
+          | yq -o=json -I=0 '.preloading.nodeSelector')
+  case "$cluster" in
+    tum-student) want='{"aet.cit.tum.de/pool":"eduide"}' ;;
+    *)           want='{}' ;;
+  esac
+  if [[ "$got" == "$want" ]]; then
+    ok "$cluster preloading.nodeSelector is $got"
+  else
+    bad "$cluster preloading.nodeSelector should be $want" "got $got"
+  fi
+done
+for f in "$ROOT"/environments/_base.yaml "$ROOT"/environments/*/values.yaml; do
+  [[ -f "$f" ]] || continue
+  name="$(basename "$(dirname "$f")")/$(basename "$f")"
+  if [[ "$(yq -r '.preloading.nodeSelector // ""' "$f")" == "" ]]; then
+    ok "$name leaves it to the cluster"
+  else
+    bad "$name must not set preloading.nodeSelector" "state it in clusters/<name>.yaml"
+  fi
+done
+
 # --- the dependency cache stays off in production --------------------------
 # The chart declares the cache with `condition: eduide-shared-cache.enabled`, so one key
 # now switches it off cleanly - including its vendored reposilite subchart and

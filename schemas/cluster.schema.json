@@ -47,6 +47,13 @@
         "gatewayClassName": {
           "type": "string"
         },
+        "preloadingNodeSelector": {
+          "type": "object",
+          "description": "Labels a node must carry for the image-preloading DaemonSet to run on it. Omit to preload onto every node. Needs chart 2.6.0 or later, older charts ignore it.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "sharedGateway": {
           "type": "object",
           "additionalProperties": false,

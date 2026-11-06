@@ -135,6 +135,10 @@ jobs:
           # vendored reposilite chart has its own key and defaults to
           # csi-rbd-sc, so setting only the operator's would leave a PVC that
           # never binds on a cluster that does not offer that class.
+          # Which nodes can hold the preloaded images is a cluster property too.
+          # JSON is valid YAML, and {} renders no nodeSelector at all, so clusters
+          # without a pool stay as they are.
+          PRELOAD=$(yq -o=json -I=0 '.spec.preloadingNodeSelector // {}' "$C")
           cat > cluster-defaults.yaml <<EOF
           operator:
             storageClassName: ${SC}
@@ -142,8 +146,11 @@ jobs:
             reposilite:
               persistence:
                 storageClass: ${SC}
+          preloading:
+            nodeSelector: ${PRELOAD}
           EOF
           echo "storageClassName: ${SC}"
+          echo "preloading.nodeSelector: ${PRELOAD}"
 
       - name: Set up kubeconfig
         run: |
