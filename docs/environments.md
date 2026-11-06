@@ -36,7 +36,7 @@ base sets.
 
 | Cluster | Environments | Notes |
 |---|---|---|
-| `tum-student` | `test1.…`, `test2.…`, `test3.…`, `e2e.…`, `staging.eduide.student.k8s.aet.cit.tum.de` | everything non-production |
+| `tum-student` | `test1.…`, `test2.…`, `e2e.…`, `staging.eduide.student.k8s.aet.cit.tum.de` | everything non-production |
 | `tum-production` | `eduide.artemis.cit.tum.de` | TUM's own installation |
 | `eduide` | `bonn.eduide.aet.cit.tum.de`, `mannheim.eduide.aet.cit.tum.de` | other universities. Single node k3s (`parma`), no load balancer |
 
@@ -93,7 +93,7 @@ installations elsewhere may bring their own entirely.
 
 | Environment | authUrl | realm | clientId |
 |---|---|---|---|
-| test1, test2, test3, e2e-test, staging | `keycloak-test.aet.cit.tum.de` | `tum` | `eduide` |
+| test1, test2, e2e-test, staging | `keycloak-test.aet.cit.tum.de` | `tum` | `eduide` |
 | tum-production | `keycloak.aet.cit.tum.de` | `tum` | `eduide` |
 | mannheim | `keycloak.aet.cit.tum.de` | `external_register` | `eduide` |
 | bonn | **not configured** | - | - |
@@ -215,10 +215,19 @@ Actions -> Deploy -> image_overrides: {"controlPlane": "pr-451"}
 
 ## Applications and preloading
 
-`appDefinitions.apps` in the chart is the single source of truth for three
-things: the AppDefinition custom resources, the app list the landing page
-offers, and the images preloaded onto every node. **No environment lists any of
-them.** Adding a language is one entry in the chart.
+The chart's `appDefinitions.catalog` defines the IDE images EduIDE officially
+releases. An environment names the apps it offers in `appDefinitions.enabled`,
+and puts only what it changes (for example `minInstances`) under
+`appDefinitions.apps`. An image only one installation uses is defined in full
+under `apps` and listed in `enabled` too (Mannheim's `thm-java-25`). App names
+are the plain image name (`java-17`, not `java-17-latest`).
+That one list is the single source of truth for three things: the
+AppDefinition custom resources, the app list the landing page offers, and the
+images preloaded onto every node. **No environment lists images or landing page
+entries.** An environment without `enabled` offers every definition: the whole catalog
+plus its own `apps`. A name in `enabled` with no definition is skipped, and the
+deploy log shows a warning naming it.
+Adding a language is one entry in the chart's catalog.
 
 They used to be three hand-maintained lists across two repositories, the
 preload one addressed by array index. Production offered `c-templates` while

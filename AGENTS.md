@@ -18,7 +18,7 @@ An environment is one namespace on one cluster.
 
 | Cluster | Environments |
 |---|---|
-| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`test3.…`<br>`e2e.…`<br>`staging.…` |
+| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`e2e.…`<br>`staging.…` |
 | `tum-production` | `eduide.artemis.cit.tum.de` |
 | `eduide` | `bonn.eduide.aet.cit.tum.de`<br>`mannheim.eduide.aet.cit.tum.de` |
 
@@ -186,11 +186,13 @@ one version knob per source repository - `versions.ide` (EduIDE),
 names exactly one of them. `versions.ide` empty means the chart's `appVersion`,
 so a plain install pins every IDE image to the released tag.
 
-**Do not list images to preload, and do not list app definitions.** Both derive
-from `appDefinitions.apps` in the chart, along with the landing page's app
-list. They used to be three hand-maintained lists - that is how production
-ended up offering `c-templates` while preloading everything except
-`c-templates`. Adding a language is one entry in the chart.
+**Do not list images to preload, and do not define apps the chart's catalog has.** Pick
+them from the chart's `appDefinitions.catalog` with `appDefinitions.enabled`;
+preloading and the landing page's app list derive from that. They used to be
+three hand-maintained lists - that is how production ended up offering
+`c-templates` while preloading everything except `c-templates`. Adding an
+official language is one entry in the chart's catalog; a custom build for one
+environment goes under that environment's `apps` and into its `enabled`.
 
 **Staging resolves an immutable `latest-<sha>` tag, never a floating one.** With
 a floating tag the pod template does not change between upgrades, so

@@ -28,6 +28,8 @@ gateway:
     namespace: eduide-system
     sectionName: test1-webview
 landingPage:
+  # The 2.7.0 catalog name; _base.yaml keeps the old one for older charts.
+  appDefinition: java-17-templates
   # Artemis links from this host start the IDE without a Launch click.
   trustedArtemisHosts:
     - artemis-test1.artemis.cit.tum.de
@@ -53,3 +55,24 @@ keycloak:
   clientId: eduide
 eduide-shared-cache:
   enabled: true
+
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+# Test environments offer Java 17 and Java 25 only. Picked from the chart's
+# appDefinitions.catalog; needs chart 2.7.0 or later, older charts ignore it.
+# This cluster's pod and service CIDRs (198.18.0.0/16, 198.19.0.0/16) are outside
+# the chart's private range defaults, so they are added for session egress.
+networkPolicies:
+  privateEgressCidrs:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 100.64.0.0/10
+  - 198.18.0.0/15
+appDefinitions:
+  enabled:
+    - java-17
+    - java-17-templates
+    - java-25
+    - java-25-templates

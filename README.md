@@ -18,7 +18,7 @@ An environment is one namespace on one cluster.
 
 | Cluster | Environments |
 |---|---|
-| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`test3.…`<br>`e2e.…`<br>`staging.…` |
+| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`e2e.…`<br>`staging.…` |
 | `tum-production` | `eduide.artemis.cit.tum.de` |
 | `eduide` | `bonn.eduide.aet.cit.tum.de`<br>`mannheim.eduide.aet.cit.tum.de` |
 
@@ -87,9 +87,9 @@ That is all. Everything else is derived or shared:
 | | Where it comes from |
 |---|---|
 | Image tags | `versions.ide` / `versions.cloud` / `versions.landingPage` in the chart |
-| App definitions | `appDefinitions.apps` in the chart |
-| Images to preload | derived from `appDefinitions.apps` |
-| The landing page's app list | derived from `appDefinitions.apps` |
+| App definitions | `appDefinitions.catalog` in the chart; the environment picks with `appDefinitions.enabled` |
+| Images to preload | derived from the enabled apps |
+| The landing page's app list | derived from the enabled apps |
 | Storage class | `clusters/<name>.yaml` |
 | Gateway listeners | derived from each environment's `parentRefs` |
 | Monitored namespaces | derived from the environments on the cluster |
