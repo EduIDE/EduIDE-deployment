@@ -49,9 +49,6 @@ landingPage:
     scientificUse: true
   sentry:
     enable: false
-  footerLinks:
-    attribution:
-      version: v1.1.0
   infoTitle: Welcome to EduIDE Cloud
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)

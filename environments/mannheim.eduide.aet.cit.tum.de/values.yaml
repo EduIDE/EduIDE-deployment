@@ -51,9 +51,6 @@ landingPage:
     scientificUse: true
   appDefinition: thm-java-25-latest
   infoTitle: Welcome to EduIDE (Mannheim)
-  footerLinks:
-    attribution:
-      version: Mannheim-v1.0.0
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
   #   mannheim.eduide.aet.cit.tum.de                      landing page

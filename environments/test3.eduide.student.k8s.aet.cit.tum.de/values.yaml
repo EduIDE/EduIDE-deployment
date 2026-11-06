@@ -29,9 +29,6 @@ gateway:
     sectionName: test3-webview
 landingPage:
   loadingText: ⚡ Setting up your development workspace...
-  footerLinks:
-    attribution:
-      version: Test3-v1.0.0
   infoTitle: 🚀 Welcome to EduIDE Cloud (Test3)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)

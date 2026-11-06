@@ -28,9 +28,6 @@ gateway:
     namespace: eduide-system
     sectionName: test2-webview
 landingPage:
-  footerLinks:
-    attribution:
-      version: Test2-v1.0.0
   infoTitle: Welcome to EduIDE Cloud (Test2)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
