@@ -172,9 +172,9 @@ vendored reposilite chart with its own key), so the deploy sets both;
 `test-deploy-logic.sh` renders every environment against a sentinel and fails if
 any storage key escapes the cluster default.
 
-**The dependency cache is off in production.** `eduide-shared-cache.enabled: false` in
-all three production installations, asserted by `test-deploy-logic.sh`. Nothing
-consumes it anywhere today regardless: the operator's `enableBuildCaching` and
+**The dependency cache is off everywhere.** `eduide-shared-cache.enabled: false` in
+every environment since 2026-11-06; `test-deploy-logic.sh` asserts it for the
+production installations. Nothing consumes it anywhere regardless: the operator's `enableBuildCaching` and
 `enableDependencyCaching` default to false and no environment overrides them,
 so enabling the chart alone deploys a cache with no clients.
 
