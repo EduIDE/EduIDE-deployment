@@ -43,7 +43,7 @@ landingPage:
     # A processing purpose rather than a preference, so it is stated only on the
     # production installations that have a basis for it, not on test or staging.
     scientificUse: true
-  appDefinition: javascript
+  appDefinition: javascript-latest
   infoTitle: Welcome to EduIDE (Bonn)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -92,7 +92,8 @@ eduide-shared-cache:
 # Applications
 # ---------------------------------------------------------------------------
 # Bonn offers Javascript only.
-# Only what `enabled` names is rendered, preloaded and offered.
+# The chart ships eight; the rest are removed rather than hidden, so nothing is
+# rendered, preloaded or offered for them.
 appDefinitions:
   # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
   # These render from values on every deploy, unlike minInstances which is read
@@ -102,10 +103,15 @@ appDefinitions:
     limitsMemory: 3000M
     # Minutes. 3 hours.
     timeout: 180
-  enabled:
-    - javascript
   apps:
-    javascript:
+    c-latest: null
+    c-templates-latest: null
+    java-17-latest: null
+    java-17-templates-latest: null
+    ocaml-latest: null
+    python-latest: null
+    rust-latest: null
+    javascript-latest:
       # Unused while operator.eagerStart is false above: nothing is kept warm.
       # Left at ten so turning the pool back on restores it. Only a bootstrap
       # default: the chart reads the
@@ -113,6 +119,9 @@ appDefinitions:
       # so changing this alone does nothing to an AppDefinition that already
       # exists - patch the live resource too.
       minInstances: 10
+      image: eduide/javascript
+      landingPage:
+        label: Javascript
 # Reap a workspace this long after its last session. Default is 14 days.
 theia-workspace-garbage-collector:
   enabled: true
