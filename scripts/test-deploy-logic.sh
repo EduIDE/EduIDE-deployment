@@ -96,10 +96,42 @@ done
 echo
 echo "=== storage class follows the cluster ==="
 CHART="${EDUIDE_CHART:-oci://ghcr.io/eduide/charts/eduide}"
-CHART_VERSION=$(yq -r '.spec.platform.chartVersion' "$ROOT/environments/test1.eduide.student.k8s.aet.cit.tum.de/env.yaml")
-VER_ARG=()
-if [[ "$CHART" == oci://* ]]; then VER_ARG=(--version "$CHART_VERSION"); fi
-if helm show chart "$CHART" "${VER_ARG[@]}" >/dev/null 2>&1; then
+
+# Each environment renders against the chart version it actually selects. This
+# read one environment's version and used it for all of them, which inverted the
+# coverage: a bump lands on staging and production first, so the environments
+# being changed were exactly the ones never rendered against the chart they had
+# asked for.
+env_ver_arg() {
+  if [[ "$CHART" == oci://* ]]; then
+    printf -- '--version %s' "$(yq -r '.spec.platform.chartVersion' "$1")"
+  fi
+}
+
+# yq over several files separates the documents with ---, so each file is read
+# on its own rather than filtering that back out of one stream.
+chart_versions() {
+  local f
+  for f in "$ROOT"/environments/*/env.yaml; do
+    yq -r '.spec.platform.chartVersion' "$f"
+  done | sort -u
+}
+
+chart_reachable() {
+  local v
+  if [[ "$CHART" != oci://* ]]; then
+    helm show chart "$CHART" >/dev/null 2>&1
+    return
+  fi
+  for v in $(chart_versions); do
+    if ! helm show chart "$CHART" --version "$v" >/dev/null 2>&1; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+if chart_reachable; then
   W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
   {
     # The same two keys the Cluster defaults step in deploy.yml writes.
@@ -111,7 +143,8 @@ if helm show chart "$CHART" "${VER_ARG[@]}" >/dev/null 2>&1; then
     for f in "$ROOT"/environments/*/env.yaml; do
       env=$(basename "$(dirname "$f")")
       ns=$(yq -r '.spec.namespace' "$f")
-      out=$(helm template eduide "$CHART" "${VER_ARG[@]}" -n "$ns" \
+      read -r -a ver_arg <<<"$(env_ver_arg "$f")"
+      out=$(helm template eduide "$CHART" "${ver_arg[@]}" -n "$ns" \
               -f "$W/cd.yaml" -f "$ROOT/environments/_base.yaml" \
               -f "$ROOT/environments/$env/values.yaml" -f "$W/sec.yaml" 2>/dev/null) || {
         bad "$env does not render" ""; continue; }
@@ -143,6 +176,25 @@ for f in "$ROOT"/environments/*/env.yaml; do
     ok "$env dependency cache off"
   else
     bad "$env must set eduide-shared-cache.enabled to false" "eduide-shared-cache.enabled=$a"
+  fi
+done
+
+# --- persistent workspaces start lazily ------------------------------------
+# A prewarmed instance never mounts the workspace PVC, so with eagerStart the
+# files live in the pod and die with it. Bonn and Mannheim promised persistent
+# workspaces this way for a month and kept none.
+echo
+echo "=== persistent workspaces start lazily ==="
+for f in "$ROOT"/environments/*/env.yaml; do
+  env=$(basename "$(dirname "$f")")
+  merged=$(yq eval-all '. as $item ireduce ({}; . * $item)' \
+             "$ROOT/environments/_base.yaml" "$ROOT/environments/$env/values.yaml")
+  [[ "$(yq -r '.landingPage.ephemeralStorage' <<<"$merged")" == "false" ]] || continue
+  e=$(yq -r '.operator.eagerStart' <<<"$merged")
+  if [[ "$e" == "false" ]]; then
+    ok "$env persists workspaces and starts lazily"
+  else
+    bad "$env persists workspaces but sets operator.eagerStart" "operator.eagerStart=$e"
   fi
 done
 

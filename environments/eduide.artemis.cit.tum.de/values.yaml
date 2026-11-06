@@ -42,6 +42,9 @@ gateway:
 operator:
   replicas: 3
 landingPage:
+  # Artemis links from this host start the IDE without a Launch click.
+  trustedArtemisHosts:
+    - artemis.cit.tum.de
   privacy:
     # Anonymised usage data from this installation is evaluated for research.
     # A processing purpose rather than a preference, so it is stated only on the
@@ -49,9 +52,6 @@ landingPage:
     scientificUse: true
   sentry:
     enable: false
-  footerLinks:
-    attribution:
-      version: v1.1.0
   infoTitle: Welcome to EduIDE Cloud
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)

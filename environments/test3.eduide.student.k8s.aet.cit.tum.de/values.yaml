@@ -28,10 +28,10 @@ gateway:
     namespace: eduide-system
     sectionName: test3-webview
 landingPage:
+  # Artemis links from this host start the IDE without a Launch click.
+  trustedArtemisHosts:
+    - artemis-test3.artemis.cit.tum.de
   loadingText: ⚡ Setting up your development workspace...
-  footerLinks:
-    attribution:
-      version: Test3-v1.0.0
   infoTitle: 🚀 Welcome to EduIDE Cloud (Test3)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
