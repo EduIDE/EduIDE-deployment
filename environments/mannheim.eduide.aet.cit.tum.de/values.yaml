@@ -49,7 +49,7 @@ landingPage:
     # - so this installation cannot end up publishing a retention period it does
     # not keep.
     scientificUse: true
-  appDefinition: thm-java-25-latest
+  appDefinition: thm-java-25
   infoTitle: Welcome to EduIDE (Mannheim)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -97,12 +97,15 @@ appDefinitions:
     limitsMemory: 3000M
     # Minutes. 3 hours.
     timeout: 180
-  # TH Mannheim's own Java 25 image. Its definition, including the landing
-  # page logo, lives in the chart's appDefinitions.catalog.
+  # Mannheim's own image, defined below. The chart's catalog holds only
+  # official releases.
   enabled:
-    - thm-java-25-latest
+    - thm-java-25
   apps:
-    thm-java-25-latest:
+    # TH Mannheim's own Java 25 image. In EduIDE's build matrix since #170, so
+    # it carries the same numbered tag as every other IDE image and needs no
+    # pin of its own.
+    thm-java-25:
       # Unused while operator.eagerStart is false above: nothing is kept warm.
       # Left at ten so turning the pool back on restores it. Only a bootstrap
       # default: the chart reads the
@@ -110,6 +113,14 @@ appDefinitions:
       # so changing this alone does nothing to an AppDefinition that already
       # exists - patch the live resource too.
       minInstances: 10
+      image: eduide/thm-java-25
+      landingPage:
+        label: Java 25
+        # The landing page derives the icon from the label when this is unset:
+        # "Java 25" becomes /assets/logos/java-25-logo.png, which it does not
+        # bundle, so the tile rendered with a broken image. Named explicitly to
+        # the general Java logo it does ship.
+        image: java-logo.png
 # Reap a workspace this long after its last session. Default is 14 days.
 theia-workspace-garbage-collector:
   enabled: true

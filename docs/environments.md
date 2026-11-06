@@ -215,13 +215,18 @@ Actions -> Deploy -> image_overrides: {"controlPlane": "pr-451"}
 
 ## Applications and preloading
 
-The chart's `appDefinitions.catalog` defines every IDE image EduIDE builds.
-An environment names the ones it offers in `appDefinitions.enabled`, and puts
-only what it changes (for example `minInstances`) under `appDefinitions.apps`.
+The chart's `appDefinitions.catalog` defines the IDE images EduIDE officially
+releases. An environment names the apps it offers in `appDefinitions.enabled`,
+and puts only what it changes (for example `minInstances`) under
+`appDefinitions.apps`. An image only one installation uses is defined in full
+under `apps` and listed in `enabled` too (Mannheim's `thm-java-25`). App names
+are the plain image name (`java-17`, not `java-17-latest`).
 That one list is the single source of truth for three things: the
 AppDefinition custom resources, the app list the landing page offers, and the
 images preloaded onto every node. **No environment lists images or landing page
-entries.** An environment without `enabled` gets the chart's default set.
+entries.** An environment without `enabled` offers every definition: the whole catalog
+plus its own `apps`. A name in `enabled` with no definition is skipped, and the
+deploy log shows a warning naming it.
 Adding a language is one entry in the chart's catalog.
 
 They used to be three hand-maintained lists across two repositories, the

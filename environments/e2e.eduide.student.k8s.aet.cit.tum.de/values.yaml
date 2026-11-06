@@ -60,7 +60,7 @@ eduide-shared-cache:
 # appDefinitions.catalog; needs chart 2.7.0 or later, older charts ignore it.
 appDefinitions:
   enabled:
-    - java-17-latest
-    - java-17-templates-latest
-    - java-25-latest
-    - java-25-templates-latest
+    - java-17
+    - java-17-templates
+    - java-25
+    - java-25-templates

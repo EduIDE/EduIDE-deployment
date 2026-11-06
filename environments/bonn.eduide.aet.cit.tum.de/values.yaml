@@ -43,7 +43,7 @@ landingPage:
     # A processing purpose rather than a preference, so it is stated only on the
     # production installations that have a basis for it, not on test or staging.
     scientificUse: true
-  appDefinition: javascript-latest
+  appDefinition: javascript
   infoTitle: Welcome to EduIDE (Bonn)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -103,9 +103,9 @@ appDefinitions:
     # Minutes. 3 hours.
     timeout: 180
   enabled:
-    - javascript-latest
+    - javascript
   apps:
-    javascript-latest:
+    javascript:
       # Unused while operator.eagerStart is false above: nothing is kept warm.
       # Left at ten so turning the pool back on restores it. Only a bootstrap
       # default: the chart reads the
