@@ -30,6 +30,8 @@ gateway:
 landingPage:
   # The 2.7.0 catalog name; _base.yaml keeps the old one for older charts.
   appDefinition: java-17-templates
+  # No trustedArtemisHosts: no Artemis links here. Staging1 and staging2 still
+  # point their EduIDE portal at the retired theia-staging.artemis.cit.tum.de.
   infoTitle: Welcome to EduIDE Cloud (Staging)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)

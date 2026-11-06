@@ -45,6 +45,9 @@ landingPage:
   # Artemis links from this host start the IDE without a Launch click.
   trustedArtemisHosts:
     - artemis.cit.tum.de
+    # The host Artemis actually puts in its links: artemis.cit.tum.de redirects
+    # here, and the landing page compares hosts exactly.
+    - artemis.tum.de
   privacy:
     # Anonymised usage data from this installation is evaluated for research.
     # A processing purpose rather than a preference, so it is stated only on the
