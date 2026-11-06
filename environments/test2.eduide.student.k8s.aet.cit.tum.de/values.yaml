@@ -53,3 +53,41 @@ keycloak:
   clientId: eduide
 eduide-shared-cache:
   enabled: true
+# TEMPORARY - test of every repo's main on test2 (2026-11-06). Revert after.
+# This cluster's pod and service CIDRs (198.18.0.0/16, 198.19.0.0/16) are outside
+# the chart's private range defaults, so sessions must not reach them either.
+networkPolicies:
+  privateEgressCidrs:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 100.64.0.0/10
+  - 198.18.0.0/15
+# Java 17 and Java 25 only, the planned app set for test environments. EduIDE
+# main no longer builds rust and ocaml, which chart 2.6.2 still offers.
+appDefinitions:
+  apps:
+    c-latest: null
+    c-templates-latest: null
+    javascript-latest: null
+    ocaml-latest: null
+    python-latest: null
+    rust-latest: null
+    java-25-latest:
+      image: eduide/java-25
+      requestsCpu: 500m
+      limitsMemory: 3000M
+      landingPage:
+        label: Java 25
+        image: java-logo.png
+        visible: false
+    java-25-templates-latest:
+      image: eduide/java-25-templates
+      requestsCpu: 500m
+      limitsMemory: 3000M
+      landingPage:
+        label: Java 25
+        image: java-logo.png
+        buildSystems:
+          - { id: maven, label: Maven }
+          - { id: gradle, label: Gradle }
