@@ -75,3 +75,14 @@ keycloak:
   clientId: eduide
 eduide-shared-cache:
   enabled: false
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+# Chart defaults (no enabled list). Java 25 is kept warm like java-17 (catalog
+# default 3 for java-17, 0 for java-25). minInstances is only a bootstrap
+# default: the chart reads the live value back on every upgrade, so it applies
+# when java-25 is first created here and later changes need a live patch too.
+appDefinitions:
+  apps:
+    java-25:
+      minInstances: 3
