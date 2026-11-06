@@ -69,6 +69,7 @@ file. `Deploy` does the second.
 | Move staging | Actions → **Deploy staging** |
 | Move production | Bump `chartVersion` in `environments/tum-production/env.yaml`, open a PR |
 | Undo a bad deploy | Actions → **Rollback** |
+| Show the maintenance page ("EduIDE is currently unavailable") | Actions → **Maintenance page**, `mode: on`; `mode: off` or any deploy ends it |
 | Bring up a new cluster | Actions → **Bootstrap cluster** |
 
 `e2e.eduide.student.k8s.aet.cit.tum.de` deploys from `main` automatically and
@@ -78,6 +79,10 @@ the functional tests run against it. Do not point manual work at it - use the
 Every deploy asserts which cluster it reached before touching anything, shows a
 `helm diff` before applying, runs `--wait --atomic`, and prints a summary read
 back from the cluster rather than echoed from its inputs.
+
+The maintenance page needs chart >= 2.4.0. It is what the landing host serves
+whenever the landing page has no ready pod, so `Maintenance page` only scales
+the landing page to 0. The REST service and running sessions are untouched.
 
 ## What an environment does and does not configure
 

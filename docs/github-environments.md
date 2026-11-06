@@ -8,7 +8,7 @@ There are **two kinds**, and they are not interchangeable.
 
 | Kind | Named | Used by | Holds |
 |---|---|---|---|
-| Per environment | the installation's landing hostname, which is also its directory under `environments/` | `Deploy`, `Rollback` | `KUBECONFIG`, `THEIA_KEYCLOAK_COOKIE_SECRET` |
+| Per environment | the installation's landing hostname, which is also its directory under `environments/` | `Deploy`, `Rollback`, `Maintenance page` | `KUBECONFIG`, `THEIA_KEYCLOAK_COOKIE_SECRET` |
 | Per cluster | `spec.bootstrapEnvironment` in `clusters/<name>.yaml`, by convention `cluster-<name>` | `Bootstrap cluster` | `KUBECONFIG`, `THEIA_WILDCARD_CERTIFICATE_CERT`, `THEIA_WILDCARD_CERTIFICATE_KEY` |
 
 A deploy never installs anything cluster-scoped, and a bootstrap never installs

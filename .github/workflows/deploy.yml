@@ -185,6 +185,22 @@ jobs:
             exit 1
           fi
 
+      - name: Warn when this deploy ends maintenance
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          # maintenance.yml shows the maintenance page by scaling the landing
+          # page to 0. This upgrade scales it back, so say so rather than let
+          # maintenance end without anyone noticing.
+          n=$(kubectl -n "${{ steps.env.outputs.namespace }}" get deploy landing-page-deployment \
+                -o jsonpath='{.spec.replicas}' 2>/dev/null || true)
+          if [[ "$n" == "0" ]]; then
+            msg="The landing page is at 0 replicas (maintenance mode). This deploy brings it back and ends maintenance."
+            echo "::warning::$msg"
+            echo "> [!WARNING]" >> "$GITHUB_STEP_SUMMARY"
+            echo "> $msg" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Resolve image overrides
         id: images
         run: |
