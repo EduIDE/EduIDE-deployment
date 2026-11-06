@@ -55,7 +55,7 @@ keycloak:
   realm: tum
   clientId: eduide
 eduide-shared-cache:
-  enabled: true
+  enabled: false
 
 # ---------------------------------------------------------------------------
 # Applications
