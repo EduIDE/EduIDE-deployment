@@ -38,8 +38,7 @@
         "environments/staging.eduide.student.k8s.aet.cit.tum.de/**",
         "environments/e2e.eduide.student.k8s.aet.cit.tum.de/**",
         "environments/test1.eduide.student.k8s.aet.cit.tum.de/**",
-        "environments/test2.eduide.student.k8s.aet.cit.tum.de/**",
-        "environments/test3.eduide.student.k8s.aet.cit.tum.de/**"
+        "environments/test2.eduide.student.k8s.aet.cit.tum.de/**"
       ],
       "groupName": "staging and test chart version",
       "groupSlug": "chart-test",
