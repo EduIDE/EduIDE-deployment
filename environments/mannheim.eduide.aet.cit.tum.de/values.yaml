@@ -49,7 +49,7 @@ landingPage:
     # - so this installation cannot end up publishing a retention period it does
     # not keep.
     scientificUse: true
-  appDefinition: thm-java-25-latest
+  appDefinition: thm-java-25
   infoTitle: Welcome to EduIDE (Mannheim)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -86,8 +86,7 @@ eduide-shared-cache:
 # Applications
 # ---------------------------------------------------------------------------
 # Mannheim offers the TH Mannheim Java 25 image only.
-# The chart ships eight; the rest are removed rather than hidden, so nothing is
-# rendered, preloaded or offered for them.
+# Only what `enabled` names is rendered, preloaded and offered.
 
 appDefinitions:
   # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
@@ -98,19 +97,15 @@ appDefinitions:
     limitsMemory: 3000M
     # Minutes. 3 hours.
     timeout: 180
+  # Mannheim's own image, defined below. The chart's catalog holds only
+  # official releases.
+  enabled:
+    - thm-java-25
   apps:
-    c-latest: null
-    c-templates-latest: null
-    java-17-latest: null
-    java-17-templates-latest: null
-    javascript-latest: null
-    ocaml-latest: null
-    python-latest: null
-    rust-latest: null
     # TH Mannheim's own Java 25 image. In EduIDE's build matrix since #170, so
     # it carries the same numbered tag as every other IDE image and needs no
     # pin of its own.
-    thm-java-25-latest:
+    thm-java-25:
       # Unused while operator.eagerStart is false above: nothing is kept warm.
       # Left at ten so turning the pool back on restores it. Only a bootstrap
       # default: the chart reads the
