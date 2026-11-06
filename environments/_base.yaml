@@ -55,7 +55,7 @@ landingPage:
       email: support.aet@xcit.tum.de
     dataProtectionOfficer:
       email: datenschutz(at)tum.de
-  appDefinition: java-17-templates-latest
+  appDefinition: java-17-templates
   infoText: ' '
   loadingText: Preparing your personal Online IDE...
   logoFileExtension: png
