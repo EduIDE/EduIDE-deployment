@@ -215,10 +215,14 @@ Actions -> Deploy -> image_overrides: {"controlPlane": "pr-451"}
 
 ## Applications and preloading
 
-`appDefinitions.apps` in the chart is the single source of truth for three
-things: the AppDefinition custom resources, the app list the landing page
-offers, and the images preloaded onto every node. **No environment lists any of
-them.** Adding a language is one entry in the chart.
+The chart's `appDefinitions.catalog` defines every IDE image EduIDE builds.
+An environment names the ones it offers in `appDefinitions.enabled`, and puts
+only what it changes (for example `minInstances`) under `appDefinitions.apps`.
+That one list is the single source of truth for three things: the
+AppDefinition custom resources, the app list the landing page offers, and the
+images preloaded onto every node. **No environment lists images or landing page
+entries.** An environment without `enabled` gets the chart's default set.
+Adding a language is one entry in the chart's catalog.
 
 They used to be three hand-maintained lists across two repositories, the
 preload one addressed by array index. Production offered `c-templates` while
