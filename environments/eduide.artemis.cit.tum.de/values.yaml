@@ -53,8 +53,6 @@ landingPage:
     # A processing purpose rather than a preference, so it is stated only on the
     # production installations that have a basis for it, not on test or staging.
     scientificUse: true
-  sentry:
-    enable: false
   infoTitle: Welcome to EduIDE Cloud
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)

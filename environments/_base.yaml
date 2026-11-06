@@ -27,8 +27,6 @@ monitor:
     enable: true
     interval: 3
 operator:
-  sentry:
-    enable: true
   # These three were defaults of the theia-cloud-combined umbrella, not of any
   # environment values file, so deriving _base.yaml from the environments missed
   # them and the new chart defaults them differently. Carried forward
@@ -61,12 +59,6 @@ landingPage:
   infoText: ' '
   loadingText: Preparing your personal Online IDE...
   logoFileExtension: png
-  sentry:
-    enable: true
-    # The landing page lost its built-in DSN in chart 2.5.1, so without this
-    # Sentry stays off. The same TUM project the operator and the REST service
-    # report to; a browser DSN is public by design.
-    dsn: https://a3851baf2ece0c6bec13e1c99fd3111f@sentry.aet.cit.tum.de/13
   footerLinks:
     attribution:
       text: Built by TUM AET Research Group 👨‍💻
