@@ -164,190 +164,52 @@ Three rules look broader than they are:
   ClusterRole with rights the deployer lacks, is refused (tested).
 
 The namespace must exist beforehand: `create namespaces` is cluster-wide, so
-the deployer does not get it, and the deploy workflow creates the namespace
-only when it is missing.
+the deployer does not get it. Bootstrap creates a missing one and leaves an
+existing one untouched, and the deploy workflow does the same.
 
 `clean_install` additionally deletes Sessions, StatefulSets and PVCs. It is
 refused for production, so this ServiceAccount cannot run it; a test
 environment that needs it uses a broader kubeconfig.
 
+**Bootstrap creates it.** Set `spec.deployers: true` in `clusters/<name>.yaml`
+and run `Bootstrap cluster` with `eduide-cluster` 2.9.0 or later. It renders
+the ServiceAccount, its token Secret and the rules above for every
+environment on the cluster. The rules live in the chart, next to the templates
+whose objects they deploy, and EduIDE-Helm's `test-deployers.sh` fails when the
+`eduide` chart renders something the deployer may not touch. Then build the
+kubeconfig and store it without writing it to a file:
+
 ```bash
-NS=eduide-tum-production       # spec.namespace of the environment
-kubectl --context "$CTX" create namespace "$NS" --dry-run=client -o yaml \
-  | kubectl --context "$CTX" apply -f -
-kubectl --context "$CTX" apply -f - <<EOF
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: eduide-deployer
-  namespace: $NS
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: eduide-deployer-token
-  namespace: $NS
-  annotations:
-    kubernetes.io/service-account.name: eduide-deployer
-type: kubernetes.io/service-account-token
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: eduide-deployer
-  namespace: $NS
-rules:
-  # What the eduide chart renders. Helm reads each object by name.
-  - apiGroups: [""]
-    resources: ["configmaps", "services", "serviceaccounts"]
-    verbs: ["get", "create", "update", "patch", "delete"]
-  - apiGroups: ["apps"]
-    resources: ["daemonsets"]
-    verbs: ["get", "create", "update", "patch", "delete"]
-  - apiGroups: ["networking.k8s.io"]
-    resources: ["networkpolicies"]
-    verbs: ["get", "create", "update", "patch", "delete"]
-  - apiGroups: ["rbac.authorization.k8s.io"]
-    resources: ["roles", "rolebindings"]
-    verbs: ["get", "create", "update", "patch", "delete"]
-  - apiGroups: ["gateway.envoyproxy.io"]
-    resources: ["backendtrafficpolicies"]
-    verbs: ["get", "create", "update", "patch", "delete"]
-  # Rendered once landingPage.replicas or service.replicas is above 1.
-  - apiGroups: ["policy"]
-    resources: ["poddisruptionbudgets"]
-    verbs: ["get", "create", "update", "patch", "delete"]
-  # Listed as well: Helm keeps its releases in Secrets and finds them by label;
-  # the live summary lists Deployments and AppDefinitions, `rollout status`
-  # watches; the chart looks up existing AppDefinitions.
-  - apiGroups: [""]
-    resources: ["secrets"]
-    verbs: ["get", "list", "create", "update", "patch", "delete"]
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  - apiGroups: ["theia.cloud"]
-    resources: ["appdefinitions"]
-    verbs: ["get", "list", "create", "update", "patch", "delete"]
-  # The chart's Role for the operator grants exactly this on HTTPRoutes, and
-  # Kubernetes only lets a ServiceAccount grant what it holds itself.
-  - apiGroups: ["gateway.networking.k8s.io"]
-    resources: ["httproutes"]
-    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
-  # helm --wait follows a Deployment through its ReplicaSets. The chart's
-  # Roles for the operator and the garbage collector grant these pod and
-  # workspace rights, so the deployer has to hold them too.
-  - apiGroups: ["apps"]
-    resources: ["replicasets"]
-    verbs: ["list"]
-  - apiGroups: [""]
-    resources: ["pods"]
-    verbs: ["get", "list", "watch", "delete", "deletecollection"]
-  - apiGroups: ["theia.cloud"]
-    resources: ["workspaces"]
-    verbs: ["get", "list", "watch", "delete"]
-  # --create-namespace looks the namespace up first.
-  - apiGroups: [""]
-    resources: ["namespaces"]
-    verbs: ["get"]
-    resourceNames: ["$NS"]
-  # The chart's RoleBindings reference these two ClusterRoles from bootstrap.
-  - apiGroups: ["rbac.authorization.k8s.io"]
-    resources: ["clusterroles"]
-    verbs: ["bind"]
-    resourceNames: ["operator-api-access", "service-api-access"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: eduide-deployer
-  namespace: $NS
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: eduide-deployer
-subjects:
-  - kind: ServiceAccount
-    name: eduide-deployer
-    namespace: $NS
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: eduide-deployer-identity-$NS
-  namespace: eduide-system
-rules:
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get"]
-    resourceNames: ["eduide-cluster-identity"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: eduide-deployer-identity-$NS
-  namespace: eduide-system
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: eduide-deployer-identity-$NS
-subjects:
-  - kind: ServiceAccount
-    name: eduide-deployer
-    namespace: $NS
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: eduide-deployer-$NS
-rules:
-  # The chart's one cluster-scoped grant for the operator, and its binding.
-  - apiGroups: ["rbac.authorization.k8s.io"]
-    resources: ["clusterroles", "clusterrolebindings"]
-    verbs: ["create"]
-  - apiGroups: ["rbac.authorization.k8s.io"]
-    resources: ["clusterroles", "clusterrolebindings"]
-    verbs: ["get", "update", "patch", "delete"]
-    resourceNames: ["operator-api-access-cluster-$NS"]
-  # That grant is read access to these two, which the deployer must hold to
-  # hand it on. The deploy also checks the AppDefinition CRD and counts nodes.
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["persistentvolumes"]
-    verbs: ["get", "list", "watch"]
-  - apiGroups: [""]
-    resources: ["nodes"]
-    verbs: ["list"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: eduide-deployer-$NS
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: eduide-deployer-$NS
-subjects:
-  - kind: ServiceAccount
-    name: eduide-deployer
-    namespace: $NS
-EOF
+ENV=eduide.artemis.cit.tum.de
+scripts/deployer-kubeconfig.sh "$ENV" "$CTX" \
+  | gh secret set KUBECONFIG --repo "$REPO" --env "$ENV"
 ```
 
-### Turning a token into a kubeconfig
-
-One function for both. It writes a file with a single context, so the workflow
-cannot pick the wrong one.
+**Taking over objects created by hand.** `tum-production` got its deployer from
+an earlier version of this page, before the chart had one. Helm refuses to
+install over objects it does not own, so label them once before the first
+bootstrap with 2.9.0:
 
 ```bash
-kubeconfig_for() {   # <namespace> <secret> <output file>
-  local token ca
-  token=$(kubectl --context "$CTX" -n "$1" get secret "$2" -o jsonpath='{.data.token}' | base64 -d)
-  ca=$(kubectl --context "$CTX" -n "$1" get secret "$2" -o jsonpath='{.data.ca\.crt}')
-  umask 077
-  cat > "$3" <<EOF
+NS=eduide-tum-production REL=eduide-cluster RELNS=eduide-system
+adopt() {
+  kubectl --context "$CTX" label "$@" app.kubernetes.io/managed-by=Helm --overwrite
+  kubectl --context "$CTX" annotate "$@" meta.helm.sh/release-name="$REL" meta.helm.sh/release-namespace="$RELNS" --overwrite
+}
+adopt -n "$NS" serviceaccount/eduide-deployer secret/eduide-deployer-token role/eduide-deployer rolebinding/eduide-deployer
+adopt -n "$RELNS" role/eduide-deployer-identity-"$NS" rolebinding/eduide-deployer-identity-"$NS"
+adopt clusterrole/eduide-deployer-"$NS" clusterrolebinding/eduide-deployer-"$NS"
+```
+
+### Storing and checking them
+
+The bootstrap kubeconfig, with a single context so the workflow cannot pick
+the wrong one:
+
+```bash
+token=$(kubectl --context "$CTX" -n eduide-system get secret eduide-bootstrap-token -o jsonpath='{.data.token}' | base64 -d)
+ca=$(kubectl --context "$CTX" -n eduide-system get secret eduide-bootstrap-token -o jsonpath='{.data.ca\.crt}')
+cat <<EOF | gh secret set KUBECONFIG --repo "$REPO" --env cluster-tum-production
 apiVersion: v1
 kind: Config
 clusters:
@@ -366,40 +228,33 @@ contexts:
       user: eduide
 current-context: eduide
 EOF
-}
-
-kubeconfig_for eduide-system eduide-bootstrap-token bootstrap.kubeconfig
-kubeconfig_for "$NS" eduide-deployer-token deploy.kubeconfig
 ```
 
-Check them before storing them. The deploy one must be refused anything
-outside its namespace:
+The deploy one comes from `scripts/deployer-kubeconfig.sh`, above. Check what
+it may do before relying on it; everything outside its namespace must be
+refused:
 
 ```bash
-kubectl --kubeconfig bootstrap.kubeconfig auth can-i '*' '*'                  # yes
-kubectl --kubeconfig deploy.kubeconfig -n "$NS" auth can-i create deployments  # yes
-kubectl --kubeconfig deploy.kubeconfig -n "$NS" auth can-i create appdefinitions.theia.cloud  # yes
-kubectl --kubeconfig deploy.kubeconfig -n eduide-system auth can-i get configmap/eduide-cluster-identity  # yes
-kubectl --kubeconfig deploy.kubeconfig -n default auth can-i create deployments  # no
-kubectl --kubeconfig deploy.kubeconfig auth can-i create customresourcedefinitions  # no
-kubectl --kubeconfig deploy.kubeconfig auth can-i create namespaces  # no
-kubectl --kubeconfig deploy.kubeconfig -n "$NS" auth can-i create pods --subresource=exec  # no
+D() { kubectl --kubeconfig <(scripts/deployer-kubeconfig.sh "$ENV" "$CTX") "$@"; }
+NS=$(yq -r .spec.namespace environments/$ENV/env.yaml)
+D -n "$NS" auth can-i create deployments                                   # yes
+D -n "$NS" auth can-i create appdefinitions.theia.cloud                    # yes, once the CRD exists
+D -n eduide-system auth can-i get configmap/eduide-cluster-identity        # yes
+D -n default auth can-i create deployments                                 # no
+D -n "$NS" auth can-i create pods --subresource=exec                       # no
+D auth can-i create customresourcedefinitions                              # no
+D auth can-i create namespaces                                             # no
 ```
 
-Store them and delete the files:
+**Rotating a token:** delete its Secret. For the deployer, run `Bootstrap
+cluster` again, which recreates it; for the bootstrap ServiceAccount, apply the
+manifest above again. Kubernetes invalidates the old token with the Secret.
+Then store the new kubeconfig.
 
-```bash
-gh secret set KUBECONFIG --repo "$REPO" --env cluster-tum-production < bootstrap.kubeconfig
-gh secret set KUBECONFIG --repo "$REPO" --env eduide.artemis.cit.tum.de < deploy.kubeconfig
-rm bootstrap.kubeconfig deploy.kubeconfig
-```
-
-**Rotating a token:** delete its Secret and apply the manifest again.
-Kubernetes invalidates the old token with the Secret and issues a new one, then
-rebuild the kubeconfig and store it again.
-
-**Revoking access:** delete the ServiceAccount, its bindings, and for the deploy
-one the ClusterRole and ClusterRoleBinding named `eduide-deployer-<namespace>`.
+**Revoking access:** for the deployer, drop the environment from the cluster
+(or set `spec.deployers: false`, which revokes every deployer on it) and
+bootstrap again. For the bootstrap ServiceAccount, delete it and its
+ClusterRoleBinding.
 
 ## Creating one
 

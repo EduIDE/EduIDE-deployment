@@ -80,6 +80,11 @@ spec:
   # the test cluster where the wildcard secrets are managed by hand.
   loadBalancerIP: 131.159.88.82
 
+  # Bootstrap creates the deploy ServiceAccount for each environment here, so
+  # the environment's KUBECONFIG holds only what a deploy needs. See
+  # docs/github-environments.md.
+  deployers: true
+
   runner: ubuntu-latest
   bootstrapEnvironment: cluster-tum-production
 

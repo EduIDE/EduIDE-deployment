@@ -181,6 +181,15 @@ pinned only from chart 2.8.0 on, with an operator that knows
 only. An environment must not set it. `test-deploy-logic.sh` fails if a
 workload rendered by a 2.8.0+ chart escapes the pool.
 
+**A deploy KUBECONFIG is a ServiceAccount, not a person.** With
+`spec.deployers: true`, bootstrap has `eduide-cluster` (2.9.0 and later) create a
+minimal deployer in every environment namespace, and
+`scripts/deployer-kubeconfig.sh` turns it into the secret. Its rules live in
+the chart, tested against what `eduide` renders, so a new kind there is a
+change in EduIDE-Helm, not here. Bootstrap creates a missing tenant namespace
+but never re-applies an existing one: that would strip the Rancher project
+annotation. See `docs/github-environments.md`.
+
 **The dependency cache is off everywhere.** `eduide-shared-cache.enabled: false` in
 every environment since 2026-11-06; `test-deploy-logic.sh` asserts it for the
 production installations. Nothing consumes it anywhere regardless: the operator's `enableBuildCaching` and

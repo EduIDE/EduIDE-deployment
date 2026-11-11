@@ -47,6 +47,10 @@
         "gatewayClassName": {
           "type": "string"
         },
+        "deployers": {
+          "type": "boolean",
+          "description": "Bootstrap creates a minimal deploy ServiceAccount in every environment namespace on this cluster (eduide-cluster 2.9.0 or later); scripts/deployer-kubeconfig.sh turns it into the environment's KUBECONFIG. Missing namespaces are created, existing ones are left as they are."
+        },
         "nodeSelector": {
           "type": "object",
           "description": "Labels a node must carry to run EduIDE: sessions, operator, service, landing page, image preloading and the conversion webhook. Omit to use every node. Sessions are pinned from chart 2.8.0 on; older charts pin only image preloading (2.6.0 and later).",

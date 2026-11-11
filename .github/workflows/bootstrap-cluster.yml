@@ -127,6 +127,7 @@ jobs:
             echo "  listeners:"
           } > listeners.yaml
           : > namespaces.txt
+          : > tenants.txt
           : > certnames.txt
           found=0
           for f in environments/*/env.yaml; do
@@ -194,6 +195,7 @@ jobs:
                 } >> listeners.yaml
               fi
             done < <(yq -r '.gateway.parentRefs[]?.sectionName' "$v")
+            yq -r '.spec.namespace' "$f" >> tenants.txt
             # An environment can opt out of being scraped with
             # monitoring.enabled: false in its values. Default is on.
             if [[ "$(yq -r '.monitoring.enabled // true' "$v")" == "true" ]]; then
@@ -265,6 +267,17 @@ jobs:
               echo "  namespace: $(yq -r '.spec.envoyProxy.namespace' "clusters/${CLUSTER}.yaml")"
               echo "  spec:"
               yq -r '.spec.envoyProxy.spec' "clusters/${CLUSTER}.yaml" | sed 's/^/    /'
+            } >> listeners.yaml
+          fi
+          # A ServiceAccount per environment that its deploy kubeconfig is made
+          # from, holding only what that deploy needs. Every environment on the
+          # cluster gets one, monitored or not.
+          if [[ "$(yq -r '.spec.deployers // false' "clusters/${CLUSTER}.yaml")" == "true" ]]; then
+            {
+              echo "deployers:"
+              echo "  enabled: true"
+              echo "  namespaces:"
+              sed 's/^/    - /' tenants.txt
             } >> listeners.yaml
           fi
           # The conversion webhook runs on the same node pool as the tenants.
@@ -503,6 +516,17 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
+          # The deployers live in the tenant namespaces, which the chart must
+          # not own: an uninstall would delete them. Create a missing one, but
+          # never re-apply an existing one, which would strip what Rancher or a
+          # person added to it, such as the project it belongs to.
+          if [[ "$(yq -r '.spec.deployers // false' "clusters/${CLUSTER}.yaml")" == "true" ]]; then
+            while read -r ns; do
+              if ! kubectl get namespace "$ns" >/dev/null 2>&1; then
+                kubectl create namespace "$ns"
+              fi
+            done < tenants.txt
+          fi
           helm upgrade --install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
             --version "${{ inputs.chart_version }}" \
             -n eduide-system --create-namespace \
