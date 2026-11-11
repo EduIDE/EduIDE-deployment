@@ -21,17 +21,27 @@ Theia Cloud uses Keycloak (via OAuth2 Proxy) to provide authentication and autho
 
 ### 1.1 Create a New Client
 
+**Check first whether the client already exists.** Installations share clients:
+every environment in this repository sets `clientId: eduide`, and several share a
+realm as well, so adding an installation is usually a matter of appending its two
+hostnames to the lists in step 1.3 rather than creating anything. See "Which
+installations share a client" below.
+
 1. Log in to Keycloak Admin Console
-2. Select your realm (e.g., `Test`, `Production`)
+2. Select your realm (`tum` or `external_register` on the production server,
+   `tum` on the test server)
 3. Navigate to **Clients**
 4. Click **Create client**
 5. Configure the basic settings:
 
    ```
-   Client ID: theia-cloud (or theia-cloud-test2, etc.)
-   Name: Theia Cloud
-   Description: OAuth2 client for Theia Cloud deployment
+   Client ID: eduide
+   Name: EduIDE
+   Description: OAuth2 client for the EduIDE session proxy
    ```
+
+   The client id has to match `keycloak.clientId` in the environment's
+   `values.yaml`, which is `eduide` in every environment today.
 
 6. Click **Next**
 
@@ -83,18 +93,18 @@ Web origins:
   https://instance.test1.eduide.student.k8s.aet.cit.tum.de
 ```
 
-and for `tum-production`, whose landing host is `eduide.artemis.aet.cit.tum.de`:
+and for `tum-production`, whose landing host is `eduide.artemis.cit.tum.de`:
 
 ```
 Valid redirect URIs:
-  https://eduide.artemis.aet.cit.tum.de/*
-  https://instance.eduide.artemis.aet.cit.tum.de/*
+  https://eduide.artemis.cit.tum.de/*
+  https://instance.eduide.artemis.cit.tum.de/*
 Valid post logout redirect URIs:
-  https://eduide.artemis.aet.cit.tum.de/
-  https://eduide.artemis.aet.cit.tum.de/*
+  https://eduide.artemis.cit.tum.de/
+  https://eduide.artemis.cit.tum.de/*
 Web origins:
-  https://eduide.artemis.aet.cit.tum.de
-  https://instance.eduide.artemis.aet.cit.tum.de
+  https://eduide.artemis.cit.tum.de
+  https://instance.eduide.artemis.cit.tum.de
 ```
 
 > **The service and webview hosts are deliberately absent.** An installation
@@ -104,6 +114,30 @@ Web origins:
 
 Landing hosts for every environment are listed in
 [environments.md](environments.md).
+
+### Which installations share a client
+
+A client id is unique within a realm, so two environments with the same
+`authUrl`, `realm` and `clientId` are **one client**, not two. That is the normal
+case here:
+
+| Keycloak | realm | client | installations |
+|---|---|---|---|
+| `keycloak.aet.cit.tum.de` | `tum` | `eduide` | `eduide.artemis.cit.tum.de` |
+| `keycloak.aet.cit.tum.de` | `external_register` | `eduide` | `mannheim.…`, `bonn.…` |
+| `keycloak-test.aet.cit.tum.de` | `tum` | `eduide` | `test1`, `test2`, `staging`, `e2e` |
+
+Two consequences, and the second one is the reason this section exists:
+
+- Adding an installation to an existing group creates nothing. Append its two
+  hostnames to the three lists above and stop.
+- **Editing a client edits it for every installation on it.** Removing or
+  mistyping an entry breaks the others' login too. Copy the current lists
+  somewhere before you touch them, add rather than replace, and log in to one of
+  the installations that was already working as soon as you have saved.
+
+Giving an installation a client of its own is a decision, not a default: change
+`keycloak.clientId` in its `values.yaml` and create that client.
 
 Click **Save**
 
@@ -117,10 +151,11 @@ Client scopes provide additional user information to Theia Cloud. You need to cr
 ### 2.1 Create Dedicated Client Scope
 
 1. Go to **Clients > [your-client] > Client scopes**
-2. Click on the dedicated scope (e.g., `theia-cloud-dedicated`)
+2. Click on the dedicated scope, which Keycloak names after the client
+   (`eduide-dedicated`)
    - If it doesn't exist, create it: **Clients > Client scopes > Create client scope**
    ```
-   Name: theia-cloud-dedicated
+   Name: eduide-dedicated
    Protocol: openid-connect
    Display on consent screen: OFF
    Include in token scope: ON
@@ -154,7 +189,7 @@ Click **Add mapper > By configuration > Audience**
 ```
 Name: audience
 Mapper Type: Audience
-Included Client Audience: theia-cloud (your client ID)
+Included Client Audience: eduide (your client ID)
 Add to ID token: ON
 Add to access token: ON
 ```
@@ -210,10 +245,10 @@ Current scaling endpoints:
 ### 2.6 Verify Client Scope Assignment
 
 1. Go back to **Clients > [your-client] > Client scopes**
-2. Verify that `theia-cloud-dedicated` appears under **Assigned client scopes**
+2. Verify that `eduide-dedicated` appears under **Assigned client scopes**
 3. If not, add it:
    - Click **Add client scope**
-   - Select `theia-cloud-dedicated`
+   - Select `eduide-dedicated`
    - Choose **Default** scope type
    - Click **Add**
 
@@ -269,7 +304,9 @@ After successful login, you can verify that user information is correctly passed
 - Client doesn't exist in the realm
 
 **Solutions:**
-- Verify `THEIA_KEYCLOAK_CLIENT_ID` matches the client ID in Keycloak
+- Verify `keycloak.clientId` in the environment's `values.yaml` matches the
+  client ID in Keycloak. It is a plain value, not a secret: no workflow reads a
+  client id from the GitHub Environment
 - Check client is enabled in Keycloak
 - Verify you're using the correct realm
 

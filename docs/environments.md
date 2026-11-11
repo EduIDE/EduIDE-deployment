@@ -112,8 +112,11 @@ refuses to render on the placeholder values unless the flag says otherwise.
 A wrong `authUrl`, `realm` or `clientId` still fails at login rather than at
 deploy, so confirm them with the university before the first deploy.
 
-**Secrets are not here.** `clientSecret` and `cookieSecret` come from the
-environment's GitHub Environment secrets, never from a file in this repo.
+**Secrets are not here.** `cookieSecret` comes from the environment's GitHub
+Environment secret `THEIA_KEYCLOAK_COOKIE_SECRET`, never from a file in this
+repo. `clientSecret` is not a secret at all: the client is public, so it stays
+at the chart's placeholder, which oauth2-proxy only wants because the field
+exists. No workflow reads a client secret.
 
 ## Adding an environment
 
@@ -186,7 +189,10 @@ the cluster, so a new environment needs no second file edited. Run it with
 
 Four DNS records per environment, matching the hosts above, pointing at the
 Gateway's load balancer address. Certificates for each listener. Redirect URIs
-in Keycloak for every one of the four hosts, on a client matching `clientId`.
+in Keycloak for the landing and instance hosts only, on a client matching
+`clientId` - the service and webview hosts take no part in the redirect flow,
+and that client is usually shared with another installation. See
+[keycloak-setup.md](keycloak-setup.md).
 
 See [cluster-setup.md](cluster-setup.md), [tum-certificates.md](tum-certificates.md)
 and [keycloak-setup.md](keycloak-setup.md).
