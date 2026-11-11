@@ -213,6 +213,10 @@ rules:
   - apiGroups: ["gateway.envoyproxy.io"]
     resources: ["backendtrafficpolicies"]
     verbs: ["get", "create", "update", "patch", "delete"]
+  # Rendered once landingPage.replicas or service.replicas is above 1.
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "create", "update", "patch", "delete"]
   # Listed as well: Helm keeps its releases in Secrets and finds them by label;
   # the live summary lists Deployments and AppDefinitions, `rollout status`
   # watches; the chart looks up existing AppDefinitions.
