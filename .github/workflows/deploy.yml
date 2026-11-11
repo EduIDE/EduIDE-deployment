@@ -285,8 +285,15 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t IMG < image-args.txt || true
+          # Not --create-namespace: helm 3 then creates the namespace even when
+          # it exists, which a kubeconfig scoped to that namespace may not do.
+          # Getting it is allowed; creating it is only needed the first time.
+          NS="${{ steps.env.outputs.namespace }}"
+          if ! kubectl get namespace "$NS" >/dev/null 2>&1; then
+            kubectl create namespace "$NS"
+          fi
           helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide \
-            --namespace "${{ steps.env.outputs.namespace }}" --create-namespace \
+            --namespace "$NS" \
             --version "${{ steps.env.outputs.chart_version }}" \
             -f cluster-defaults.yaml -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
             --wait --atomic --timeout 15m

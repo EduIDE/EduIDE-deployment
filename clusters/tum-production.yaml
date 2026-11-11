@@ -4,7 +4,9 @@ metadata:
   name: tum-production
   displayName: TUM production cluster
 spec:
-  storageClassName: csi-rbd-sc
+  # AET offers only Longhorn. `longhorn` keeps three replicas, which student
+  # workspaces are worth; `longhorn-single` keeps one.
+  storageClassName: longhorn
   gatewayClassName: envoy
 
   # EduIDE runs on the 20 `pve` workers (16 CPU, 32 GB), not on the `ito`
