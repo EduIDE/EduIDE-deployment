@@ -135,6 +135,12 @@ jobs:
           # vendored reposilite chart has its own key and defaults to
           # csi-rbd-sc, so setting only the operator's would leave a PVC that
           # never binds on a cluster that does not offer that class.
+          # The node pool is a cluster property too. global.nodeSelector pins
+          # every workload from chart 2.8.0 on; preloading.nodeSelector is set
+          # as well because charts 2.6.0 to 2.7.x read only that one. The shared
+          # cache is not pinned; it is off everywhere. JSON is valid YAML, and {} renders no nodeSelector, so a
+          # cluster without a pool stays as it is.
+          NS=$(yq -o=json -I=0 '.spec.nodeSelector // {}' "$C")
           cat > cluster-defaults.yaml <<EOF
           operator:
             storageClassName: ${SC}
@@ -142,8 +148,13 @@ jobs:
             reposilite:
               persistence:
                 storageClass: ${SC}
+          global:
+            nodeSelector: ${NS}
+          preloading:
+            nodeSelector: ${NS}
           EOF
           echo "storageClassName: ${SC}"
+          echo "nodeSelector: ${NS}"
 
       - name: Set up kubeconfig
         run: |

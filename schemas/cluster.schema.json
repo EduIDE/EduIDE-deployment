@@ -47,6 +47,13 @@
         "gatewayClassName": {
           "type": "string"
         },
+        "nodeSelector": {
+          "type": "object",
+          "description": "Labels a node must carry to run EduIDE: sessions, operator, service, landing page, image preloading and the conversion webhook. Omit to use every node. Sessions are pinned from chart 2.8.0 on; older charts pin only image preloading (2.6.0 and later).",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "sharedGateway": {
           "type": "object",
           "additionalProperties": false,

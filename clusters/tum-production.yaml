@@ -7,6 +7,12 @@ spec:
   storageClassName: csi-rbd-sc
   gatewayClassName: envoy
 
+  # EduIDE runs on the 20 `pve` workers (16 CPU, 32 GB), not on the `ito`
+  # workers of half that size. Both pools stay open to other workloads, so a
+  # selector is enough; no taint.
+  nodeSelector:
+    aet.cit.tum.de/pool: pve
+
   # cert-manager issues one certificate per role here, so each listener
   # references its own secret. Carried over verbatim from the hand-written
   # shared-gateway-prod values.
