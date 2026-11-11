@@ -172,6 +172,15 @@ vendored reposilite chart with its own key), so the deploy sets both;
 `test-deploy-logic.sh` renders every environment against a sentinel and fails if
 any storage key escapes the cluster default.
 
+**The node pool is a cluster property too.** `spec.nodeSelector` in
+`clusters/<name>.yaml` is rendered by the deploy into `global.nodeSelector`,
+and `preloading.nodeSelector`, and by
+bootstrap into `global.nodeSelector` for the conversion webhook. Sessions are
+pinned only from chart 2.8.0 on, with an operator that knows
+`--sessionNodeSelector` (EduIDE/EduIDE-Helm#73); older charts pin preloading
+only. An environment must not set it. `test-deploy-logic.sh` fails if a
+workload rendered by a 2.8.0+ chart escapes the pool.
+
 **The dependency cache is off everywhere.** `eduide-shared-cache.enabled: false` in
 every environment since 2026-11-06; `test-deploy-logic.sh` asserts it for the
 production installations. Nothing consumes it anywhere regardless: the operator's `enableBuildCaching` and

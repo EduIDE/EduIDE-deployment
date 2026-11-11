@@ -267,6 +267,14 @@ jobs:
               yq -r '.spec.envoyProxy.spec' "clusters/${CLUSTER}.yaml" | sed 's/^/    /'
             } >> listeners.yaml
           fi
+          # The conversion webhook runs on the same node pool as the tenants.
+          NS=$(yq -o=json -I=0 '.spec.nodeSelector // {}' "clusters/${CLUSTER}.yaml")
+          if [[ "$NS" != "{}" ]]; then
+            {
+              echo "global:"
+              echo "  nodeSelector: ${NS}"
+            } >> listeners.yaml
+          fi
           # The PodMonitors name every namespace they watch. That list used to
           # be written by hand in theia-monitoring's values and had gone stale -
           # it still named `theia` and `theia-staging`, which no longer exist, so

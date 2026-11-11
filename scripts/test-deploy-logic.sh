@@ -134,9 +134,11 @@ chart_reachable() {
 if chart_reachable; then
   W=$(mktemp -d); trap 'rm -rf "$W"' EXIT
   {
-    # The same two keys the Cluster defaults step in deploy.yml writes.
+    # The same keys the Cluster defaults step in deploy.yml writes.
     printf 'operator:\n  storageClassName: SENTINEL\n'
     printf 'eduide-shared-cache:\n  reposilite:\n    persistence:\n      storageClass: SENTINEL\n'
+    printf 'global:\n  nodeSelector:\n    eduide.test/pool: sentinel\n'
+    printf 'preloading:\n  nodeSelector:\n    eduide.test/pool: sentinel\n'
   } > "$W/cd.yaml"
   printf 'keycloak:\n  cookieSecret: x\nservice:\n  adminApiToken: dG9r\n' > "$W/sec.yaml"
   {
@@ -154,6 +156,26 @@ if chart_reachable; then
             "$(grep -i 'storageclass' <<<"$out" | grep -v '\-\-storageClassName' | grep -v 'SENTINEL' | head -2 | tr -s ' ' | tr '\n' ';')"
       else
         ok "$env all storage keys follow the cluster"
+      fi
+      # The node pool follows the cluster too, for every pod a chart from
+      # 2.8.0 on renders: a workload that misses it lands outside the pool,
+      # and a session on a node without preloaded images pulls cold.
+      if [[ "$CHART" == oci://* ]]; then
+        cv=$(yq -r '.spec.platform.chartVersion' "$f")
+      else
+        cv=$(helm show chart "$CHART" | yq -r '.version')
+      fi
+      if [[ "$(printf '%s\n' 2.8.0 "$cv" | sort -V | head -1)" != 2.8.0 ]]; then
+        ok "$env chart $cv predates global.nodeSelector, node pool not checked"
+        continue
+      fi
+      unpinned=$(yq -r 'select(.spec.template.spec != null and .spec.template.spec.nodeSelector["eduide.test/pool"] != "sentinel") | .kind + "/" + .metadata.name' <<<"$out" | grep -v '^---$' || true)
+      if [[ -n "$unpinned" ]]; then
+        bad "$env has workloads outside the cluster's node pool" "$(tr '\n' ' ' <<<"$unpinned")"
+      elif ! grep -q 'eduide.test/pool=sentinel' <<<"$out"; then
+        bad "$env operator does not pin sessions to the node pool" "no --sessionNodeSelector argument rendered"
+      else
+        ok "$env every workload and the sessions follow the cluster's node pool"
       fi
     done
   }
