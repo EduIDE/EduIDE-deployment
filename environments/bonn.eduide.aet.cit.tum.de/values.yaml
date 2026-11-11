@@ -34,10 +34,12 @@ gateway:
     namespace: eduide-system
     sectionName: bonn-webview
 landingPage:
-  # Workspaces persist here, so a launch must not be ephemeral. The chart-wide
-  # default in _base.yaml is `true`, which would throw the volume away with the
-  # session.
-  ephemeralStorage: false
+  # Bonn does not promise persistent workspaces, so a launch is ephemeral and
+  # the volume goes with the session. Same as the chart-wide default in
+  # _base.yaml; stated here because it is a decision, and because it is what
+  # lets this installation keep a warm pool at all - see operator.eagerStart
+  # below.
+  ephemeralStorage: true
   # No trustedArtemisHosts until this installation's Artemis server is known,
   # so its links still need a Launch click.
   privacy:
@@ -61,15 +63,19 @@ hosts:
     instance: instance.bonn
   allWildcardInstances:
   - '*.webview.'
-# Sessions start on demand here, not from the warm pool. A prewarmed instance
-# never mounts the workspace PVC - only the lazy session handler does - so
-# with eagerStart every file lived in the pod and was gone once the pod was
-# recycled: after the inactivity timeout, the 3 hour session timeout, or an
-# image update. The price is a slower first start. Switching also needs the
-# warm pool removed by hand: docs/environments.md, "Switching an environment
-# to lazy start".
+# Bonn keeps a warm pool, unlike Mannheim, so a student gets a session at once
+# instead of waiting for a cold multi-gigabyte pull.
+#
+# This is only available because Bonn's sessions are ephemeral. A prewarmed
+# instance belongs to no user yet, so it has no workspace and no PVC, and a
+# volume cannot be mounted into a running pod afterwards - an installation that
+# promises persistent workspaces therefore cannot keep a pool, which
+# test-deploy-logic.sh enforces. Mannheim is that case; Bonn is not.
+#
+# Going back to lazy means removing the warm pool by hand as well:
+# docs/environments.md, "Switching an environment to lazy start".
 operator:
-  eagerStart: false
+  eagerStart: true
 # Same server and realm as Mannheim: TUM's Keycloak with the realm for
 # non-TUM users. The trailing slash on authUrl is load-bearing - the templates
 # append `realms/<realm>` straight onto it.
@@ -106,12 +112,11 @@ appDefinitions:
     # does not leave two of them side by side.
     javascript-latest: null
     javascript:
-      # Thirty sessions kept warm. Takes effect only once operator.eagerStart
-      # is true, which it is not - see the warm pool note above. Also only a
-      # bootstrap default: the chart reads the live value back on every upgrade
-      # so the admin scaling API is not reset, so changing this alone does
-      # nothing to an AppDefinition that already exists - patch the live
-      # resource too.
+      # Thirty sessions kept warm, filled because operator.eagerStart is true
+      # above. Only a bootstrap default though: the chart reads the live value
+      # back on every upgrade so the admin scaling API is not reset, so
+      # changing this alone does nothing to an AppDefinition that already
+      # exists - patch the live resource too.
       minInstances: 30
       # image and landingPage.label now come from appDefinitions.catalog.
 # Reap a workspace this long after its last session. Default is 14 days.
