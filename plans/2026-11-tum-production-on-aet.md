@@ -120,7 +120,7 @@ are out of scope and must not be deployed.
 | 1 | Merge PR #162 (operators' GatewayClass and EnvoyProxy) | user |
 | 2+3 | PR: `longhorn`, production on chart 2.8.0 with the app catalog, `java-25` warm, `privateEgressCidrs`; replaces the production part of #155 | Claude |
 | 4 | ~~DNS for `service.`, `instance.`, `*.webview.instance.`~~ done | user |
-| 5 | ~~Replace both `KUBECONFIG` secrets~~ done: ServiceAccounts `eduide-bootstrap` (cluster-admin) and `eduide-deployer` (minimal, tested) per docs/github-environments.md; cookie secret rotated | Claude |
+| 5 | Replace both `KUBECONFIG` secrets with Rancher kubeconfigs (`https://<rancher>/k8s/clusters/c-9jjmv`): the AET control plane is not reachable from the internet, so GitHub runners deploy through Rancher. Cookie secret ~~rotated~~ done | user |
 | 6 | Local render with `--kube-version 1.35` and server dry run | Claude |
 | 7 | `Bootstrap cluster` tum-production, `eduide-cluster` 2.8.0, dry run, then real | user approves |
 | 8 | Verify: identity, CRDs, Gateway address = .82, certificates Ready, `openssl -checkhost` per host, redirect 301 | Claude |
@@ -130,8 +130,3 @@ are out of scope and must not be deployed.
 
 Rollback: none to the old cluster (gone). Within AET, `Rollback` workflow for
 the tenant release; the bootstrap release can be rolled back with Helm.
-
-Follow-up, not blocking: EduIDE-Helm `eduide-cluster` renders the deployer
-ServiceAccounts itself behind a toggle, with the namespaces derived by
-bootstrap, so the Role is versioned with the chart whose objects it deploys.
-The objects created by hand on AET are then adopted by that release.
