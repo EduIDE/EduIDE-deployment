@@ -57,26 +57,27 @@ and restart it:
 kubectl -n cert-manager rollout restart deploy/cert-manager
 ```
 
-Verified as present on both TUM clusters at the time of writing:
+Verified as present on both TUM clusters (2026-11-12):
 
-| | `tum-student` (`stud-cp`) | the current test cluster (`theia-prod`) |
+| | `tum-student` (`stud`) | `tum-production` (AET, `aet-cp`) |
 |---|---|---|
+| Kubernetes | RKE2 1.34 | RKE2 1.35 |
 | Gateway API CRDs | yes | yes |
 | Envoy Gateway | yes | yes |
 | cert-manager | yes | yes |
 | Prometheus Operator CRDs | yes | yes |
 | `cattle-monitoring-system`, `cattle-dashboards` | yes | yes |
-| Storage classes | `csi-rbd-sc` (default), `longhorn`, `longhorn-static` | `csi-rbd-sc` **and** `longhorn`, **both default** |
-| Nodes | 28 | |
+| Storage classes | `csi-rbd-sc` (default), `longhorn`, `longhorn-static` | `longhorn` (default), `longhorn-single`, `longhorn-static` |
+| Nodes | 28, of which 9 in pool `eduide` | 33, of which 20 in pool `pve` |
+| API server | reachable directly | only through Rancher |
 
-**The test cluster has two default StorageClasses.** A PVC that names no class
-gets an arbitrary one. Nothing in this repository can fix that; it is worth
-raising with whoever owns the cluster. The deploy sidesteps it by always naming
-`spec.storageClassName` from `clusters/<name>.yaml` explicitly.
+The deploy always names `spec.storageClassName` from `clusters/<name>.yaml`
+explicitly, so a cluster with no default class, or two, makes no difference.
 
-**28 nodes is a real number here.** Image preloading pulls every IDE image onto
-every node, so the default set of eight is roughly 20 GB per node, once. Budget
-it before the first bootstrap rather than discovering it as disk pressure.
+**Image preloading pulls every enabled IDE image onto every node in the pool**
+(`spec.nodeSelector`), so the eight catalog apps are roughly 20 GB per node,
+once. Budget it before the first bootstrap rather than discovering it as disk
+pressure.
 
 ## Step 2: decide which address serves EduIDE
 
@@ -187,9 +188,10 @@ cert-manager will not register an ACME account without a contact address, so
 bootstrap fails early if it is missing, and `test-deploy-logic.sh` catches it
 before that.
 
-:::warning Do not reuse the existing `letsencrypt-prod`
-Both TUM clusters carry a `ClusterIssuer` of that name whose only solver is an
-nginx Ingress solver:
+:::warning Do not reuse the cluster's existing ACME issuers
+Their only solvers are Ingress solvers: `letsencrypt-prod` on `tum-student`
+solves over nginx, `letsencrypt-production` on AET over Traefik
+(`traefik-external`, a different address than EduIDE's names point at):
 
 ```yaml
 solvers:
@@ -245,7 +247,7 @@ Full instructions, including what is missing today, are in
 ```text
 Actions -> Bootstrap cluster
   cluster:       tum-student
-  chart_version: 2.1.0
+  chart_version: 2.8.0
   dry_run:       true
 ```
 
@@ -334,6 +336,8 @@ EduIDE somewhere unexpected.
      displayName: EduIDE cluster
    spec:
      storageClassName: local        # must exist on the cluster
+     nodeSelector:                  # optional: the pool EduIDE runs on; a label this cluster has, or omit
+       aet.cit.tum.de/pool: pve
      gatewayClassName: envoy        # see step 2 before accepting this default
      tls:                           # the Secret each listener role terminates with
        landing: shared-theia-cert
@@ -354,7 +358,10 @@ EduIDE somewhere unexpected.
 4. Work through steps 1 to 7 above.
 
 `runner` is per cluster because deploying is not building: a deploy has to reach
-the API server, and the clusters may differ in how they are reachable.
+the API server, and the clusters may differ in how they are reachable. Where the
+API server is not public, as on AET, a Rancher kubeconfig
+(`https://<rancher>/k8s/clusters/<id>`) lets a GitHub-hosted runner deploy
+anyway.
 
 ## When a certificate will not issue
 

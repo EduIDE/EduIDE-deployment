@@ -83,18 +83,18 @@ Web origins:
   https://instance.test1.eduide.student.k8s.aet.cit.tum.de
 ```
 
-and for `tum-production`, whose landing host is `eduide.artemis.aet.cit.tum.de`:
+and for `tum-production`, whose landing host is `eduide.artemis.cit.tum.de`:
 
 ```
 Valid redirect URIs:
-  https://eduide.artemis.aet.cit.tum.de/*
-  https://instance.eduide.artemis.aet.cit.tum.de/*
+  https://eduide.artemis.cit.tum.de/*
+  https://instance.eduide.artemis.cit.tum.de/*
 Valid post logout redirect URIs:
-  https://eduide.artemis.aet.cit.tum.de/
-  https://eduide.artemis.aet.cit.tum.de/*
+  https://eduide.artemis.cit.tum.de/
+  https://eduide.artemis.cit.tum.de/*
 Web origins:
-  https://eduide.artemis.aet.cit.tum.de
-  https://instance.eduide.artemis.aet.cit.tum.de
+  https://eduide.artemis.cit.tum.de
+  https://instance.eduide.artemis.cit.tum.de
 ```
 
 > **The service and webview hosts are deliberately absent.** An installation
