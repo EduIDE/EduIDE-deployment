@@ -7,6 +7,12 @@ spec:
   storageClassName: csi-rbd-sc
   gatewayClassName: envoy
 
+  # EduIDE runs on the 9 large workers only. The other 16 have 93 to 96 GiB
+  # root disks, which the preloaded images filled. The nodes stay open to other
+  # workloads, so a selector is enough; no taint.
+  nodeSelector:
+    aet.cit.tum.de/pool: eduide
+
   # TLS secrets the shared Gateway's listeners reference. Per cluster because
   # the two clusters issue certificates differently: this one terminates
   # everything with one shared certificate, production has cert-manager issue

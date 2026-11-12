@@ -101,13 +101,15 @@ envoyProxy:
 **`bootstrap-cluster.yml` passes both blocks straight through** from
 `clusters/<name>.yaml`, so the manifest above is the whole configuration - do
 not create a GatewayClass or an EnvoyProxy by hand as well, or bootstrap and
-the hand-made copy will fight over the same names. `spec.loadBalancerIP` in
+the hand-made copy will fight over the same names. The reverse holds too: where
+the cluster operators already provide the GatewayClass and EnvoyProxy, set both
+`create: false`, as `tum-production` does. `spec.loadBalancerIP` in
 `clusters/tum-production.yaml` records the intended address but is read by
 nothing.
 
 ### MetalLB
 
-Both TUM clusters use MetalLB, and on both every pool has `autoAssign: true`.
+`tum-student` uses MetalLB, and every pool there has `autoAssign: true`.
 Without an explicit pool annotation a new LoadBalancer service can pick up any
 free address, so the pool must be pinned rather than left to chance.
 
@@ -120,10 +122,15 @@ free address, so the pool must be pinned rather than left to chance.
 | `lb2` | `131.159.88.15` | Artemis, current merged Envoy |
 | `lb3` | `131.159.88.14` | `k8s-stud-lb3`, where EduIDE's names point |
 
-The production cluster uses pool `ingress` at `131.159.88.82`
-(`k8s-theia-lb1.aet.cit.tum.de`), with a second pool `general` at
-`131.159.88.81` that is not Envoy's. Pin the pool explicitly there for the same
-reason.
+The production cluster is AET. There the cluster operators own GatewayClass
+`envoy` and its EnvoyProxy `envoy-gateway-system/envoy`
+([ls1intum/aet-infrastructure](https://github.com/ls1intum/aet-infrastructure),
+`ansible/playbooks/clusters/aet/kubernetes-config/envoy-gateway/`). That
+EnvoyProxy pins the data plane to MetalLB pool `envoy` at `131.159.88.82` and
+`2a09:80c0:88::82`, with `mergeGateways: true` and 2 replicas, so
+`clusters/tum-production.yaml` sets `gatewayClass.create: false` and
+`envoyProxy.create: false`. The cluster's second class, `envoy-internal`, is for
+VPN-only services and not for EduIDE.
 
 Checks:
 

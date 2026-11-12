@@ -16,7 +16,7 @@ that reports itself healthy and serves nothing.
 | Gateway API CRDs, Envoy Gateway, cert-manager, storage | **you**, once per cluster |
 | A data plane answering on the address DNS publishes - a load balancer's, or the node's | **you** |
 | The ACME `ClusterIssuer` | `Bootstrap cluster`, from `spec.acmeEmail` |
-| The GatewayClass and its EnvoyProxy | `Bootstrap cluster`, from `spec.gatewayClass` and `spec.envoyProxy` |
+| The GatewayClass and its EnvoyProxy | `Bootstrap cluster`, from `spec.gatewayClass` and `spec.envoyProxy`, where they set `create: true` (`eduide`); otherwise whoever runs the cluster (`tum-student`: Artemis, `tum-production`: the AET cluster operators) |
 | Redirects from hostnames you used to serve | `Bootstrap cluster`, from `spec.redirects` |
 | The webview wildcard certificate | **you**, see [tum-certificates.md](tum-certificates.md) |
 | DNS records | **you** (RBG) |
@@ -135,8 +135,9 @@ so a block without it renders no EnvoyProxy at all while the GatewayClass still
 gets a `parametersRef` naming one - a dangling reference, and no data plane.
 `envoyProxy.name` is the name of the EnvoyProxy resource itself; for (b) the
 MetalLB pool goes inside it, under
-`spec.provider.kubernetes.envoyService.annotations`. That is exactly what
-`tum-production` does. See
+`spec.provider.kubernetes.envoyService.annotations`. `tum-production` does
+not: on AET the cluster operators own GatewayClass `envoy` and its EnvoyProxy,
+so it sets both `create: false`. See
 [envoy-gateway-setup.md](envoy-gateway-setup.md) for the MetalLB details.
 
 **On (b) and (c), state the data plane's replica count.** Envoy Gateway
@@ -150,7 +151,8 @@ on 2026-09-23. Put `replicas` in the `envoyDeployment` block, as
 Option (a) has no such block here, because the EnvoyProxy belongs to whoever
 owns the merged gateway. The exposure does not go away - it moves. Ask them
 whether their EnvoyProxy states its replicas, and remember that scaling that
-data plane to zero takes EduIDE down with everything else sharing it.
+data plane to zero takes EduIDE down with everything else sharing it. On AET,
+which `tum-production` runs on, the operators' EnvoyProxy states 2 replicas.
 
 `clusters/tum-production.yaml` carries `spec.loadBalancerIP: 131.159.88.82`.
 **Nothing reads it.** It records the intent; it does not enforce it.
@@ -405,4 +407,4 @@ See step 3.
 
 | Gap | Consequence |
 |---|---|
-| `spec.loadBalancerIP` is in the schema and in `tum-production.yaml` | Nothing reads it. `spec.envoyProxy` is what actually pins the address (step 2) |
+| `spec.loadBalancerIP` is in the schema and in `tum-production.yaml` | Nothing reads it. The EnvoyProxy, on `tum-production` the AET cluster operators', is what actually pins the address (step 2) |
