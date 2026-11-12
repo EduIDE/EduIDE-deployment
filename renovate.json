@@ -21,7 +21,7 @@
 
   "packageRules": [
     {
-      "description": "Patterns name the environment directories literally, and those directories are hostnames - the rename to hostnames left these matching nothing, so production bumps lost this gate silently. Grep here when renaming an environment. Production moves only when a human ticks it on the Dependency Dashboard. Bumping chartVersion in a production environment IS the release procedure - README says so under 'Move production' - so a PR here is not a dependency update that happens to touch production, it is a production deploy waiting for a merge. It must never appear unasked.",
+      "description": "Patterns name the environment directories literally, and those directories are hostnames - the rename to hostnames left these matching nothing, so production bumps lost this gate silently. Grep here when renaming an environment. Production moves only when a human ticks it on the Dependency Dashboard. Bumping chartVersion in a production environment IS the release procedure - README says so under 'Move production' - so a PR here is not a dependency update that happens to touch production, it is a production release waiting for a merge and a manual Deploy (dispatch); merging alone deploys nothing. It must never appear unasked.",
       "matchFileNames": [
         "environments/eduide.artemis.cit.tum.de/**",
         "environments/bonn.eduide.aet.cit.tum.de/**",

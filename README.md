@@ -67,7 +67,7 @@ file. `Deploy` does the second.
 | Put a PR's images on a test environment | Comment `/deploy test2.eduide.student.k8s.aet.cit.tum.de` on the PR |
 | Deploy any environment by hand | Actions → **Deploy (dispatch)** |
 | Move staging | Actions → **Deploy staging** |
-| Move production | Tick the production bump on Renovate's Dependency Dashboard, or bump `chartVersion` in `environments/eduide.artemis.cit.tum.de/env.yaml` by hand, and open a PR |
+| Move production | Tick the production bump on Renovate's Dependency Dashboard, or bump `chartVersion` in `environments/eduide.artemis.cit.tum.de/env.yaml` by hand, open a PR, merge it, then Actions → **Deploy (dispatch)**. Merging alone deploys nothing |
 | Undo a bad deploy | Actions → **Rollback** |
 | Bring up a new cluster | Actions → **Bootstrap cluster** |
 

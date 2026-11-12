@@ -336,7 +336,7 @@ EduIDE somewhere unexpected.
      displayName: EduIDE cluster
    spec:
      storageClassName: local        # must exist on the cluster
-     nodeSelector:                  # optional: the pool EduIDE runs on
+     nodeSelector:                  # optional: the pool EduIDE runs on; a label this cluster has, or omit
        aet.cit.tum.de/pool: pve
      gatewayClassName: envoy        # see step 2 before accepting this default
      tls:                           # the Secret each listener role terminates with

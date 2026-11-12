@@ -281,7 +281,7 @@ URLs as well, not just re-enabling the chart.
 ```yaml
 spec:
   storageClassName: local          # applied to every environment on this cluster
-  nodeSelector:                    # optional: the node pool every EduIDE pod runs on
+  nodeSelector:                    # optional: the node pool every EduIDE pod runs on; a label this cluster has, or omit
     aet.cit.tum.de/pool: pve
   gatewayClassName: envoy          # used when the shared Gateway is installed
   tls:                             # the Secret each listener role terminates with
