@@ -40,6 +40,12 @@ Two things matter more than the format:
 Take care that the file does not carry more contexts than intended; the
 workflows use whatever `current-context` it names.
 
+**AET's API server is not reachable from the internet.** Both
+`tum-production` environments therefore hold a Rancher kubeconfig, whose
+server is `https://<rancher>/k8s/clusters/c-9jjmv`; Rancher proxies the
+requests. A kubeconfig pointing at the API server directly times out on a
+GitHub-hosted runner.
+
 ### `THEIA_KEYCLOAK_COOKIE_SECRET` - per environment
 
 The cookie encryption key for the oauth2-proxy sidecar in every session pod.
@@ -121,7 +127,7 @@ every `cluster-*` environment. The job names the environment, so GitHub holds
 the run until someone approves and records who approved it on the run.
 
 ```bash
-gh api -X PUT "repos/$REPO/environments/tum-production" \
+gh api -X PUT "repos/$REPO/environments/eduide.artemis.cit.tum.de" \
   -F 'reviewers[][type]=Team' -F 'reviewers[][id]=<team-id>'
 ```
 
@@ -138,21 +144,21 @@ is cheap.
 |---|---|---|---|---|
 | `cluster-tum-student` | yes | n/a | yes | yes |
 | `cluster-tum-production` | yes | n/a | yes | yes |
-| `cluster-eduide` | **missing** | n/a | yes | yes |
+| `cluster-eduide` | yes | n/a | yes | yes |
 | `test1.eduide.student.k8s.aet.cit.tum.de` and the other two `test` ones | yes | yes | n/a | yes |
 | `staging.eduide.student.k8s.aet.cit.tum.de` | yes | yes | n/a | yes |
 | `e2e.eduide.student.k8s.aet.cit.tum.de` | yes | yes | n/a | none, by design |
 | `eduide.artemis.cit.tum.de` | yes | yes | n/a | yes |
-| `bonn.…`, `mannheim.…` | **missing** | **missing** | n/a | yes |
+| `bonn.…`, `mannheim.…` | yes | yes | n/a | yes |
 
-Outstanding: `cluster-eduide` has no `KUBECONFIG`, so the cluster hosting Bonn
-and Mannheim cannot be bootstrapped, and `e2e.eduide.student.k8s.aet.cit.tum.de`
-still needs
-`E2E_KEYCLOAK_USER` and `E2E_KEYCLOAK_PWD`.
+`e2e.eduide.student.k8s.aet.cit.tum.de` also holds `E2E_KEYCLOAK_USER` and
+`E2E_KEYCLOAK_PWD`. `bonn.eduide.aet.cit.tum.de` holds its own
+`THEIA_ADMIN_API_TOKEN`, which overrides the repository one there.
+`cluster-eduide` holds `ALERT_WEBHOOKS` for alerting.
 
-`theia-prod` and `theia-staging` are pre-2.0.0 environments. No workflow
-references either name any more, and both still hold live secrets. They should
-be deleted once nothing is left running from them.
+`test3.eduide.student.k8s.aet.cit.tum.de` still exists as a GitHub Environment
+with live secrets, although no directory under `environments/` uses it any
+more, and its namespace is gone from `tum-student`. It can be deleted.
 
 ## Order of operations for a new environment
 

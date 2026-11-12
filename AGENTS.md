@@ -26,6 +26,11 @@ An environment is one namespace on one cluster.
 `environments/`, the GitHub Environment and the landing host are the same
 string, so there is nothing to map and nothing to keep in sync.
 
+The `tum-production` cluster is AET (RKE2, Rancher `c-9jjmv`), live since
+2026-11-12. Its API server is not reachable from the internet, so both GitHub
+Environments hold Rancher kubeconfigs (`https://<rancher>/k8s/clusters/c-9jjmv`),
+not direct ones.
+
 The `eduide` cluster is `parma.aet.cit.tum.de`, a single node k3s serving Bonn
 and Mannheim since 2026-08-28. It has no load balancer, so its data plane
 binds the node's ports with `hostPort`; `clusters/eduide.yaml` says why.
@@ -161,11 +166,13 @@ traffic does.
 `clusters/<name>.yaml` states it once and the deploy renders it into a values
 file `-f`'d before `_base.yaml`.
 
-On the test cluster **both** `csi-rbd-sc` and `longhorn` exist and **both are
-marked default**, so a PVC that omits the class gets an arbitrary one. test3 ran
-on `longhorn` and the others on `csi-rbd-sc` for no reason anyone recorded; they
-are standardised on `csi-rbd-sc` now. Two default StorageClasses is a cluster
-misconfiguration worth raising separately - nothing in this repo can fix it.
+On the test cluster both `csi-rbd-sc` and `longhorn` exist, and for a long
+time **both were marked default**, so a PVC that omitted the class got an
+arbitrary one. test3 ran on `longhorn` and the others on `csi-rbd-sc` for no
+reason anyone recorded; they are standardised on `csi-rbd-sc` now, and only
+`csi-rbd-sc` is default today. The deploy names the class anyway, so a second
+default cannot bite again. AET offers only Longhorn; production uses
+`longhorn` (3 replicas).
 
 Two things claim storage independently (the operator, and the shared cache's
 vendored reposilite chart with its own key), so the deploy sets both;

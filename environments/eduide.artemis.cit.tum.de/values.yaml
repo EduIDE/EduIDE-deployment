@@ -53,6 +53,9 @@ landingPage:
     # A processing purpose rather than a preference, so it is stated only on the
     # production installations that have a basis for it, not on test or staging.
     scientificUse: true
+  # The app names lost their -latest suffix in chart 2.7.0; _base.yaml still
+  # carries the old one for the installations not yet moved.
+  appDefinition: java-17-templates
   infoTitle: Welcome to EduIDE Cloud
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -75,3 +78,44 @@ keycloak:
   clientId: eduide
 eduide-shared-cache:
   enabled: false
+# ---------------------------------------------------------------------------
+# Session egress
+# ---------------------------------------------------------------------------
+# AET's pod and service CIDRs (198.18.0.0/16, 198.19.0.0/16) are outside the
+# chart's private range defaults, so they are added, as on tum-student.
+# 131.159.88.0/24 holds AET's nodes, its load balancers and the API server;
+# sessions have no business there. Artemis (131.159.89.175) stays reachable.
+# IPv6 egress is denied entirely, because the chart only allows 0.0.0.0/0.
+networkPolicies:
+  privateEgressCidrs:
+  - 10.0.0.0/8
+  - 172.16.0.0/12
+  - 192.168.0.0/16
+  - 100.64.0.0/10
+  - 198.18.0.0/15
+  - 131.159.88.0/24
+# ---------------------------------------------------------------------------
+# Applications
+# ---------------------------------------------------------------------------
+# Exactly what Artemis production launches (ls1intum/artemis-ansible#116:
+# java-17, java-25, c, javascript, python) plus the playground variants the
+# catalog has. That is the whole catalog today; listed anyway so a new catalog
+# entry does not reach production unasked.
+appDefinitions:
+  enabled:
+    - java-17
+    - java-17-templates
+    - java-25
+    - java-25-templates
+    - c
+    - c-templates
+    - javascript
+    - python
+  apps:
+    java-25:
+      # Kept warm like java-17 (the chart's catalog default is 0). Only a
+      # bootstrap default: the chart reads the live value back on every upgrade
+      # so the admin scaling API is not reset, so changing this alone does
+      # nothing to an AppDefinition that already exists - patch the live
+      # resource too.
+      minInstances: 3

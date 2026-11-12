@@ -34,10 +34,12 @@ gateway:
     namespace: eduide-system
     sectionName: bonn-webview
 landingPage:
-  # Workspaces persist here, so a launch must not be ephemeral. The chart-wide
-  # default in _base.yaml is `true`, which would throw the volume away with the
-  # session.
-  ephemeralStorage: false
+  # Bonn does not promise persistent workspaces, so a launch is ephemeral and
+  # the volume goes with the session. Same as the chart-wide default in
+  # _base.yaml; stated here because it is a decision, and because it is what
+  # lets this installation keep a warm pool at all - see operator.eagerStart
+  # below.
+  ephemeralStorage: true
   # No trustedArtemisHosts until this installation's Artemis server is known,
   # so its links still need a Launch click.
   privacy:
@@ -45,7 +47,7 @@ landingPage:
     # A processing purpose rather than a preference, so it is stated only on the
     # production installations that have a basis for it, not on test or staging.
     scientificUse: true
-  appDefinition: javascript-latest
+  appDefinition: javascript
   infoTitle: Welcome to EduIDE (Bonn)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -61,42 +63,42 @@ hosts:
     instance: instance.bonn
   allWildcardInstances:
   - '*.webview.'
-# Sessions start on demand here, not from the warm pool. A prewarmed instance
-# never mounts the workspace PVC - only the lazy session handler does - so
-# with eagerStart every file lived in the pod and was gone once the pod was
-# recycled: after the inactivity timeout, the 3 hour session timeout, or an
-# image update. The price is a slower first start. Switching also needs the
-# warm pool removed by hand: docs/environments.md, "Switching an environment
-# to lazy start".
+# Bonn keeps a warm pool, unlike Mannheim, so a student gets a session at once
+# instead of waiting for a cold multi-gigabyte pull.
+#
+# This is only available because Bonn's sessions are ephemeral. A prewarmed
+# instance belongs to no user yet, so it has no workspace and no PVC, and a
+# volume cannot be mounted into a running pod afterwards - an installation that
+# promises persistent workspaces therefore cannot keep a pool, which
+# test-deploy-logic.sh enforces. Mannheim is that case; Bonn is not.
+#
+# Going back to lazy means removing the warm pool by hand as well:
+# docs/environments.md, "Switching an environment to lazy start".
 operator:
-  eagerStart: false
-# Keycloak is not configured for Bonn yet - the realm is still to be decided.
+  eagerStart: true
+# Same server and realm as Mannheim: TUM's Keycloak with the realm for
+# non-TUM users. The trailing slash on authUrl is load-bearing - the templates
+# append `realms/<realm>` straight onto it.
 #
-# allowUnauthenticated says so explicitly. Without it the chart refuses to
-# render, because the oauth2-proxy ConfigMaps are emitted regardless of
-# keycloak.enable and would otherwise carry the chart's placeholder issuer -
-# a proxy pointed at a host that does not exist, so sessions fail rather than
-# run unauthenticated.
-#
-# THIS INSTALLATION HAS NO AUTHENTICATION. Do not expose it until the block
-# below is filled in and this flag removed.
+# cookieSecret is not here. It comes from the GitHub Environment secret
+# THEIA_KEYCLOAK_COOKIE_SECRET, which the deploy appends as its own values
+# file. clientSecret stays at the chart's dummy because the client is public.
 keycloak:
-  allowUnauthenticated: true
-# keycloak:
-#   enable: true
-#   authUrl: https://keycloak.aet.cit.tum.de/
-#   realm: <realm>
-#   clientId: eduide
+  enable: true
+  authUrl: https://keycloak.aet.cit.tum.de/
+  realm: external_register
+  clientId: eduide
 eduide-shared-cache:
   enabled: false
 
 # ---------------------------------------------------------------------------
 # Applications
 # ---------------------------------------------------------------------------
-# Bonn offers Javascript only.
-# The chart ships eight; the rest are removed rather than hidden, so nothing is
-# rendered, preloaded or offered for them.
+# Bonn offers Javascript only. `enabled` is what limits that - leaving it empty
+# renders the whole catalog and preloads every image onto the node.
 appDefinitions:
+  enabled:
+    - javascript
   # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
   # These render from values on every deploy, unlike minInstances which is read
   # back from the live resource.
@@ -106,24 +108,17 @@ appDefinitions:
     # Minutes. 3 hours.
     timeout: 180
   apps:
-    c-latest: null
-    c-templates-latest: null
-    java-17-latest: null
-    java-17-templates-latest: null
-    ocaml-latest: null
-    python-latest: null
-    rust-latest: null
-    javascript-latest:
-      # Unused while operator.eagerStart is false above: nothing is kept warm.
-      # Left at ten so turning the pool back on restores it. Only a bootstrap
-      # default: the chart reads the
-      # live value back on every upgrade so the admin scaling API is not reset,
-      # so changing this alone does nothing to an AppDefinition that already
+    # Removes the AppDefinition that the pre-2.7.0 name created, so the rename
+    # does not leave two of them side by side.
+    javascript-latest: null
+    javascript:
+      # Thirty sessions kept warm, filled because operator.eagerStart is true
+      # above. Only a bootstrap default though: the chart reads the live value
+      # back on every upgrade so the admin scaling API is not reset, so
+      # changing this alone does nothing to an AppDefinition that already
       # exists - patch the live resource too.
-      minInstances: 10
-      image: eduide/javascript
-      landingPage:
-        label: Javascript
+      minInstances: 30
+      # image and landingPage.label now come from appDefinitions.catalog.
 # Reap a workspace this long after its last session. Default is 14 days.
 theia-workspace-garbage-collector:
   enabled: true
