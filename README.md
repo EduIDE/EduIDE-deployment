@@ -67,7 +67,7 @@ file. `Deploy` does the second.
 | Put a PR's images on a test environment | Comment `/deploy test2.eduide.student.k8s.aet.cit.tum.de` on the PR |
 | Deploy any environment by hand | Actions → **Deploy (dispatch)** |
 | Move staging | Actions → **Deploy staging** |
-| Move production | Bump `chartVersion` in `environments/tum-production/env.yaml`, open a PR |
+| Move production | Tick the production bump on Renovate's Dependency Dashboard, or bump `chartVersion` in `environments/eduide.artemis.cit.tum.de/env.yaml` by hand, and open a PR |
 | Undo a bad deploy | Actions → **Rollback** |
 | Bring up a new cluster | Actions → **Bootstrap cluster** |
 
@@ -90,7 +90,7 @@ That is all. Everything else is derived or shared:
 | App definitions | `appDefinitions.catalog` in the chart; the environment picks with `appDefinitions.enabled` |
 | Images to preload | derived from the enabled apps |
 | The landing page's app list | derived from the enabled apps |
-| Storage class | `clusters/<name>.yaml` |
+| Storage class, node pool | `clusters/<name>.yaml` |
 | Gateway listeners | derived from each environment's `parentRefs` |
 | Monitored namespaces | derived from the environments on the cluster |
 | Everything identical everywhere | `environments/_base.yaml` |
@@ -114,10 +114,8 @@ shares one token.
 Anything `tier: production` or `staging` should have required reviewers set, so
 GitHub holds the run until someone approves and records the approval.
 
-**Most of these are not set yet**: no cluster environment has a `KUBECONFIG`, so
-no cluster can currently be bootstrapped. See
-[GitHub Environments](docs/github-environments.md) for what each secret is, how
-to produce it, and what is missing.
+See [GitHub Environments](docs/github-environments.md) for what each secret is,
+how to produce it, and what each environment holds today.
 
 ## Checking a change
 

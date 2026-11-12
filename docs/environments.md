@@ -37,7 +37,7 @@ base sets.
 | Cluster | Environments | Notes |
 |---|---|---|
 | `tum-student` | `test1.…`, `test2.…`, `e2e.…`, `staging.eduide.student.k8s.aet.cit.tum.de` | everything non-production |
-| `tum-production` | `eduide.artemis.cit.tum.de` | TUM's own installation |
+| `tum-production` | `eduide.artemis.cit.tum.de` | TUM's own installation. The AET cluster (RKE2), reached through Rancher |
 | `eduide` | `bonn.eduide.aet.cit.tum.de`, `mannheim.eduide.aet.cit.tum.de` | other universities. Single node k3s (`parma`), no load balancer |
 
 An environment can be written and reviewed before its cluster exists. Deploying
@@ -281,6 +281,8 @@ URLs as well, not just re-enabling the chart.
 ```yaml
 spec:
   storageClassName: local          # applied to every environment on this cluster
+  nodeSelector:                    # optional: the node pool every EduIDE pod runs on
+    aet.cit.tum.de/pool: pve
   gatewayClassName: envoy          # used when the shared Gateway is installed
   tls:                             # the Secret each listener role terminates with
     landing: shared-theia-cert
@@ -326,14 +328,19 @@ session PVCs and the shared cache's vendored reposilite chart, which has its own
 key and its own `csi-rbd-sc` default.
 
 An environment must not set it. It is a property of the cluster - `eduide` runs
-on local disks, the TUM clusters on Ceph.
+on local disks, `tum-student` on Ceph (`csi-rbd-sc`), `tum-production` on
+Longhorn (`longhorn`, 3 replicas).
 
-Worth knowing about the test cluster: **both `csi-rbd-sc` and `longhorn` exist
-there and both are marked default**, so a PVC that omits the class gets an
-arbitrary one. test3 ran on `longhorn` and the others on `csi-rbd-sc`, for no
-reason anyone recorded; they are standardised on `csi-rbd-sc` now. Two default
-StorageClasses is a cluster misconfiguration worth raising with whoever owns the
-cluster - nothing in this repo can fix it.
+Worth knowing about the test cluster: both `csi-rbd-sc` and `longhorn` exist
+there, and for a long time **both were marked default**, so a PVC that omitted
+the class got an arbitrary one. test3 ran on `longhorn` and the others on
+`csi-rbd-sc`, for no reason anyone recorded; they are standardised on
+`csi-rbd-sc` now, and only `csi-rbd-sc` is default today.
+
+`nodeSelector` is the node pool, rendered into `global.nodeSelector` and
+`preloading.nodeSelector`. `tum-student` pins EduIDE to its `eduide` pool,
+`tum-production` to AET's `pve` pool. Sessions follow it from chart 2.8.0 on;
+older charts pin preloading only. An environment must not set it either.
 
 `test-deploy-logic.sh` renders every environment against a sentinel and fails if
 any storage key escapes the cluster default, so a new subchart with its own key
@@ -341,7 +348,9 @@ cannot slip through either.
 
 `runner` is per cluster because deploying is not building. Builds all run on
 GitHub-hosted runners; a deploy has to reach the cluster's API server, and the
-three clusters may differ in how they are reachable.
+three clusters may differ in how they are reachable. AET's API server is not
+reachable from the internet at all, so its kubeconfigs go through Rancher and
+the runner stays `ubuntu-latest`.
 
 ## How a deploy knows it reached the right cluster
 
