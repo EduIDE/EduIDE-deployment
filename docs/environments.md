@@ -225,8 +225,8 @@ The chart's `appDefinitions.catalog` defines the IDE images EduIDE officially
 releases. An environment names the apps it offers in `appDefinitions.enabled`,
 and puts only what it changes (for example `minInstances`) under
 `appDefinitions.apps`. An image only one installation uses is defined in full
-under `apps` and listed in `enabled` too (Mannheim's `thm-java-25`). App names
-are the plain image name (`java-17`, not `java-17-latest`).
+under `apps` and listed in `enabled` too. App names have no `-latest` suffix
+(`java-17`, not `java-17-latest`).
 That one list is the single source of truth for three things: the
 AppDefinition custom resources, the app list the landing page offers, and the
 images preloaded onto every node. **No environment lists images or landing page
@@ -240,6 +240,32 @@ preload one addressed by array index. Production offered `c-templates` while
 preloading everything except `c-templates`, so students picking it waited for a
 cold multi-gigabyte pull. `test-app-consistency.sh` in EduIDE-Helm asserts the
 three agree.
+
+### Editions and which installation runs what
+
+From chart 3.0.0 every language has two editions. No suffix is the Artemis
+edition (`java-17`, `java-25`, `c`, `python`, `javascript`, `rust`, `go`): it
+carries the Artemis extension, is started by Artemis by name and is never shown
+on the landing page. `<lang>-standalone` has no Artemis extension, ships the
+project templates and is what the landing page offers.
+
+| Installation | `enabled` | Landing page default | Workspaces |
+|---|---|---|---|
+| `eduide.artemis.cit.tum.de` | `java-17`, `java-25`, `c`, `python`, `javascript` and all seven `-standalone` apps | `java-17-standalone` | Artemis apps ephemeral (warm pool), `-standalone` apps persistent (`landingPage.ephemeral: false`) |
+| `bonn.eduide.aet.cit.tum.de` | `javascript-standalone` (30 warm) | `javascript-standalone` | ephemeral |
+| `mannheim.eduide.aet.cit.tum.de` | `java-25-standalone` | `java-25-standalone` | persistent, lazy start |
+| test1, test2, staging, e2e | `java-17`, `java-25` and their `-standalone` editions | `java-17-standalone` | ephemeral |
+
+Mannheim runs the catalog's `java-25-standalone` until
+`EduIDE/EduIDE-image-mannheim` publishes; the app then moves to
+`ghcr.io/eduide/eduide-image-mannheim/java-25:<tag>` (full path and tag).
+
+The values here need chart 3.0.0 or later: an older chart has no `-standalone`
+catalog entries, and an app defined only by an override fails the render for
+lacking an image. Every environment's `chartVersion` moves to 3.0.0 together
+with these values. The old `*-templates` apps are renamed, so persistent
+workspaces made in them on production are not reachable afterwards and the
+garbage collector reaps them.
 
 ## Monitoring
 

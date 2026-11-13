@@ -53,9 +53,6 @@ landingPage:
     # A processing purpose rather than a preference, so it is stated only on the
     # production installations that have a basis for it, not on test or staging.
     scientificUse: true
-  # The app names lost their -latest suffix in chart 2.7.0; _base.yaml still
-  # carries the old one for the installations not yet moved.
-  appDefinition: java-17-templates
   infoTitle: Welcome to EduIDE Cloud
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -97,20 +94,26 @@ networkPolicies:
 # ---------------------------------------------------------------------------
 # Applications
 # ---------------------------------------------------------------------------
-# Exactly what Artemis production launches (ls1intum/artemis-ansible#116:
-# java-17, java-25, c, javascript, python) plus the playground variants the
-# catalog has. That is the whole catalog today; listed anyway so a new catalog
-# entry does not reach production unasked.
+# Two editions of every language (chart 3.0.0). The Artemis edition (no suffix:
+# java-17, java-25, c, python, javascript) is what Artemis launches by name and
+# never shows on the landing page. The -standalone edition has no Artemis
+# extension and is what the landing page offers, with project templates.
+# rust and go are added once the Artemis team has configured them.
+# Listed so a new catalog entry does not reach production unasked.
 appDefinitions:
   enabled:
     - java-17
-    - java-17-templates
     - java-25
-    - java-25-templates
     - c
-    - c-templates
-    - javascript
     - python
+    - javascript
+    - java-17-standalone
+    - java-25-standalone
+    - c-standalone
+    - python-standalone
+    - javascript-standalone
+    - rust-standalone
+    - go-standalone
   apps:
     java-25:
       # Kept warm like java-17 (the chart's catalog default is 0). Only a
@@ -119,3 +122,26 @@ appDefinitions:
       # nothing to an AppDefinition that already exists - patch the live
       # resource too.
       minInstances: 3
+    java-17-standalone:
+      landingPage:
+        # Persistent, as the -templates apps were; the Artemis apps stay
+        # ephemeral (installation-wide default) so their warm pool works.
+        ephemeral: false
+    java-25-standalone:
+      landingPage:
+        ephemeral: false
+    c-standalone:
+      landingPage:
+        ephemeral: false
+    python-standalone:
+      landingPage:
+        ephemeral: false
+    javascript-standalone:
+      landingPage:
+        ephemeral: false
+    rust-standalone:
+      landingPage:
+        ephemeral: false
+    go-standalone:
+      landingPage:
+        ephemeral: false

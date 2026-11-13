@@ -30,8 +30,6 @@ gateway:
 operator:
   sessionsPerUser: 1000
 landingPage:
-  # The 2.7.0 catalog name; _base.yaml keeps the old one for older charts.
-  appDefinition: java-17-templates
   # No trustedArtemisHosts: deploy-e2e.yml runs only the functional tests,
   # which never reach Artemis.
   infoTitle: Welcome to EduIDE Cloud (E2E test target)
@@ -74,6 +72,6 @@ networkPolicies:
 appDefinitions:
   enabled:
     - java-17
-    - java-17-templates
+    - java-17-standalone
     - java-25
-    - java-25-templates
+    - java-25-standalone

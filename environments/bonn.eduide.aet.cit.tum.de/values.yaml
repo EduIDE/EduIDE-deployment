@@ -47,7 +47,7 @@ landingPage:
     # A processing purpose rather than a preference, so it is stated only on the
     # production installations that have a basis for it, not on test or staging.
     scientificUse: true
-  appDefinition: javascript
+  appDefinition: javascript-standalone
   infoTitle: Welcome to EduIDE (Bonn)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -94,11 +94,13 @@ eduide-shared-cache:
 # ---------------------------------------------------------------------------
 # Applications
 # ---------------------------------------------------------------------------
-# Bonn offers Javascript only. `enabled` is what limits that - leaving it empty
+# Bonn offers the JavaScript standalone edition only (no Artemis extension; its
+# project templates are applied by Scorpio, so template launches use the warm
+# pool). `enabled` is what limits that - leaving it empty
 # renders the whole catalog and preloads every image onto the node.
 appDefinitions:
   enabled:
-    - javascript
+    - javascript-standalone
   # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
   # These render from values on every deploy, unlike minInstances which is read
   # back from the live resource.
@@ -108,17 +110,18 @@ appDefinitions:
     # Minutes. 3 hours.
     timeout: 180
   apps:
-    # Removes the AppDefinition that the pre-2.7.0 name created, so the rename
-    # does not leave two of them side by side.
-    javascript-latest: null
-    javascript:
+    # Not offered any more: Bonn moved from the Artemis edition to the
+    # standalone one (chart 3.0.0). Not in `enabled` already stops it rendering;
+    # nulling it states the intent.
+    javascript: null
+    javascript-standalone:
       # Thirty sessions kept warm, filled because operator.eagerStart is true
       # above. Only a bootstrap default though: the chart reads the live value
       # back on every upgrade so the admin scaling API is not reset, so
       # changing this alone does nothing to an AppDefinition that already
       # exists - patch the live resource too.
       minInstances: 30
-      # image and landingPage.label now come from appDefinitions.catalog.
+      # image, landingPage.label and buildSystems now come from appDefinitions.catalog.
 # Reap a workspace this long after its last session. Default is 14 days.
 theia-workspace-garbage-collector:
   enabled: true
