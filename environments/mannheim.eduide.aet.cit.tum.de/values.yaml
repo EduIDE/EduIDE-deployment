@@ -51,7 +51,7 @@ landingPage:
     # - so this installation cannot end up publishing a retention period it does
     # not keep.
     scientificUse: true
-  appDefinition: java-25-standalone
+  appDefinition: thm-java-25-latest
   infoTitle: Welcome to EduIDE (Mannheim)
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
@@ -87,21 +87,24 @@ eduide-shared-cache:
 # ---------------------------------------------------------------------------
 # Applications
 # ---------------------------------------------------------------------------
-# Mannheim offers one app, Java 25 without the Artemis extension. `enabled`
-# limits the catalog to it, so nothing else is rendered, preloaded or offered.
+# Mannheim offers one app. `enabled` limits the catalog to it, so nothing else
+# is rendered, preloaded or offered.
 #
-# TODO: this is the catalog's java-25-standalone for now. TH Mannheim's own
+# The app keeps its name, thm-java-25-latest, and only its image changes. The
+# landing page names a persistent workspace after the app (ws-<app>-...,
+# createWorkspaceName in EduIDE-Landing-Page src/launch.ts) and Mannheim keeps
+# workspaces for 150 days, so a rename would leave every student's existing
+# workspace unreachable.
+#
+# TODO: the image is the catalog's java-25-standalone for now. TH Mannheim's own
 # image comes from EduIDE/EduIDE-image-mannheim, which does not publish yet.
-# Once it does, this app moves to that image: full path and tag, because the
-# chart prefixes imageRegistry to any image without a tag:
+# Once it does, point image at it with full path and tag, because the chart
+# prefixes imageRegistry to any image without a tag:
 #   image: ghcr.io/eduide/eduide-image-mannheim/java-25:<tag>
-# Until then thm-java-25-latest is not enabled, so its AppDefinition is removed,
-# which terminates its running sessions: deploy in a maintenance window. The
-# workspace PVCs are owned by the Workspace resource, so files survive.
 
 appDefinitions:
   enabled:
-    - java-25-standalone
+    - thm-java-25-latest
   # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
   # These render from values on every deploy, unlike minInstances which is read
   # back from the live resource.
@@ -111,14 +114,21 @@ appDefinitions:
     # Minutes. 3 hours.
     timeout: 180
   apps:
-    thm-java-25-latest: null
-    java-25-standalone:
+    thm-java-25-latest:
       # Unused while operator.eagerStart is false above: nothing is kept warm.
       # Left at ten so turning the pool back on restores it. Only a bootstrap
       # default: the chart reads the live value back on every upgrade so the
       # admin scaling API is not reset, so changing this alone does nothing to
       # an AppDefinition that already exists - patch the live resource too.
       minInstances: 10
+      image: eduide/java-25-standalone
+      landingPage:
+        label: Java 25
+        # The landing page derives the icon from the label when this is unset:
+        # "Java 25" becomes /assets/logos/java-25-logo.png, which it does not
+        # bundle, so the tile rendered with a broken image. Named explicitly to
+        # the general Java logo it does ship.
+        image: java-logo.png
 # Reap a workspace this long after its last session. Default is 14 days.
 theia-workspace-garbage-collector:
   enabled: true

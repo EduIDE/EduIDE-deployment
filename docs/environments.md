@@ -253,12 +253,13 @@ project templates and is what the landing page offers.
 |---|---|---|---|
 | `eduide.artemis.cit.tum.de` | `java-17`, `java-25`, `c`, `python`, `javascript` and all seven `-standalone` apps | `java-17` (the Artemis path, links without `?appDef`) | Artemis apps ephemeral (warm pool), `-standalone` apps persistent (`landingPage.ephemeral: false`) |
 | `bonn.eduide.aet.cit.tum.de` | `javascript-standalone` (30 warm); `javascript` stays until its sessions drained, then goes in a later deploy | `javascript-standalone` | ephemeral |
-| `mannheim.eduide.aet.cit.tum.de` | `java-25-standalone` | `java-25-standalone` | persistent, lazy start |
+| `mannheim.eduide.aet.cit.tum.de` | `thm-java-25-latest` (image `java-25-standalone`) | `thm-java-25-latest` | persistent, lazy start |
 | test1, staging, e2e | `java-17`, `java-25` and their `-standalone` editions | `java-17` | ephemeral |
 | test2 | the whole catalog (`enabled: []`, temporary for testing the editions) | `java-17` | ephemeral |
 
-Mannheim runs the catalog's `java-25-standalone` until
-`EduIDE/EduIDE-image-mannheim` publishes; the app then moves to
+Mannheim keeps the app name `thm-java-25-latest`, because persistent
+workspaces are named after the app; only the image changes, to the catalog's
+`java-25-standalone` until `EduIDE/EduIDE-image-mannheim` publishes, then to
 `ghcr.io/eduide/eduide-image-mannheim/java-25:<tag>` (full path and tag).
 
 The values here need chart 3.0.0 or later: an older chart has no `-standalone`
