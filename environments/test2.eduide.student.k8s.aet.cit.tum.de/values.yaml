@@ -69,8 +69,6 @@ networkPolicies:
   - 100.64.0.0/10
   - 198.18.0.0/15
 appDefinitions:
-  enabled:
-    - java-17
-    - java-17-standalone
-    - java-25
-    - java-25-standalone
+  # Empty means the whole catalog (all 14 apps), so the image editions can be
+  # tested here. Temporary: go back to a short list afterwards.
+  enabled: []

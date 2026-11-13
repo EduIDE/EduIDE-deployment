@@ -95,7 +95,9 @@ eduide-shared-cache:
 # Once it does, this app moves to that image: full path and tag, because the
 # chart prefixes imageRegistry to any image without a tag:
 #   image: ghcr.io/eduide/eduide-image-mannheim/java-25:<tag>
-# Until then thm-java-25-latest is not enabled, so its AppDefinition is removed.
+# Until then thm-java-25-latest is not enabled, so its AppDefinition is removed,
+# which terminates its running sessions: deploy in a maintenance window. The
+# workspace PVCs are owned by the Workspace resource, so files survive.
 
 appDefinitions:
   enabled:

@@ -55,7 +55,9 @@ landingPage:
       email: support.aet@xcit.tum.de
     dataProtectionOfficer:
       email: datenschutz(at)tum.de
-  appDefinition: java-17-standalone
+  # Only the default for links without ?appDef, which is the Artemis path, so
+  # it is the Artemis edition. Must be an app the installation renders.
+  appDefinition: java-17
   infoText: ' '
   loadingText: Preparing your personal Online IDE...
   logoFileExtension: png

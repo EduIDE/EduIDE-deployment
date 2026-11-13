@@ -94,12 +94,20 @@ eduide-shared-cache:
 # ---------------------------------------------------------------------------
 # Applications
 # ---------------------------------------------------------------------------
-# Bonn offers the JavaScript standalone edition only (no Artemis extension; its
+# Bonn offers the JavaScript standalone edition (and, temporarily, the old
+# Artemis edition so running sessions are not killed) (no Artemis extension; its
 # project templates are applied by Scorpio, so template launches use the warm
 # pool). `enabled` is what limits that - leaving it empty
 # renders the whole catalog and preloads every image onto the node.
 appDefinitions:
   enabled:
+    # Kept only until its sessions have drained: deleting an AppDefinition
+    # deletes the sessions running on it. The warm pool already lives on
+    # javascript-standalone. A later deploy removes it from `enabled` and sets
+    # `javascript: null` in `apps`. Patch its live minInstances to 0 now so the
+    # old warm pool is not refilled (minInstances is read back from the live
+    # resource, so the value here has no effect on it).
+    - javascript
     - javascript-standalone
   # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
   # These render from values on every deploy, unlike minInstances which is read
@@ -110,10 +118,6 @@ appDefinitions:
     # Minutes. 3 hours.
     timeout: 180
   apps:
-    # Not offered any more: Bonn moved from the Artemis edition to the
-    # standalone one (chart 3.0.0). Not in `enabled` already stops it rendering;
-    # nulling it states the intent.
-    javascript: null
     javascript-standalone:
       # Thirty sessions kept warm, filled because operator.eagerStart is true
       # above. Only a bootstrap default though: the chart reads the live value
