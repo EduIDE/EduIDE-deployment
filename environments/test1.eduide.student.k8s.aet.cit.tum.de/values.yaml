@@ -28,8 +28,6 @@ gateway:
     namespace: eduide-system
     sectionName: test1-webview
 landingPage:
-  # The 2.7.0 catalog name; _base.yaml keeps the old one for older charts.
-  appDefinition: java-17-templates
   # Artemis links from this host start the IDE without a Launch click.
   trustedArtemisHosts:
     - artemis-test1.artemis.cit.tum.de
@@ -73,6 +71,6 @@ networkPolicies:
 appDefinitions:
   enabled:
     - java-17
-    - java-17-templates
+    - java-17-standalone
     - java-25
-    - java-25-templates
+    - java-25-standalone
