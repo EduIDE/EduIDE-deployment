@@ -76,3 +76,11 @@ appDefinitions:
     - java-17-templates
     - java-25
     - java-25-templates
+  # TEMPORARY, never merge: short timeouts to test /session-ended (EduIDE-Helm#39,
+  # EduIDE-Landing-Page#46, EduIDE-Cloud#160). Redeploy test1 from main afterwards.
+  defaults:
+    timeout: 10
+    monitor:
+      activityTracker:
+        timeoutAfter: 3
+        notifyAfter: 2
