@@ -55,6 +55,26 @@ The three production installations:
 
 ## Check these before opening the PR
 
+**The chart is the latest EduIDE-Helm release.** Compare every `chartVersion`
+with the newest release, and look for commits on Helm's `main` that no release
+contains.
+
+```bash
+grep -H chartVersion environments/*/env.yaml
+gh release list -R EduIDE/EduIDE-Helm --limit 3
+tag=$(gh release list -R EduIDE/EduIDE-Helm --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName')
+gh api repos/EduIDE/EduIDE-Helm/compare/$tag...main --jq '.ahead_by'
+```
+
+An environment behind the latest release is expected to move (that is this
+task). If `ahead_by` is above 0, EduIDE-Helm has unreleased changes: ask the
+user whether to release Helm first. If yes, read Helm's release skill and
+follow it, then use the version it publishes:
+
+```bash
+gh api repos/EduIDE/EduIDE-Helm/contents/.claude/skills/release/SKILL.md --jq .content | base64 -d
+```
+
 **The chart version exists.** Merging a manifest that names an unpublished
 chart fails at chart resolution, in the deploy, against production.
 
