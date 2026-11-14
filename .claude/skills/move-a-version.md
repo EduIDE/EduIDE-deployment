@@ -62,7 +62,7 @@ contains.
 ```bash
 grep -H chartVersion environments/*/env.yaml
 gh release list -R EduIDE/EduIDE-Helm --limit 3
-tag=$(gh release list -R EduIDE/EduIDE-Helm --limit 1 --json tagName --jq '.[0].tagName')
+tag=$(gh release list -R EduIDE/EduIDE-Helm --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName')
 gh api repos/EduIDE/EduIDE-Helm/compare/$tag...main --jq '.ahead_by'
 ```
 
