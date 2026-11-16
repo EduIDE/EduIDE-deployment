@@ -1,5 +1,5 @@
-# Deploy the e2e-test environment from main, then run the functional tests
-# against it.
+# Deploy the e2e-test environment from main. deploy.yml then runs the
+# functional tests against it, as it does after every e2e deploy.
 #
 # The environment exists so the suite has somewhere to run that nobody is using.
 # Running it against a shared test environment means a red build might only mean
@@ -60,20 +60,8 @@ jobs:
       image_overrides: ${{ needs.tags.outputs.json }}
     secrets: inherit
 
-  # Only meaningful because deploy.yml uses --wait --atomic: the deploy job
-  # going green means the rollout is actually healthy, so a test failure here
-  # is about the code rather than about a half-finished deploy.
-  e2e:
-    needs: deploy
-    uses: EduIDE/theia-scale-tests/.github/workflows/functional-tests.yml@main
-    with:
-      environment: e2e.eduide.student.k8s.aet.cit.tum.de
-    secrets:
-      KEYCLOAK_USER: ${{ secrets.E2E_KEYCLOAK_USER }}
-      KEYCLOAK_PWD: ${{ secrets.E2E_KEYCLOAK_PWD }}
-
   report:
-    needs: [deploy, e2e]
+    needs: deploy
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -83,10 +71,7 @@ jobs:
             echo ""
             echo "| | |"
             echo "|---|---|"
-            echo "| Deploy | ${{ needs.deploy.result }} |"
-            echo "| Functional tests | ${{ needs.e2e.result }} |"
+            echo "| Deploy and functional tests | ${{ needs.deploy.result }} |"
             echo ""
-            if [[ "${{ needs.e2e.result }}" != "success" ]]; then
-              echo "The deploy reached a healthy rollout but the tests did not pass, so this is a code problem rather than a deployment one."
-            fi
+            echo "deploy.yml runs the functional suite after every e2e deploy; its e2e-tests job says whether the rollout or the tests failed."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -83,10 +83,16 @@ They live on the **cluster** environments (`cluster-tum-student`,
 `cluster-tum-production`, `cluster-eduide`), which is where
 `bootstrap-cluster.yml` reads them. A deploy never uses them.
 
-### `E2E_KEYCLOAK_USER` and `E2E_KEYCLOAK_PWD` - `e2e.eduide.student.k8s.aet.cit.tum.de` only
+### `E2E_KEYCLOAK_USER` and `E2E_KEYCLOAK_PWD` - repository secrets
 
-Credentials for the account the functional tests log in as. Only
-`deploy-e2e.yml` reads them.
+Credentials for the Keycloak account (`keycloak-test`, realm `tum`) the
+functional tests log in as. `deploy.yml` reads them in its `e2e-tests` job,
+which runs after every deploy of `e2e.eduide.student.k8s.aet.cit.tum.de`.
+
+They are **repository** secrets, not secrets of the e2e GitHub Environment. The
+job calls the reusable workflow in EduIDE/theia-scale-tests, and a job that
+calls a reusable workflow cannot select an environment, so environment secrets
+would be empty and the suite would fail at login.
 
 ## Creating one
 
@@ -153,8 +159,7 @@ is cheap.
 | `eduide.artemis.cit.tum.de` | yes | yes | n/a | yes |
 | `bonn.…`, `mannheim.…` | yes | yes | n/a | yes |
 
-`e2e.eduide.student.k8s.aet.cit.tum.de` also holds `E2E_KEYCLOAK_USER` and
-`E2E_KEYCLOAK_PWD`. `bonn.eduide.aet.cit.tum.de` holds its own
+`E2E_KEYCLOAK_USER` and `E2E_KEYCLOAK_PWD` are repository secrets (see above). `bonn.eduide.aet.cit.tum.de` holds its own
 `THEIA_ADMIN_API_TOKEN`, which overrides the repository one there.
 Every cluster environment holds `ALERT_WEBHOOKS` for alerting: `cluster-eduide` (`discord-bonn`, `discord-mannheim`), `cluster-tum-student` (`discord-test`) and `cluster-tum-production` (`discord-production`).
 

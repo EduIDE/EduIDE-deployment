@@ -400,9 +400,24 @@ update. An environment that promises persistent workspaces
 `operator.eagerStart: false`, as Bonn and Mannheim do. Setting the flag is
 not the whole change - see [Switching an environment to lazy start](#switching-an-environment-to-lazy-start).
 
-**The `e2e.` environment is not for people.** It follows `main` and the functional tests run
-against it automatically. Point manual work at `staging` instead, or a red build
+**The `e2e.` environment is not for people.** It follows `main`, and every deploy
+of it ends with the functional tests. Point manual work at `staging` instead, or a red build
 there stops meaning anything.
+
+## Testing an environment
+
+The end-to-end suite lives in
+[EduIDE/theia-scale-tests](https://github.com/EduIDE/theia-scale-tests).
+
+| When | How |
+|---|---|
+| Every deploy of `e2e.eduide.student.k8s.aet.cit.tum.de` | automatic: the `e2e-tests` job of `deploy.yml` calls `functional-tests.yml` with the environment name, whichever workflow deployed (`deploy-e2e`, `deploy-dispatch`, a deploy comment). The deploy run turns red when the tests fail. |
+| Any other environment, by hand | theia-scale-tests -> Actions -> **Functional Theia Tests** -> Run workflow, `environment` = the environment's name (its landing page host), or locally `LANDINGPAGE_URL=https://<name> npx playwright test --project=functional` |
+
+The environment name and the landing page host are the same string, so the
+name is all the suite needs. The test account must exist in that
+environment's Keycloak realm, and the environment should offer the apps the
+suite launches (e2e offers the whole catalog for that reason).
 
 ## Switching an environment to lazy start
 
