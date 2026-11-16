@@ -59,7 +59,9 @@ installation and nothing else.
 
 ### `THEIA_ADMIN_API_TOKEN` - currently repository-wide
 
-The bearer token for the admin scaling API.
+The bearer token for the admin scaling API. From Cloud 3.0.x (chart 3.0.0) the
+endpoints also need `service.adminApiEnabled: true`, which is off by default;
+without it the service answers them with 404 even when a token is set.
 
 It is **a repository secret today, not an environment secret**, so every
 environment deploys the same token and production shares it with every test
@@ -173,4 +175,4 @@ more, and its namespace is gone from `tum-student`. It can be deleted.
    they do not exist until bootstrap runs again.
 4. DNS, certificates and the Keycloak client. See
    [cluster-setup.md](cluster-setup.md) and [keycloak-setup.md](keycloak-setup.md).
-5. `Deploy (dispatch)` with `dry_run: true`, read the diff, then run it for real.
+5. `Deploy environment` with `dry_run: true`, read the diff, then run it for real.
