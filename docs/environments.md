@@ -18,7 +18,7 @@ are looking for a chart setting it is in `values.yaml`, always.
 The deploy runs, in this order:
 
 ```bash
-helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide --version 2.0.0 \
+helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide --version <chart version> \
   -f cluster-defaults.yaml \                     # generated from clusters/<name>.yaml
   -f environments/_base.yaml \                   # identical everywhere
   -f environments/<name>/values.yaml \           # this installation
@@ -96,13 +96,12 @@ installations elsewhere may bring their own entirely.
 | test1, test2, e2e-test, staging | `keycloak-test.aet.cit.tum.de` | `tum` | `eduide` |
 | tum-production | `keycloak.aet.cit.tum.de` | `tum` | `eduide` |
 | mannheim | `keycloak.aet.cit.tum.de` | `external_register` | `eduide` |
-| bonn | **not configured** | - | - |
+| bonn | `keycloak.aet.cit.tum.de` | `external_register` | `eduide` |
 
-**Bonn has no authentication.** Its realm has not been decided, so the block is
-commented out and it sets `keycloak.allowUnauthenticated: true`. Do not expose
-that installation until the block is filled in and the flag removed.
+**Bonn authenticates** against the same server and realm as Mannheim, with
+`keycloak.enable: true`. No environment sets `keycloak.allowUnauthenticated`.
 
-That flag exists because the oauth2-proxy ConfigMaps are rendered regardless of
+That flag exists, for an installation with no identity provider yet, because the oauth2-proxy ConfigMaps are rendered regardless of
 `keycloak.enable` - the operator mounts them into every session pod by literal
 name, so they cannot be gated. Left at the chart's defaults they carry
 `https://keycloak.url/auth/realms/TheiaCloud`, a host that does not exist, so
@@ -135,7 +134,7 @@ spec:
   cluster: eduide            # must match a file in clusters/
   namespace: eduide-bonn     # every namespace carries the eduide- prefix
   platform:
-    chartVersion: 2.0.0
+    chartVersion: <chart version>
     channel: release         # release | main
 ```
 
@@ -204,10 +203,10 @@ One number per source repository, and one chart version over the lot:
 | Value | Repository | Default |
 |---|---|---|
 | `versions.ide` | EduIDE (the IDE images) | empty → the chart's `appVersion` |
-| `versions.cloud` | EduIDE-Cloud (operator, service) | `1.2.0` |
-| `versions.landingPage` | EduIDE-Landing-Page | `1.2.0` |
+| `versions.cloud` | EduIDE-Cloud (operator, service) see `charts/eduide/values.yaml` |
+| `versions.landingPage` | EduIDE-Landing-Page | see `charts/eduide/values.yaml` |
 
-`helm install --version 2.0.0` with no overrides therefore pins every image to
+`helm install --version <chart version>` with no overrides therefore pins every image to
 a tag that release published. Nothing floats, and no environment repeats an
 image string.
 
@@ -225,7 +224,7 @@ The chart's `appDefinitions.catalog` defines the IDE images EduIDE officially
 releases. An environment names the apps it offers in `appDefinitions.enabled`,
 and puts only what it changes (for example `minInstances`) under
 `appDefinitions.apps`. An image only one installation uses is defined in full
-under `apps` and listed in `enabled` too (Mannheim's `thm-java-25`). App names
+under `apps` and listed in `enabled` too (Mannheim's own Java 25 image; the 3.0 target is `ghcr.io/eduide/eduide-image-mannheim/java-25`, while main's Mannheim values still use the old `thm-java-25` names until the 3.0 environment values land). App names
 are the plain image name (`java-17`, not `java-17-latest`).
 That one list is the single source of truth for three things: the
 AppDefinition custom resources, the app list the landing page offers, and the
@@ -439,7 +438,7 @@ Files already lost stay lost: the prewarmed pods never had a volume.
 ## Checking a change
 
 ```bash
-helm template eduide oci://ghcr.io/eduide/charts/eduide --version 2.0.0 \
+helm template eduide oci://ghcr.io/eduide/charts/eduide --version <chart version> \
   -f environments/_base.yaml -f environments/test1/values.yaml
 ./scripts/test-deploy-logic.sh            # overrides, tags, listeners, storage, cache
 ```

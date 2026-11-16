@@ -225,6 +225,9 @@ They are protected by a dedicated admin API token configured in the service as:
 - Container environment variable: `ADMIN_API_TOKEN`
 - Deployment secret reference: `theia-cloud.service.adminApiTokenSecret`
 
+From Cloud 3.0.x (chart 3.0.0) the endpoints are also off unless
+`service.adminApiEnabled: true` is set (default `false`); they answer 404 otherwise.
+
 In this repository, the token is typically supplied through the deployment workflow secret:
 
 - GitHub environment secret: `THEIA_ADMIN_API_TOKEN`
