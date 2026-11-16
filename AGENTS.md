@@ -11,7 +11,9 @@ clusters/<name>.yaml            where things run (identity, storage, runner)
 environments/<name>/env.yaml    what runs there (hosts, branding, versions)
 environments/_base.yaml         settings identical in every environment
 environments/<name>/values.yaml  plain Helm values, -f'd directly
-.claude/skills/                 moving a version into an environment, production included
+.claude/skills/                 moving a version into an environment, production included;
+                                running the functional check
+docs/testing/                   functional test plan: modules, report template, reports
 ```
 
 An environment is one namespace on one cluster.
