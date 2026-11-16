@@ -70,8 +70,29 @@ networkPolicies:
   - 100.64.0.0/10
   - 198.18.0.0/15
 appDefinitions:
-  enabled:
-    - java-17
-    - java-17-standalone
-    - java-25
-    - java-25-standalone
+  # Empty means the whole catalog: the end-to-end suite in
+  # EduIDE/theia-scale-tests launches every language and template here.
+  enabled: []
+  apps:
+    java-17-standalone:
+      landingPage:
+        # Persistent as in production, so the suite tests that setup.
+        ephemeral: false
+    java-25-standalone:
+      landingPage:
+        ephemeral: false
+    c-standalone:
+      landingPage:
+        ephemeral: false
+    python-standalone:
+      landingPage:
+        ephemeral: false
+    javascript-standalone:
+      landingPage:
+        ephemeral: false
+    rust-standalone:
+      landingPage:
+        ephemeral: false
+    go-standalone:
+      landingPage:
+        ephemeral: false
