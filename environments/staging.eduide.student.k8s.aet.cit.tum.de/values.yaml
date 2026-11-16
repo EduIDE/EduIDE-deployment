@@ -80,3 +80,26 @@ appDefinitions:
       # nothing to an AppDefinition that already exists - patch the live
       # resource too.
       minInstances: 3
+    # Persistent like production's -standalone apps, so staging tests the
+    # production setup; the Artemis apps stay ephemeral.
+    java-17-standalone:
+      landingPage:
+        ephemeral: false
+    java-25-standalone:
+      landingPage:
+        ephemeral: false
+    c-standalone:
+      landingPage:
+        ephemeral: false
+    python-standalone:
+      landingPage:
+        ephemeral: false
+    javascript-standalone:
+      landingPage:
+        ephemeral: false
+    rust-standalone:
+      landingPage:
+        ephemeral: false
+    go-standalone:
+      landingPage:
+        ephemeral: false
