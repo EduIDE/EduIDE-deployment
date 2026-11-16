@@ -216,7 +216,7 @@ builds the images of the repo it came from, so a blanket tag would put the rest
 of the namespace into `ImagePullBackOff`.
 
 ```
-Actions -> Deploy -> image_overrides: {"controlPlane": "pr-451"}
+Actions -> Deploy environment -> control_plane_tag: pr-451 (ide_tag and landing_page_tag left blank)
 ```
 
 ## Applications and preloading
