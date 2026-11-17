@@ -61,7 +61,7 @@ Steps: evaluate the certificate alert expressions from the rendered rule (MON-03
 ```bash
 curl -s http://127.0.0.1:19090/api/v1/query --data-urlencode 'query=count by (namespace) (certmanager_certificate_ready_status{condition="True"} == 0)' | jq -r '.data.result[] | .metric.namespace + " " + .value[1]'
 ```
-Expect: the expressions of `EduIDECertificateExpiringSoon` and `EduIDECertificateNotReady` select only certificates in platform namespaces (`eduide-system` and the gateway certificates); certificates of other tenants on the cluster never match. Chart 3.0.0-rc.3: not scoped, other tenants' broken certificates match (2026-11-17 report). Report counts per namespace only, not certificate names of other tenants.
+Expect: the expressions of `EduIDECertificateExpiringSoon` and `EduIDECertificateNotReady` select only certificates in platform namespaces (`eduide-system` and the gateway certificates); certificates of other tenants on the cluster never match. Chart 3.0.0-rc.3: not scoped, other tenants' broken certificates matched; rc.4 scopes both to `eduide-*` namespaces, `default`, `eduide-system` and the `theia-cloud-ca-certificate` (run 2: pass). With alerting off, render the chart with the live cluster values (`helm get values`, `monitoring.alerting={enabled:true,channels:[dummy]}`, `gateway.create=false`) and evaluate the rendered expression. Report counts per namespace only, not certificate names of other tenants.
 
 ## Explore
 

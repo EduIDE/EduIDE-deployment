@@ -34,7 +34,7 @@ Expect: green; the environment ends on the version it should be on. Record the f
 ### UPG-05 Redeploy without changes restarts nothing
 Safety: test-only, disruptive
 Steps: record the pod UIDs of operator, service, landing page and preloading; run the deploy dispatch with the versions already deployed; compare UIDs; `helm get manifest --revision <before>` against `<after>`.
-Expect (target): no pod restarted; the manifests are identical. Chart 3.0.0-rc.3: only `helm.sh/revision` differs, and operator, service, landing page and preloading restart (pod template annotation); record `fail`. Every operator restart also triggers OPR-13 and DB-12 effects.
+Expect: the manifests of the two revisions are identical, no `helm.sh/revision` in pod templates, preloading and garbage collector pods keep their UIDs. Operator, service and landing page restart only through the deploy workflow's `rollout restart` step (`deploy.yml`, "Force a pull when the tag is floating", runs for `channel: main`, which includes test2): check their pod template annotations differ only by `kubectl.kubernetes.io/restartedAt`. Chart 3.0.0-rc.3: `helm.sh/revision` differed and all four restarted; `fail` there. Re-test run 2: chart pass, workflow restart still happens (finding N1). Every operator restart also triggers OPR-13 and DB-12 effects.
 
 Cleanup: `ft_cleanup`.
 

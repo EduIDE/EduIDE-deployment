@@ -97,7 +97,7 @@ Steps:
 1. Lazy fixture with `TEMPLATE`; open it; wait for `Data injected successfully`.
 2. `k delete pod <session pod>`; wait until it runs; open it again through a new port-forward.
 3. Data Bridge Output: find `Loaded N persisted env var(s)`; operator log: a new injection for the session?
-Expect: N > 0 or a new `Data injected successfully` for the session after the restart. Cloud 3.0.1: N = 0 and no re-injection until the next operator start (DB-13); record `fail`. Workspace files survive either way.
+Expect: operator log `Pod of session <name> was replaced, scheduling data bridge injection` within about a minute (the resumer checks once a minute), then `Data injected successfully` once the browser makes the bridge listen, with no operator restart. Cloud 3.0.1: no re-injection until the next operator start (DB-13); `fail` there. Workspace files survive either way.
 Cleanup: `ft_cleanup`.
 
 ### DB-13 Operator start re-injects all sessions

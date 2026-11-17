@@ -98,7 +98,7 @@ Cleanup: `ft_cleanup`.
 Safety: test-only, disruptive
 Needs: browser pane; run in the OPR-10 window.
 Steps: `ft_appdef <APP_STD> ft-opr-idle2 0`, patch `monitor.activityTracker` to `notifyAfter 6, timeoutAfter 8`; `ft_session ft-opr-idle2-s ft-opr-idle2`; open the IDE (port-forward) until the operator logs `Last reported activity` for it; close the tab; within two minutes restart the operator (OPR-10); wait until 8 minutes plus two monitor intervals after the last activity. Control: OPR-04 step 3 in the same window, without a restart in between.
-Expect (target): `Monitor stopped answering ... Deleting session`. Cloud 3.0.1: still HANDLED, polls log `This poll is no evidence of inactivity` (the "answered" state is in memory); record `fail`.
+Expect: the Session carries `theia-cloud.io/monitor-answered=true` after the first answered poll; after the restart `Monitor stopped answering ... Deleting session` at the first poll after the timeout (monitor interval 3 min). Cloud 3.0.1 kept the state in memory and never ended the session; `fail` there. Sessions that never answered before a restart still end only by the lifetime.
 Cleanup: `ft_cleanup`.
 
 ### OPR-14 Operator down while sessions change

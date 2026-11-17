@@ -77,20 +77,20 @@ Expect: no `--skip-auth-route` argument on the proxy container; the IDE containe
 ### POOL-11 Pool app with a sidecar
 Safety: test-only
 Needs: a sidecar image as in OPR-09.
-Steps: `ft_appdef <APP_POOL> ft-pool-side 1`, patch `spec.sidecars` as in OPR-09, wait one minute, `k get deploy,svc,networkpolicy | grep ft-pool-side`; change `requestsCpu`, wait one minute, list again; claim a session, list again; release.
-Expect: after each step a Deployment and Service `instance-1-<sidecar>-ft-pool-side-...` with a running pod and one `...-sidecar-netpol`; no ERROR in the operator log for the reconcile; the claimed session reaches its sidecar on the sidecar port. Cloud 3.0.1: every full reconcile deletes the sidecar Deployment (it is parsed as instance 1); record `fail`.
+Steps: `ft_appdef <APP_POOL> ft-pool-side 1`, patch `spec.sidecars` as in OPR-09, wait one minute, `k get deploy,svc,networkpolicy | grep 30fd` (sidecar objects have truncated names, `instance-<n>-<sidecar>-ft-pool-sid-<hash>`: grep the AppDefinition hash, not its name); restart the operator and list again (UIDs must not change); claim a session, list again; release (the sidecar pod of that instance is replaced); set `minInstances` 1 (instance 2 and its sidecars go). A spec change such as `requestsCpu` recreates every instance with its sidecars by design (F21), so it is not the F1 check.
+Expect: after each step a Deployment and Service `instance-1-<sidecar>-ft-pool-side-...` with a running pod and one `...-sidecar-netpol`; no ERROR in the operator log for the reconcile; the claimed session reaches its sidecar on the sidecar port. Cloud 3.0.2 fixed this (re-test 2026-11-17 run 2). Cloud 3.0.1: every full reconcile deleted the sidecar Deployment; `fail` there.
 Cleanup: delete the session, `ft_cleanup`.
 
 ### POOL-12 Orphan after release
 Safety: test-only
 Steps: with `ft-pool` (min 2): claim A (instance 1); label the services of free instance 2 with A's UID (as in POOL-08); delete A; `pool` after one and after five minutes.
-Expect (target): instance 2 is reset within a few minutes without a pool exhaustion. Cloud 3.0.1: it stays claimed until the next full reconcile (pool exhaustion, AppDefinition change, operator start); record `fail`.
+Expect: instance 2 is reset by the timer (`[pool-orphan-check] ... claimed by a session that no longer exists, resetting it`, INFO) within about 10 minutes (5 min interval, orphaned in two runs); observed 6 min on Cloud 3.0.2. Cloud 3.0.1 reset only in a full reconcile; `fail` there.
 Cleanup: `ft_cleanup`.
 
 ### POOL-13 Broken free instance is not handed out
 Safety: test-only
-Steps: with `ft-pool` (min 2): delete the `-bridge-token` Secret and then the pod of free instance 2 (the new pod fails with `CreateContainerConfigError`); claim two sessions.
-Expect (target): the second session falls back to lazy (or waits) and instance 2 is repaired. Cloud 3.0.1: the second session gets instance 2, HANDLED, with a dead IDE; the release repairs it; record `fail`.
+Steps: with `ft-pool` (min 2): make free instance 2 dead: either delete its `-bridge-token` Secret and then its pod (`CreateContainerConfigError`), or set a non-existent image and `k patch deploy <instance 2> --type merge -p '{"spec":{"strategy":{"type":"Recreate","rollingUpdate":null}}}'` (with RollingUpdate the old healthy pod stays and the instance is not broken); claim two sessions.
+Expect: the first session gets instance 1 (eager), the second `lazy-fallback` with a running pod. Cloud 3.0.1: the second got instance 2 with a dead IDE; `fail` there.
 Cleanup: delete the sessions, `ft_cleanup`.
 
 Cleanup for the module: delete all `ft-pool-` sessions, then `ft_cleanup`; check that no `instance-*-ft-pool-*` object remains a few minutes later (they are owned by the AppDefinition).
