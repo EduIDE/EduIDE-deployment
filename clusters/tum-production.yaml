@@ -82,6 +82,9 @@ spec:
   # it still fires and is visible in Alertmanager and on the dashboards; it just
   # does not page anyone. See docs/monitoring-setup.md.
   alerting:
-    enabled: false
+    enabled: true
     minSeverity: warning
-    channels: []
+    channels:
+      - name: production
+        type: discord
+        secretKey: discord-production
