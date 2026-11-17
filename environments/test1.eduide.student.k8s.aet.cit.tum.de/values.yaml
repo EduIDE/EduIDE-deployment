@@ -32,6 +32,11 @@ landingPage:
   trustedArtemisHosts:
     - artemis-test1.artemis.cit.tum.de
   infoTitle: Welcome to EduIDE Cloud (Test1)
+  # Test of opening GitHub, GitLab and Gitea links (EduIDE-Helm#51); codeberg.org stands in for a Gitea.
+  allowedGitHosts:
+    - github.com
+    - gitlab.com
+    - codeberg.org
 hosts:
   # --- hostnames served by this installation (checked by test-deploy-logic.sh)
   #   test1.eduide.student.k8s.aet.cit.tum.de                      landing page
