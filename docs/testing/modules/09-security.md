@@ -21,7 +21,7 @@ Steps: `U=https://$(k get session <name> -o jsonpath='{.status.url}')`, then wit
 PATHS=(...)   # fill in the paths listed above
 for p in "${PATHS[@]}"; do curl -s -o /dev/null -w "%{http_code} %{redirect_url}\n" "$U$p"; done
 ```
-Expect: every request returns 302 to the Keycloak login of the environment's realm (verified this way on rc.3); none returns 200, 101 or IDE content.
+Expect: every request returns 302 to the Keycloak login of the environment's realm, a 307 slash redirect to the same host, or a 302 to the landing page (a normalised path that leaves the session prefix); none returns 101 or IDE content. Known non-redirect answers: `/ping` 200 without content (oauth2-proxy health endpoint), `/oauth2/auth` 401, `/oauth2/callback` without state 500 (upstream behaviour).
 
 ### SEC-03 Session names do not reveal or collide (CL-02, CL-03)
 Safety: prod-safe
@@ -54,7 +54,8 @@ Steps: start two fixture sessions `ft-sec-a` and `ft-sec-b` (ephemeral, `<APP_ST
 ```bash
 k exec $POD_A -c $C -- bash -c 'for t in "$0:3000" "$0:5000" "$0:16281" "$0:8081" "$1:9000"; do h=${t%:*}; p=${t#*:}; timeout 5 bash -c "</dev/tcp/$h/$p" 2>/dev/null && echo "OPEN $p" || echo "closed $p"; done' "$IP_B" "$IP_SERVICE_POD"
 ```
-Expect: every port `closed` (default deny plus gateway-only ingress; private ranges blocked for egress). Internet egress still works if `allowExternalEgress` is true (`curl -sI https://github.com` from A). No service account token is mounted in the IDE pod (`automountServiceAccountToken: false`).
+Then the cluster infrastructure (`NODE_IP` = the InternalIP of any node, `k get nodes -o wide` needs cluster read rights): `curl -sk -m5 -o /dev/null -w '%{http_code}' https://kubernetes.default.svc/version`, `https://$NODE_IP:10250/healthz`, a TCP connect to `$NODE_IP:22`, and `http://169.254.169.254/`.
+Expect: every port `closed` (default deny plus gateway-only ingress; private ranges blocked for egress). The API server, kubelet, node SSH and the metadata address time out (target). On `tum-student` the nodes and the API server sit on a public subnet that `privateEgressCidrs` does not exclude: API server and kubelet answer 401 and node SSH is open (2026-11-17 report); record it until the cluster values exclude the subnet. Internet egress still works if `allowExternalEgress` is true (`curl -sI https://github.com` from A). No service account token is mounted in the IDE pod (`automountServiceAccountToken: false`).
 Cleanup: `ft_cleanup`.
 
 ### SEC-08 Admin API cannot be reached without the toggle and token (CL-05, Cloud 3.0.1)
@@ -67,10 +68,26 @@ Safety: prod-safe
 Steps: `grep -rn allowUnauthenticated environments/` and `curl -s $LANDING/config.js | grep -o 'useKeycloak: [a-z]*'`
 Expect: no environment sets `keycloak.allowUnauthenticated`; `useKeycloak: true` everywhere.
 
+### SEC-10 Env from Secrets and ConfigMaps outside the allowlist is dropped
+Safety: test-only
+Steps: create a fixture Session with `spec.envVarsFromSecrets: [service-admin-api-token, service-config-secret]` and `spec.envVarsFromConfigMaps: [kube-root-ca.crt]` (string lists in v1beta8; add them to the `ft_session` heredoc), `ft_wait`; then `k get pod <pod> -o jsonpath='{.spec.containers[*].envFrom}'` and `k logs deploy/operator-deployment --since=5m | grep -c 'not permitted by the operator allowlist'`.
+Expect: the pod has no `envFrom`; the operator logs a WARN that names the dropped objects (names only, no values). The operator allowlist (`operator.allowedEnvFromSecrets`, default empty) decides; record its value.
+Cleanup: `ft_cleanup`.
+
+### SEC-11 Security headers
+Safety: prod-safe
+Steps:
+```bash
+S="<any running session>"   # on production pick any and do not record its name
+for u in "$LANDING/" "$SERVICE/service/$APPID" "https://$(k get session "$S" -o jsonpath='{.status.url}')"; do
+  echo "$u"; curl -sS -o /dev/null -D - "$u" | grep -i -E '^(strict-transport-security|x-content-type-options|x-frame-options|content-security-policy|referrer-policy):' | cut -d: -f1; done
+```
+Expect: `Strict-Transport-Security` on all three hosts; the landing page also sends CSP, `X-Content-Type-Options`, `X-Frame-Options` and `Referrer-Policy`. Chart 3.0.0-rc.3: no HSTS on any host, service and session proxy send none of these headers (2026-11-17 report). Print header names only.
+
 ## Explore
 
 - Request smuggling and path normalisation between Envoy and oauth2-proxy (double slashes, dot segments, mixed case) on a fixture session only; describe outcomes, never record payload lists in the report.
 - Can a session reach the cloud metadata address (`169.254.169.254`) or node ports of the cluster? (Expected: no.)
 - Can one user's session URL be opened by another logged-in user? (Needs a second account; expected: the proxy refuses, the user is not in the authenticated emails list.)
-- Are there Secrets in the namespace that a session's env could reference via `fromSecrets` (operator allowlist `operator.allowedEnvFromSecrets`, default empty)?
-- Look at response headers of landing, service and session for missing security headers (CSP, HSTS, X-Content-Type-Options).
+- Which Secrets in the namespace would a non-empty `operator.allowedEnvFromSecrets` expose to sessions (SEC-10)?
+- Do Session CRs carry credentials in clear text in `spec.envVars` (for example a token inside `GIT_URI`)? Count only, never print values.

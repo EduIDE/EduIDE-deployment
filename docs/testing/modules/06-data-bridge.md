@@ -10,7 +10,10 @@ Facts:
 - Every injection replaces the whole store (also a request with only unknown keys).
 - Token Secrets: pool `instance-<n>-<app>-...-bridge-token`, owned by the AppDefinition; lazy session `<session-derived name>-bridge-token`, owned by the Session; key `token`; injected as `DATA_BRIDGE_TOKEN` via `secretKeyRef`.
 - The operator targets the session's own IDE Service ClusterIP (not sidecar services, not the internal `-int` service).
-- On start the operator resumes injection for every handled session of a bridge-enabled app.
+- On start the operator resumes injection for every handled session of a bridge-enabled app (also sessions that were already injected).
+- The bridge listens only after a browser connected to the IDE (plugin host). The operator polls every 2 s for 30 minutes, then gives up. For `ft-` fixtures open the IDE through a port-forward (README, "Opening a fixture session in the browser") and wait for `Data injected successfully for session: <name>`; without that, injection tests time out silently.
+- There is no read path (`GET /data` is 404). Read the store in the IDE: command palette "Data Bridge: Show Logs", lines `Environment variable(s) set: <names>` and `Loaded N persisted env var(s)`.
+- Find token Secrets by owner reference, not by suffix (README); eager pods are found through `theia-cloud.io/instance-id`.
 
 Run the in-pod requests with the IDE container (`-c <ide container>`, see README). The token is expanded inside the pod and never printed.
 
@@ -32,12 +35,12 @@ Expect: `DATA_BRIDGE_ENABLED=1`, `DATA_BRIDGE_PORT=16281`, `DATA_BRIDGE_TOKEN` f
 
 ### DB-02 Eager session gets its data
 Safety: test-only
-Steps: with `ft-pool` from module 05, `FT_ENV='{TEMPLATE: <a template id of that image>}' ft_session ft-db-eager ft-pool`, `ft_wait ft-db-eager`. Open the session URL in the browser.
+Steps: with `ft-pool` from module 05, `FT_ENV='{TEMPLATE: <a template id of that image>}' ft_session ft-db-eager ft-pool`, `ft_wait ft-db-eager`. Open the IDE in the browser through a port-forward of the instance pod.
 Expect: operator log shows the injection succeeded for `ft-db-eager` (no values logged); in the IDE the template is applied (scorpio reads `TEMPLATE` from the bridge) and the status bar or Welcome shows the template files.
 
 ### DB-03 Lazy session gets its data
 Safety: test-only
-Steps: `ft_workspace ft-db-ws <APP_STD>`; `FT_ENV='{THEIA: "1", TEMPLATE: <id>}' ft_session ft-db-lazy <APP_STD> ft-db-ws`; `ft_wait ft-db-lazy`.
+Steps: `ft_workspace ft-db-ws <APP_STD>`; `FT_ENV='{THEIA: "1", TEMPLATE: <id>}' ft_session ft-db-lazy <APP_STD> ft-db-ws`; `ft_wait ft-db-lazy`; open the IDE through a port-forward.
 Expect: a `-bridge-token` Secret owned by the Session exists; injection succeeds (operator log); the template is applied. Before Cloud 3.0.1 lazy sessions ran with `DATA_BRIDGE_ENABLED=0` (rc.3 user test).
 
 ### DB-04 Wrong or missing token is refused
@@ -47,18 +50,18 @@ Expect: 401, 401, `OK 200`. The store is unchanged (the template session keeps w
 
 ### DB-05 Known keys and replacement
 Safety: test-only (overwrites the fixture session's injected data)
-Steps: `bridge $POD $C right '{"environment":{"THEIA":"1","FT_UNKNOWN":"x"}}'`, then `bridge $POD $C right '{"environment":{"bad":1}}'`, then a body over 64 KiB.
-Expect: 200 with `{"ignored":["FT_UNKNOWN"]}`; 400; 413.
+Steps: `bridge $POD $C right '{"environment":{"THEIA":"1","FT_UNKNOWN":"x"}}'`, then `bridge $POD $C right '{"environment":{"bad":1}}'`, `'{"environment":{}}'`, `'notjson'`, then a body over 64 KiB with and without the token. Build the large body in the pod and pipe it via stdin (`printf ... | curl --data-binary @- ...`), no temp file.
+Expect: 200 with `{"ignored":["FT_UNKNOWN"]}`; 400; 200 `{"ignored":[]}` (no-op); 400 for malformed JSON (data bridge 2.0.0 returns 500: record `fail`); 413 with the token and 401 without (auth before the size check). Error messages name the type, never echo the value.
 
 ### DB-06 DATA_BRIDGE_EXTRA_KEYS
 Safety: test-only
-Steps: on the fixture session's Deployment (lazy, not a pool instance): `k set env deploy/<ft-db-lazy deployment> -c <ide container> DATA_BRIDGE_EXTRA_KEYS=FT_EXTRA`, wait for the new pod, then `bridge ... right '{"environment":{"THEIA":"1","FT_EXTRA":"x","FT_OTHER":"y"}}'`.
+Steps: on the fixture session's Deployment (lazy, not a pool instance): `k set env deploy/<ft-db-lazy deployment> -c <ide container> DATA_BRIDGE_EXTRA_KEYS=FT_EXTRA`, wait for the new pod, open the IDE again (port-forward), then `bridge ... right '{"environment":{"THEIA":"1","FT_EXTRA":"x","FT_OTHER":"y"}}'`.
 Expect: `{"ignored":["FT_OTHER"]}`. (Launch requests cannot set `DATA_BRIDGE_*` variables: the operator drops that prefix, API-10.)
 Cleanup: `ft_cleanup` removes the session and its Deployment.
 
 ### DB-07 Injection after operator restart
 Safety: test-only, disruptive
-Steps: create a lazy fixture session and, while it is still starting (`operatorStatus` HANDLING, before the IDE is ready), `k rollout restart deploy/operator-deployment`.
+Steps: create a lazy and an eager fixture session with `TEMPLATE` and do not open them; `k rollout restart deploy/operator-deployment` (OPR-10 window); then open both through port-forwards.
 Expect: after the restart the operator resumes the injection (log line naming the session); the template is applied when the IDE opens. Combine with OPR-10 to save a restart.
 
 ### DB-08 Injection with sidecars
@@ -76,9 +79,36 @@ Safety: test-only
 Steps: in a fixture session with no other env, open the IDE and run the command palette "Data Bridge: Show Logs" (`dataBridge.showLogs`), or check the scorpio log in the Output view.
 Expect: the store holds `THEIA` (the operator adds `THEIA=1` when the session env lacks it); scorpio treats the session as a cloud session (git identity set, see IDE module).
 
+### DB-11 Pool token rotates on release
+Safety: test-only
+Needs: an own pool AppDefinition (`ft_appdef <APP_POOL> ft-db-pool 1`).
+Steps:
+1. Start `ft-db-rot` on `ft-db-pool`, wait HANDLED; note the claimed pod and `theia-cloud.io/instance-id`.
+2. Hash the token in the Secret (`k get secret <instance token secret> -o jsonpath='{.data.token}' | base64 -d | shasum -a 256 | cut -c1-12`) and in the pod (`k exec <pod> -c <ide> -- sh -c 'printf %s "$DATA_BRIDGE_TOKEN" | sha256sum | cut -c1-12'`).
+3. `k delete session ft-db-rot`; wait for the pod to be replaced and running.
+4. Hash again (Secret and new pod); `k exec <new pod> -c <ide> -- ls -A /home/project`.
+Expect: the operator logs `Wrote a new data bridge token to Secret instance-<id>-...` and `Deleting pod ...`; the new hash differs from the old one and Secret and pod agree; `/home/project` holds no files of the previous session.
+Cleanup: `ft_cleanup`.
+
+### DB-12 Data survives a session pod restart
+Safety: test-only
+Needs: browser pane, port-forward.
+Steps:
+1. Lazy fixture with `TEMPLATE`; open it; wait for `Data injected successfully`.
+2. `k delete pod <session pod>`; wait until it runs; open it again through a new port-forward.
+3. Data Bridge Output: find `Loaded N persisted env var(s)`; operator log: a new injection for the session?
+Expect: N > 0 or a new `Data injected successfully` for the session after the restart. Cloud 3.0.1: N = 0 and no re-injection until the next operator start (DB-13); record `fail`. Workspace files survive either way.
+Cleanup: `ft_cleanup`.
+
+### DB-13 Operator start re-injects all sessions
+Safety: test-only, disruptive
+Steps: after DB-12 step 2 (`Loaded 0`), restart the operator; check the operator log and the Data Bridge Output.
+Expect: `Resumed N data bridge injection(s)` includes the session, `Data injected successfully` for it, bridge log `Environment variable(s) set: ...`. This is the manual repair for DB-12 until it is fixed.
+
 ## Explore
 
-- Inject while the IDE is still starting (bridge not yet listening): how many retries, and does it give up after 30 minutes as designed?
+- Inject while the IDE is still starting (bridge not yet listening): how many retries, and does it give up after 30 minutes as designed? A session first opened more than 30 minutes after launch gets no data.
+- Browser reload while the operator injects: the bridge is down for minutes while the plugin host restarts.
 - Restart only the IDE container (kill the extension host): is the store reloaded from SecretStorage?
 - Two browser windows on one session: the second logs "Port ... is taken"; does the first keep serving?
 - Rotate a lazy session's token Secret by hand: does the next injection use the new one?

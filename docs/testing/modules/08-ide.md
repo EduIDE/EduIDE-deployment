@@ -6,7 +6,8 @@ Sources: EduIDE `images/<lang>/templates/<id>/{template.json,.vscode/tasks.json}
 
 ## Template matrix
 
-Run IDE-01 for each row the environment offers (the catalog differs per environment; record which rows ran). Task names are from each template's `.vscode/tasks.json`; run them with Terminal > Run Task (or the Run button at Beginner level, which runs the default build task).
+Run IDE-01 for each row the environment offers (the catalog differs per environment; record which rows ran). Task names are from each template's `.vscode/tasks.json`; run them with Terminal > Run Task (or the Run button at Beginner level, which runs the default build task). When running a task's command outside the IDE, apply its `options.env` too (python Run needs `PYTHONPATH=src`).
+In a hidden browser pane the IDE needs about two minutes to become ready and the template waits for it: keep the tab in the foreground, and poll the pod (`ls -A /home/project`) rather than the UI.
 
 | App | Template id | Tasks and the command they run | Expected result |
 |---|---|---|---|
@@ -31,12 +32,12 @@ Cleanup: stop the session (API-05 or `k delete session`).
 
 ### IDE-02 Experience levels
 Safety: test-only
-Steps: in one session open the level menu (status bar `🎓 <level>`, or View > Experience Level...) and switch Beginner, Advanced, Expert.
+Steps: in one session open the top-level "Experience Levels" menu (the status bar shows the level name) and switch Beginner, Advanced, Expert.
 Expect:
 - Expert is the default for a new session (known: the level resets on every new session, rc.1 finding 7).
-- Beginner: menu bar File, Edit, Help (plus the level menu); only Explorer, Search and (Artemis) the Artemis view; one Run button; no terminal, no "Open new Terminal" or "Open Version Control" links on any start page (rc.1 finding 5).
-- Advanced: adds Source Control, Testing, build tool views, terminal, Output; no debugger.
-- Expert: stock IDE with debugger, Outline, all tasks, Welcome page.
+- Beginner: menu bar File, Edit, View, Experience Levels, Help; only Explorer, Search and (Artemis) the Artemis view; one Run button in the editor title bar (shown only with a file open; it runs the default task); no terminal, no "Open new Terminal" or "Open Version Control" links on any start page (rc.1 finding 5).
+- Advanced: adds the Selection, Go and Terminal menus, Source Control, Testing, build tool views, Output; no Run menu, no debugger.
+- Expert: stock IDE with the Run menu, debugger and Debug Console, Outline, all tasks, Welcome page.
 - The switch applies immediately, without reload.
 
 ### IDE-03 Persistence across restart (Saved apps)

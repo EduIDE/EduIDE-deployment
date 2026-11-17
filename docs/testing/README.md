@@ -58,7 +58,7 @@ Rules that hold in every mode:
 
 ## Setup
 
-Run from a checkout of this repository. Set these once per run; every module uses them.
+Run from a checkout of this repository. Set these once per run; every module uses them. The snippets are bash: when the agent's shell is zsh, run them through `bash -c` or check quoting (`custom-columns` arguments with dots or brackets need quotes in zsh).
 
 ```bash
 export ENV=test2.eduide.student.k8s.aet.cit.tum.de   # directory under environments/
@@ -70,7 +70,8 @@ export LANDING=https://$ENV SERVICE=https://service.$ENV INSTANCE=https://instan
 k() { kubectl --context "$CTX" -n "$NS" "$@"; }
 
 # The service auth token is public (it is shipped to every browser in config.js), not a secret.
-export APPID=$(curl -fsS "$LANDING/config.js" | sed -n 's/.*serviceAuthToken: "\([^"]*\)".*/\1/p')
+# additionalApps entries reuse the key serviceAuthToken, so take the first match only.
+export APPID=$(curl -fsS "$LANDING/config.js" | sed -n 's/.*serviceAuthToken: "\([^"]*\)".*/\1/p' | head -1)
 
 # Sanity: the context reaches the right cluster (bootstrap writes this ConfigMap).
 test "$(kubectl --context "$CTX" -n eduide-system get cm eduide-cluster-identity -o jsonpath='{.data.clusterName}')" = "$CLUSTER" && echo "cluster ok"
@@ -97,7 +98,8 @@ Do not hard-code app names: the catalog differs per environment and chart versio
 Server modules create their own objects instead of touching students' sessions. Sessions and workspaces created directly as custom resources need no user token.
 
 ```bash
-FT_USER=ft-bot@functional-test.invalid
+# One fixture user per agent: parallel agents sharing one user hit the per-user session limit (--sessionsPerUser) of each other.
+FT_USER=ft-${MODULE:-bot}@functional-test.invalid   # set MODULE=05 (or a run part) per agent
 
 # Clone an existing AppDefinition under a new name (not managed by Helm, not on the landing page).
 ft_appdef() { # $1 source app, $2 new name, $3 minInstances
@@ -119,18 +121,19 @@ EOF
 
 ft_session() { # $1 name, $2 app definition, [$3 workspace, empty = ephemeral], [$4 user]
   # Session env goes in FT_ENV as a YAML map, e.g. FT_ENV='{THEIA: "1", TEMPLATE: maven}' ft_session ...
+  # A random sessionSecret lets the activity monitor answer the operator (without it every poll gets 401).
   local env=${FT_ENV:-"{}"}
   k apply -f - <<EOF
 apiVersion: theia.cloud/v1beta8
 kind: Session
 metadata: {name: $1, labels: {eduide.dev/functional-test: "$RUN_ID"}}
-spec: {name: $1, appDefinition: $2, workspace: "${3:-}", user: ${4:-$FT_USER}, envVars: $env}
+spec: {name: $1, appDefinition: $2, workspace: "${3:-}", user: ${4:-$FT_USER}, sessionSecret: "$(openssl rand -hex 16)", envVars: $env}
 EOF
 }
 
 ft_wait() { # $1 session: waits for HANDLED and a URL
   for _ in $(seq 1 90); do
-    s=$(k get session "$1" -o jsonpath='{.status.operatorStatus} {.status.url}' 2>/dev/null)
+    s=$(k get session "$1" -o jsonpath='{.status.operatorStatus} {.status.url}' 2>/dev/null) || { echo "no session $1"; return 1; }
     case "$s" in HANDLED\ ?*) echo "$s"; return 0;; ERROR*) echo "$s"; return 1;; esac
     sleep 10
   done; echo "timeout: $s"; return 1
@@ -143,12 +146,37 @@ ft_cleanup() {
 }
 ```
 
-Session pods carry `app.kubernetes.io/component=session`, `theia-cloud.io/session=<session>` and `theia-cloud.io/app-definition=<app>`. Find a session's pod and its IDE container like this:
+Lazy session pods carry `app.kubernetes.io/component=session`, `theia-cloud.io/session=<session>` and `theia-cloud.io/app-definition=<app>`. Find a session's pod and its IDE container like this:
 
 ```bash
-POD=$(k get pod -l theia-cloud.io/session=ft-s1 -o name | head -1)
+POD=$(k get pod -l theia-cloud.io/session=ft-s1 -o name | grep -v -- '-<sidecar name>-' | head -1)
 k get $POD -o jsonpath='{.spec.containers[*].name}'   # the IDE container is the one that is not oauth2-proxy
 ```
+
+Sidecar pods carry the same `theia-cloud.io/session` label, hence the `grep -v`.
+Eager (pool) sessions run in a pool instance whose pod has no session label. Read the instance id from the Session and find the instance pod by name:
+
+```bash
+ID=$(k get session ft-s1 -o jsonpath='{.metadata.annotations.theia-cloud\.io/instance-id}')
+POD=$(k get pod -o name | grep -m1 "instance-$ID-<app>-")
+```
+
+Data bridge token Secrets are found by owner, not by name: lazy names can be cut to `-bridge-toke`.
+
+```bash
+k get secret -o json | jq -r '.items[] | select(.metadata.ownerReferences[]? | .kind=="Session" and .name=="ft-s1") | .metadata.name'
+```
+
+### Opening a fixture session in the browser (test-only)
+
+The data bridge (16281) and the activity monitor (8081) listen only after a browser connects to the IDE. A fixture session's URL needs the fixture user's login, so open it through a port-forward instead (this bypasses oauth2-proxy; only for `ft-` fixtures):
+
+```bash
+k port-forward $POD 38302:3000 >/dev/null 2>&1 & PF=$!
+# open http://127.0.0.1:38302/ in the browser pane; kill $PF when done
+```
+
+Keep the IDE tab in the foreground: in a hidden browser pane the IDE needs 2 to 7 minutes to connect (under one minute when visible), and the bridge may not listen for much longer. Front the tab or ask the user to show the pane before waiting for `Data injected successfully for session: <name>` in the operator log. Closing the tab (or the port-forward) makes the monitor stop answering, which inactivity tests use.
 
 ### A user token for service API tests (test environments only)
 
@@ -182,7 +210,7 @@ Most service endpoints need a Keycloak token. The landing page keeps it in memor
    ```
 
    Example: `await api('GET', '/service/session/' + window.theiaCloudConfig.serviceAuthToken + '/' + '<user>')`.
-5. ID tokens are short-lived (minutes). On a 401 that the test does not expect, repeat steps 2 and 3.
+5. ID tokens live 300 s. On a 401 that the test does not expect, re-capture: relaunch a tile whose session already runs (the service returns the running session at once), then navigate back to `$LANDING`. The URL the service returns has no scheme.
 6. At the end: `sessionStorage.removeItem('ft.tok')`.
 
 This procedure is not covered by an automated test. If it fails, mark the dependent tests `blocked` and describe what happened.
@@ -241,3 +269,4 @@ The plan changes through pull requests to this directory, never silently during 
 | Date | Change |
 |---|---|
 | 2026-11-16 | First version: modules 01 to 12, report template, `functional-check` skill. Grounded in EduIDE-Cloud 3.0.1, EduIDE-Helm 3.0.0 (main), EduIDE 2.0.0-rc.3, scorpio 3.1.0, EduIDE-data-bridge 2.0.0, Landing 1.4.1, workspace-garbage-collector 1.0.0. |
+| 2026-11-17 | First full run on test2 ([report](reports/2026-11-17-test2-1.md)) applied: new tests SEC-10, SEC-11, MON-08, OPR-11 to OPR-14, POOL-11 to POOL-13, DB-11 to DB-13, GC-07, LAND-13, API-16 to API-18, UPG-05; corrected PLAT-04, PLAT-05, MON-02, MON-03 to MON-06 (alerting precondition), OPR-04, OPR-05, POOL-01, POOL-07, API-09, API-14, API-15, LAND-05, LAND-08, IDE-02, GC-06, DB-05, SEC-02, SEC-07, UPG-01, UPG-03; README: one `FT_USER` per agent, `sessionSecret` in `ft_session`, `ft_wait` exit on a missing Session, eager and sidecar pods, token Secrets by owner, port-forward browser step, token lifetime, `APPID` first match. |

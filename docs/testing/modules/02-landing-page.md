@@ -44,6 +44,7 @@ Steps:
 2. Open `$LANDING/session-ended`.
 3. Click "Resume my session".
 Expect: step 2 shows "Your session has ended", does not start anything by itself (no Session CR appears for 60 s), and offers "Resume my session" and "Start something else". Step 3 starts the same workspace; the file from step 1 is there. "Start something else" clears the stored launch (`sessionStorage['eduide.lastLaunch.v1']`) and returns to `/`.
+After a Temporary session the page says "This session ran without a persistent workspace, so its files could not be kept." and offers only "Start a new session". Resume needs an app that is Saved in `config.js`; on an environment with `useEphemeralStorage: true` and no Saved app, run only the Temporary variant and record the rest as `blocked`.
 
 ### LAND-06 Session-ended reasons
 Safety: test-only
@@ -60,8 +61,8 @@ Expect: the gateway answers 302 to `$LANDING/session-ended` (chart `gateway.rout
 Safety: test-only (553 part) / prod-safe (invalid appDef part)
 Steps:
 1. Open `$LANDING/?appDef=does-not-exist`.
-2. With SESSIONS_PER_USER lowered (see API-08), launch a second app.
-Expect: step 1 shows "Invalid default selection value: does-not-exist"; step 2 shows "Your previous session is still shutting down. Please try again in a few seconds." (error 553).
+2. With SESSIONS_PER_USER lowered (run together with API-08, one service restart for both; the user's own running session counts), launch a second app.
+Expect: step 1 shows "Invalid default selection value: does-not-exist"; step 2 shows "Your previous session is still shutting down. Please try again in a few seconds." (error 553; the text does not fit the cause, see the 2026-11-17 report).
 
 ### LAND-09 Retry behaviour
 Safety: test-only, disruptive
@@ -84,6 +85,13 @@ Safety: prod-safe
 Steps: open `/imprint` and `/privacy` from the footer.
 Expect: both render; privacy names the controller from `environments/_base.yaml` (`landingPage.privacy`), not the chart placeholder "Example University".
 
+### LAND-13 Build system switch while a session runs
+Safety: test-only
+Needs: logged in; an app with two build systems shown as Temporary.
+Steps: launch Java 17 > Maven; go back to `$LANDING`; launch Java 17 > Gradle; check the Session CR's `TEMPLATE` and the workspace.
+Expect (target): the student gets a Gradle workspace or a clear message ("You already have a Java 17 session with Maven..."); never the Maven workspace silently. Cloud 3.0.1 with Landing 1.4.1: the running Maven session is returned; record `fail`.
+Cleanup: stop the session.
+
 ## Explore
 
 - Double click on a tile, or two tabs launching at the same time: one session or two? Any 553?
@@ -92,3 +100,4 @@ Expect: both render; privacy names the controller from `environments/_base.yaml`
 - Narrow viewport (375 px) and keyboard-only navigation: can every tile and button be reached?
 - `config.js` caching: is it really served with no-cache after a deploy (`curl -sI $LANDING/config.js`)?
 - Dark mode contrast (Landing 1.4.1 contrast fix).
+- Deep links: does stray app id text show under the welcome title, and do query parameters (`gitUri`, `artemisToken`) stay in the URL across routes?

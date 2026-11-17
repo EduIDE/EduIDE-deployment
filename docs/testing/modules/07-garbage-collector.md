@@ -39,13 +39,21 @@ Cleanup: restore the recorded `WORKSPACE_TTL` and `CHECK_INTERVAL` (or redeploy 
 
 ### GC-06 Bad configuration fails loudly
 Safety: test-only, disruptive (the collector is down until restored)
-Steps: `k set env deploy/garbage-collector CHECK_INTERVAL=0` and watch the new pod.
-Expect: the pod crashes at startup with a clear message (zero, negative, empty and unparsable values panic) and alert `EduIDEComponentCrashLooping`/`EduIDEComponentDown` would cover it; the old pod keeps running until the rollout gives up.
+On shared environments GC-07 checks the parsing without touching the collector; run GC-06 only for the rollout and alert behaviour.
+Steps: `k set env deploy/garbage-collector CHECK_INTERVAL=0` and watch the new pod and `k get rs,pod -l app=theia-workspace-garbage-collector` for a minute.
+Expect (target): the pod crashes at startup with a clear message (zero, negative, empty and unparsable values panic), alert `EduIDEComponentCrashLooping`/`EduIDEComponentDown` would cover it, and the old pod keeps running until the rollout gives up. GC chart with GC 1.0.0: no readiness probe and `minReadySeconds` 0, so the rollout completes, the old pod is deleted and the collector is down until `rollout undo`; record `fail`.
 Cleanup: `k rollout undo deploy/garbage-collector` and check GC-02's start banner.
+
+### GC-07 Config parsing without touching the shared collector
+Safety: test-only
+Needs: rights to create pods in the namespace.
+Steps: create pods `ft-gc-cfg-<case>` with the collector image (same tag as the Deployment), labelled `eduide.dev/functional-test=$RUN_ID`, `serviceAccountName: default` (check `k auth can-i delete workspaces.theia.cloud --as=system:serviceaccount:$NS:default` is `no`), `restartPolicy: Never`, env `K8S_NAMESPACE=$NS` and one case each: `CHECK_INTERVAL=0`, `CHECK_INTERVAL=-5m`, `WORKSPACE_TTL=` (empty), `WORKSPACE_TTL=14d`, and `WORKSPACE_TTL=14` with `CHECK_INTERVAL=1h`. Read `k logs`.
+Expect: the first four panic with `invalid CHECK_INTERVAL ...` or `invalid WORKSPACE_TTL ...`; the last prints `Workspace TTL: 14s` (a unit-less value is seconds, a trap the chart does not guard against yet). Delete the pods at once.
+Cleanup: `k delete pod -l eduide.dev/functional-test=$RUN_ID`.
 
 ## Explore
 
 - A Workspace with a running session older than the TTL: is the session's PVC deleted under a running pod? What does the student see?
 - A Workspace stuck in deletion (finalizer): does the next pass skip it or abort?
-- Unit-less durations are seconds: is `WORKSPACE_TTL=14` (14 seconds, not days) a trap worth guarding against in the chart?
+- A Workspace deleted between the collector's list and delete: does the pass abort (it returns on the first error)? Needs a unit test or a fake API rather than a live run.
 - Restart the collector repeatedly within one interval: it never runs (ticker only). Is that acceptable during busy rollouts?

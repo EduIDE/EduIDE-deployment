@@ -83,8 +83,8 @@ Cleanup: stop both sessions; `k set env deploy/service-deployment SESSIONS_PER_U
 ### API-09 Input validation
 Safety: test-only
 Needs: browser token.
-Steps: launch with `appDefinition:'does-not-exist'`; start a session on `workspaceName:'eph-anything'` (`POST /service/session`, `kind:'sessionStartRequest'`); launch with a `workspaceName` that does not exist; stop with an empty body.
-Expect: 473; 471; 471; 470 (no body or missing appId). The service log has no stack trace for any of them.
+Steps: launch with `appDefinition:'does-not-exist'`; start a session on `workspaceName:'eph-anything'` (`POST /service/session`, `kind:'sessionStartRequest'`); stop with an empty body; then `k logs deploy/service-deployment --since=5m | grep -c -A3 'Failed to launch session'`.
+Expect: 473; 471; 470 (no body or missing appId). The service log has no stack trace for any of them (Cloud 3.0.1 logs 47x and 403 at ERROR with stack traces: record `fail`). A launch with a `workspaceName` that does not exist is not an error: `RootResource.launch` creates that workspace (200); the ownership case is API-16.
 
 ### API-10 Reserved env keys are dropped
 Safety: test-only
@@ -144,17 +144,39 @@ curl -s -o /dev/null -w '%{http_code} metrics\n' http://127.0.0.1:19000/q/metric
 curl -s http://127.0.0.1:19000/q/openapi | head -5
 kill $PF
 ```
-Expect: all public paths 404 (only `/service` is routed). Through the port-forward `/q/metrics` is 200 and the OpenAPI document is served. After at least one launch since the last service restart, the metrics contain the session startup timer (`application_theiacloud_session_startup_seconds...`).
+Expect: all public paths 404 (only `/service` is routed). Through the port-forward `/q/metrics` is 200 and the OpenAPI document is served. After at least one launch since the last service restart, the metrics contain the session startup timer (`application_application_theiacloud_session_startup_seconds_seconds...`).
 
 ### API-15 Service needs its auth token
 Safety: prod-safe
-Steps: `k get deploy service-deployment -o yaml | grep -n -E 'SERVICE_AUTH_TOKEN|APPID|KEYCLOAK_ENABLE|CORS_ORIGINS|KEYCLOAK_AUDIENCE' ` (names only; the config map values are not secret except tokens, so do not print the token line's value).
+Steps: the service gets its env through `envFrom`: `k get deploy service-deployment -o jsonpath='{.spec.template.spec.containers[0].envFrom}'`, then key names only: `k get cm service-config -o json | jq -r '.data|keys[]'` and `k get secret service-config-secret -o json | jq -r '.data|keys[]'`. Read `KEYCLOAK_ENABLE` from the ConfigMap; never print Secret values.
 Expect: the service auth token is configured (the service refuses to start without one since Cloud 3.0.0); Keycloak is enabled; record whether an audience is set.
+
+### API-16 Launch on another user's workspace name
+Safety: test-only
+Needs: browser token; `ft_workspace ft-api-other-ws <APP_STD> ft-other@functional-test.invalid`.
+Steps: `await api('POST','/service',{kind:'launchRequest',appId:theiaCloudConfig.serviceAuthToken,appDefinition:'<APP_STD>',workspaceName:'ft-api-other-ws',ephemeral:false,env:{fromMap:{THEIA:'true',FT_PROBE:'1'}}})`; `k get sessions | grep ft-api-other-ws`; `k get workspace ft-api-other-ws -o jsonpath='{.spec.user} {.spec.appDefinition}'`.
+Expect: 403; no session `ft-api-other-ws-session`; the Workspace's user and appDefinition unchanged.
+Cleanup: `ft_cleanup`.
+
+### API-17 Timed-out launch leaves nothing running
+Safety: test-only
+Needs: browser token.
+Steps: launch `<APP_STD>` ephemeral with `timeout:0`; after 60 s `k get sessions` for the test account's sessions of that app.
+Expect (target): 551 and no running session of that app for the user. Cloud 3.0.1: the session keeps starting and runs until the idle timeout; record `fail`.
+Cleanup: API-05.
+
+### API-18 Service pod lost during a launch
+Safety: test-only, disruptive
+Needs: logged in on the landing page.
+Steps: install an XHR hook that records status and duration of `POST /service` (like the token hook in the README, never the headers); click a tile; immediately `k delete pod -l app=service`; wait for the IDE or an error; stop the session; repeat with `k delete pod -l app=service --grace-period=0 --force`.
+Expect: graceful delete: the in-flight launch completes. Force delete: the student reaches the IDE without an error page within the landing page's retry budget; exactly one Session per launch. Chart 3.0.0-rc.3: the request hangs 60 s before the retry succeeds; record it.
+Cleanup: stop the launched sessions; `k rollout status deploy/service-deployment`.
 
 ## Explore
 
 - Two launches of the same persistent workspace in the same second: one session or two? Any 5xx?
-- Launch with `timeout` values 0, 1, very large: what does the student get, and is the session cleaned up after a 551?
+- Launch with `timeout` values 1 and very large (0 is API-17).
+- `POST /service/workspace` with an unknown `appDefinition`, `POST /service` with an unknown `kind`.
 - Very long `label`, unicode in `label`, workspace names at the length limit.
 - Stop a session while it is still starting (`operatorStatus` HANDLING).
 - `POST /service/session/{session}/config` on a session with no config store: 580 and a useful message?

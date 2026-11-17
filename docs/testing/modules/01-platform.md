@@ -36,13 +36,13 @@ Expect: `200 0` for all three URLs (the ping returns 200 with the public token).
 
 ### PLAT-04 Gateway routes attached
 Safety: prod-safe
-Steps: `k get httproute -o custom-columns=NAME:.metadata.name,HOSTS:.spec.hostnames,ACCEPTED:.status.parents[*].conditions[?(@.type=="Accepted")].status`
-Expect: `service-route`, the landing route, and the instance routes are `Accepted=True` on every parent. A route with no status parent is attached to a section that does not exist (AGENTS.md, Gateway section prefix).
+Steps: `k get httproute -o json | jq -r '.items[] | .metadata.name as $n | .status.parents[]? | $n + " " + .parentRef.sectionName + " " + ([.conditions[] | .type + "=" + .status + ":" + .reason] | join(","))'`
+Expect: the chart lists every section of the shared Gateway as a parent; each route (`service-route`, the landing route, the instance routes) is `Accepted=True` and `ResolvedRefs=True` on at least one section, the one whose hostname matches. The other parents show `Accepted=False` with reason `NoMatchingListenerHostname` and nothing else. A route with no status parent is attached to a section that does not exist (AGENTS.md, Gateway section prefix).
 
 ### PLAT-05 AppDefinitions consistent with the environment
 Safety: prod-safe
-Steps: compare `k get appdefinitions -o name` with `appDefinitions.enabled` in `environments/$ENV/values.yaml` (empty = the whole chart catalog) and with the tiles listed in `curl -s $LANDING/config.js` (`additionalApps`).
-Expect: every app on the landing page has an AppDefinition; no AppDefinition without a Helm owner except `ft-` fixtures (`k get appdefinitions -o custom-columns=NAME:.metadata.name,MANAGED:.metadata.labels.app\.kubernetes\.io/managed-by`).
+Steps: compare `k get appdefinitions -o name` with the deployed `helm --kube-context "$CTX" -n "$NS" get values eduide -o json | jq .appDefinitions` (empty `enabled` = the whole chart catalog) and with the tiles listed in `curl -s $LANDING/config.js` (`additionalApps`). Then compare the deployed values with `environments/$ENV/values.yaml`.
+Expect: every app on the landing page has an AppDefinition; a difference between deployed and repo values is either a recorded override of this run or a finding; no AppDefinition without a Helm owner except `ft-` fixtures (`k get appdefinitions -o custom-columns=NAME:.metadata.name,MANAGED:.metadata.labels.app\.kubernetes\.io/managed-by`).
 
 ### PLAT-06 Preloading done
 Safety: prod-safe

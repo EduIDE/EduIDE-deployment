@@ -18,11 +18,14 @@ Steps: `kc -n $MON_NS port-forward svc/rancher-monitoring-prometheus 19090:9090 
 curl -s 'http://127.0.0.1:19090/api/v1/targets?state=active' | jq -r --arg ns "$NS" '.data.activeTargets[] | select(.labels.namespace==$ns) | .scrapePool + " " + .health'
 curl -s "http://127.0.0.1:19090/api/v1/query" --data-urlencode "query=count by (__name__) ({namespace=\"$NS\",__name__=~\"application_theiacloud.*\"})" | jq '.data.result'
 ```
-Expect: the service target `up`; exactly one of the two service PodMonitors has a target for this service (no duplicate scrape, no `down` target). The session startup metric exists once a session was launched through `POST /service` since the last service restart (it is registered lazily). Operator target only if `operator.metricsPort > 0`.
+Expect: the service target `up`; exactly one of the two service PodMonitors has a target for this service (no duplicate scrape, no `down` target). The session startup metric `application_application_theiacloud_session_startup_seconds_seconds` (with `_count`, `_sum`, `_max` and a `quantile` label) exists once a session was launched through `POST /service` since the last service restart (it is registered lazily). Operator target only if `operator.metricsPort > 0`.
 Cleanup: stop the port-forward.
+
+MON-03, MON-05 and MON-06 need alerting on the cluster. Check first: `helm --kube-context "$CTX" -n eduide-system get values eduide-cluster -a -o json | jq .monitoring.alerting`. With `enabled: false` record the three as `blocked: alerting not enabled` and run MON-04 against a rendered rule instead: `helm template eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster --version <cluster chart version> -n eduide-system --set monitoring.alerting.enabled=true --set gateway.create=false` plus a dummy channel (`-n eduide-system` matters: the webhook rule uses `.Release.Namespace`).
 
 ### MON-03 Alert rules are loaded and render
 Safety: prod-safe
+Needs: `monitoring.alerting.enabled=true` on the cluster chart.
 Steps:
 ```bash
 kc -n eduide-system get prometheusrule eduide-alerts -o json | jq -r '.spec.groups[].rules[].alert' | sort
@@ -33,15 +36,17 @@ Expect: 14 alerts (16 with `monitoring.certManager.enabled`): EduIDEComponentDow
 ### MON-04 Alert expressions match something real
 Safety: prod-safe
 Steps: for each rule, evaluate the inner selector without the threshold (for example the deployment regex of EduIDEComponentDown: `kube_deployment_status_replicas_available{namespace="$NS",deployment=~"(operator|service|landing-page)-deployment|garbage-collector"}`).
-Expect: every selector returns series for `$NS`. A selector that returns nothing is a finding even if no alert fires (AGENTS.md: a selector that matches nothing looks like a healthy platform).
+Expect: every selector returns series for `$NS`. A selector that returns nothing is a finding even if no alert fires (AGENTS.md: a selector that matches nothing looks like a healthy platform). Exception: `kube_pod_container_status_last_terminated_reason` and `..._waiting_reason` only have series while such a state exists; check that they exist cluster-wide.
 
 ### MON-05 Nothing firing that should not
 Safety: prod-safe
+Needs: alerting enabled (see MON-03).
 Steps: `curl -s http://127.0.0.1:19090/api/v1/alerts | jq -r --arg ns "$NS" '.data.alerts[] | select(.labels.eduide_namespace==$ns) | .labels.alertname + " " + .state'`
 Expect: no firing EduIDE alert for `$NS`, or each one is explained in the report (with `eduide_namespace`, not `namespace`, as the environment label).
 
 ### MON-06 Alertmanager routing
 Safety: prod-safe
+Needs: alerting enabled (see MON-03).
 Steps: `kc -n eduide-system get alertmanagerconfig eduide-alerts -o jsonpath='{.spec.route}'` (no webhook URLs are in the manifest; do not read the webhook Secret).
 Expect: routes group by `eduide_namespace`; receivers exist for the configured channels; `minSeverity` as configured.
 
@@ -49,6 +54,14 @@ Expect: routes group by `eduide_namespace`; receivers exist for the configured c
 Safety: prod-safe
 Steps: `kc -n cattle-dashboards get cm -l grafana_dashboard=1 | grep -E 'eduide-dashboard|theia-cloud-dashboard'`; open the sessions dashboard in Grafana for `$NS` (browser, read-only).
 Expect: the four dashboards `theia-cloud-dashboard-overview`, `theia-cloud-dashboard-session-startup`, `eduide-dashboard-sessions`, `eduide-dashboard-session-detail` exist; with sessions running, no panel is empty and the namespace picker offers only existing namespaces.
+
+### MON-08 Certificate alerts cover only platform certificates
+Safety: prod-safe
+Steps: evaluate the certificate alert expressions from the rendered rule (MON-03 or MON-04) in Prometheus and group by namespace:
+```bash
+curl -s http://127.0.0.1:19090/api/v1/query --data-urlencode 'query=count by (namespace) (certmanager_certificate_ready_status{condition="True"} == 0)' | jq -r '.data.result[] | .metric.namespace + " " + .value[1]'
+```
+Expect: the expressions of `EduIDECertificateExpiringSoon` and `EduIDECertificateNotReady` select only certificates in platform namespaces (`eduide-system` and the gateway certificates); certificates of other tenants on the cluster never match. Chart 3.0.0-rc.3: not scoped, other tenants' broken certificates match (2026-11-17 report). Report counts per namespace only, not certificate names of other tenants.
 
 ## Explore
 
