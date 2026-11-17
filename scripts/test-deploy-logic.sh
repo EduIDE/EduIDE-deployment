@@ -48,7 +48,7 @@ done
 valid_env() { [[ "$1" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$ ]]; }
 echo
 echo "=== environment names from a deploy comment ==="
-for d in environments/*/; do
+for d in "$ROOT"/environments/*/; do
   e=$(basename "$d")
   valid_env "$e" && ok "accepts $e" || bad "should accept $e" "deploy-comment.yml would reject a real environment"
 done
