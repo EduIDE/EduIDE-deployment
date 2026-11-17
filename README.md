@@ -64,7 +64,7 @@ file. `Deploy` does the second.
 
 | I want to | Do this |
 |---|---|
-| Put a PR's images on a test environment | Comment `/deploy test2.eduide.student.k8s.aet.cit.tum.de` on the PR |
+| Put a PR's images on a test environment | Actions → **Deploy environment**, `image_overrides` e.g. `{"ide":"pr-451"}`. A `/deploy <environment>` comment on the PR needs a sender workflow in the component repo (see `deploy-comment.yml`); none has one yet |
 | Deploy any environment by hand | Actions → **Deploy environment** |
 | Move staging | Actions → **Deploy staging** |
 | Move production | Tick the production bump on Renovate's Dependency Dashboard, or bump `chartVersion` in `environments/eduide.artemis.cit.tum.de/env.yaml` by hand, open a PR, merge it, then Actions → **Deploy environment**. Merging alone deploys nothing |

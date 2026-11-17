@@ -43,6 +43,19 @@ for t in '.1.1.1' '-nope' 'a;rm -rf /' 'a b' '$(whoami)' ''; do
   valid_tag "$t" && bad "should reject '$t'" "" || ok "rejects '${t:-<empty>}'"
 done
 
+# --- environment name validation (deploy-comment.yml) --------------------
+# Same pattern as deploy-comment.yml: names are hostnames, never paths.
+valid_env() { [[ "$1" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$ ]]; }
+echo
+echo "=== environment names from a deploy comment ==="
+for d in environments/*/; do
+  e=$(basename "$d")
+  valid_env "$e" && ok "accepts $e" || bad "should accept $e" "deploy-comment.yml would reject a real environment"
+done
+for e in '../clusters' 'a/../b' '.hidden' 'a..b' 'a.' '-a' 'Test2' 'a b' '$(whoami)' ''; do
+  valid_env "$e" && bad "should reject '$e'" "" || ok "rejects '${e:-<empty>}'"
+done
+
 # --- gateway listener derivation ------------------------------------------
 echo
 echo "=== gateway listeners derived per cluster ==="
