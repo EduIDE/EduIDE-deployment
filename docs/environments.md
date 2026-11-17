@@ -411,7 +411,7 @@ The end-to-end suite lives in
 
 | When | How |
 |---|---|
-| Every deploy of `e2e.eduide.student.k8s.aet.cit.tum.de` | automatic: the `e2e-tests` job of `deploy.yml` calls `functional-tests.yml` with the environment name, whichever workflow deployed (`deploy-e2e`, `deploy-dispatch`, a deploy comment). The deploy run turns red when the tests fail. |
+| Every deploy of `e2e.eduide.student.k8s.aet.cit.tum.de` | automatic: the `e2e-tests` job of `deploy.yml` calls `functional-tests.yml` with the environment name, whichever workflow deployed (`deploy-e2e` or `deploy-dispatch`). The deploy run turns red when the tests fail. |
 | Any other environment, by hand | theia-scale-tests -> Actions -> **Functional Theia Tests** -> Run workflow, `environment` = the environment's name (its landing page host), or locally `LANDINGPAGE_URL=https://<name> npx playwright test --project=functional` |
 
 The environment name and the landing page host are the same string, so the

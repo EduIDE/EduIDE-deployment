@@ -24,6 +24,13 @@ on:
     types: [component-main-updated]
   workflow_dispatch:
 
+# Deploy and tests together, one run at a time: a second merge must not roll
+# out while the first one's tests still run against the same host. Only the
+# newest waiting run is kept, which is what an environment following main wants.
+concurrency:
+  group: deploy-e2e-and-test
+  cancel-in-progress: false
+
 permissions:
   contents: read
 

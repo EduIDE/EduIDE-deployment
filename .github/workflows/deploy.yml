@@ -336,7 +336,7 @@ jobs:
           echo "::warning::$URL answered ${code:-nothing} within two minutes; expected 200 or 405"
 
   # Every deploy of the e2e environment ends with the functional suite, whichever
-  # workflow started it (deploy-e2e, deploy-dispatch, a deploy comment), so a
+  # workflow started it (deploy-e2e or deploy-dispatch), so a
   # green deploy of e2e always means a tested rollout. Other environments are
   # tested by hand, see docs/environments.md.
   e2e-tests:
