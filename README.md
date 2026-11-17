@@ -71,9 +71,12 @@ file. `Deploy` does the second.
 | Undo a bad deploy | Actions → **Rollback** |
 | Bring up a new cluster | Actions → **Bootstrap cluster** |
 
-`e2e.eduide.student.k8s.aet.cit.tum.de` deploys from `main` automatically and
-the functional tests run against it. Do not point manual work at it - use the
-`staging.` one.
+`e2e.eduide.student.k8s.aet.cit.tum.de` deploys from `main` automatically, and
+every deploy of it, however it was started, ends with the functional tests from
+[theia-scale-tests](https://github.com/EduIDE/theia-scale-tests) (the
+`e2e-tests` job of `deploy.yml`). Do not point manual work at it - use the
+`staging.` one. To test another environment, see
+[docs/environments.md](docs/environments.md#testing-an-environment).
 
 Every deploy asserts which cluster it reached before touching anything, shows a
 `helm diff` before applying, runs `--wait --atomic`, and prints a summary read

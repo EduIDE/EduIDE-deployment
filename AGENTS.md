@@ -121,9 +121,15 @@ server and differ only by realm; Bonn and Mannheim bring their own. Nothing
 about the identity provider belongs in `_base.yaml`, and secrets never go in a
 manifest.
 
-**The e2e environment (`e2e.eduide.student.k8s.aet.cit.tum.de`, metadata name `e2e-test`) follows main and is tested automatically.** Do not point manual
-work at it; a red build there should mean the code is broken, not that somebody
-was mid-experiment. `staging` is the manual one.
+**The e2e environment (`e2e.eduide.student.k8s.aet.cit.tum.de`, metadata name `e2e-test`) follows main and is tested automatically.** Every deploy of it
+(`deploy-e2e` or `deploy-dispatch`) ends with the functional
+suite of EduIDE/theia-scale-tests, called from `deploy.yml`'s `e2e-tests` job,
+so do not add a second test call to a caller. Do not point manual work at it;
+a red build there should mean the code is broken, not that somebody was
+mid-experiment. `staging` is the manual one. The test account's credentials are
+the repository secrets `E2E_KEYCLOAK_USER`/`E2E_KEYCLOAK_PWD`: a job that calls
+a reusable workflow cannot select a GitHub Environment, so environment secrets
+would arrive empty.
 
 **TUM production is on a different domain on purpose.** Every other production
 installation is under `eduide.aet.cit.tum.de`; `tum-production` is
