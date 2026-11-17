@@ -62,6 +62,12 @@ spec:
   # it still fires and is visible in Alertmanager and on the dashboards; it just
   # does not page anyone. See docs/monitoring-setup.md.
   alerting:
-    enabled: false
+    enabled: true
     minSeverity: warning
-    channels: []
+    # One channel for every environment on this cluster (test1, test2, staging, e2e).
+    # They are all test installations, so their alerts share one place, apart
+    # from production.
+    channels:
+      - name: test
+        type: discord
+        secretKey: discord-test

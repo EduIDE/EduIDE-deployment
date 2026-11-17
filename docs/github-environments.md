@@ -156,7 +156,7 @@ is cheap.
 `e2e.eduide.student.k8s.aet.cit.tum.de` also holds `E2E_KEYCLOAK_USER` and
 `E2E_KEYCLOAK_PWD`. `bonn.eduide.aet.cit.tum.de` holds its own
 `THEIA_ADMIN_API_TOKEN`, which overrides the repository one there.
-`cluster-eduide` holds `ALERT_WEBHOOKS` for alerting.
+Every cluster environment holds `ALERT_WEBHOOKS` for alerting: `cluster-eduide` (`discord-bonn`, `discord-mannheim`), `cluster-tum-student` (`discord-test`) and `cluster-tum-production` (`discord-production`).
 
 `test3.eduide.student.k8s.aet.cit.tum.de` still exists as a GitHub Environment
 with live secrets, although no directory under `environments/` uses it any
