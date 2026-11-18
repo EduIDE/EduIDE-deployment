@@ -69,6 +69,7 @@ file. `Deploy` does the second.
 | Move staging | Actions → **Deploy staging** |
 | Move production | Tick the production bump on Renovate's Dependency Dashboard, or bump `chartVersion` in `environments/eduide.artemis.cit.tum.de/env.yaml` by hand, open a PR, merge it, then Actions → **Deploy environment**. Merging alone deploys nothing |
 | Undo a bad deploy | Actions → **Rollback** |
+| Check that an environment works | [Functional test plan](docs/testing/README.md), or the `functional-check` skill |
 | Bring up a new cluster | Actions → **Bootstrap cluster** |
 
 `e2e.eduide.student.k8s.aet.cit.tum.de` deploys from `main` automatically, and
