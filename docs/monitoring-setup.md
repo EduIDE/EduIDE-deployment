@@ -58,6 +58,13 @@ every panel was empty whatever you picked.
 
 Off by default. Switch on per cluster:
 
+| Cluster | Channels |
+|---|---|
+| `eduide` | `discord-bonn` (Bonn only), `discord-mannheim` (Mannheim only) |
+| `tum-student` | `discord-test`, all environments on the cluster |
+| `tum-production` | `discord-production` |
+
+
 ```yaml
 spec:
   alerting:

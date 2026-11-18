@@ -316,7 +316,7 @@ invalid certificate. Nothing appeared in any log.
 ## Step 8: deploy an environment
 
 ```text
-Actions -> Deploy (dispatch) -> environment: test1, dry_run: true
+Actions -> Deploy environment -> environment: test1, dry_run: true
 ```
 
 The deploy asserts the cluster identity before touching anything, so a

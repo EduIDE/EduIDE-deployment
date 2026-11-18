@@ -334,3 +334,20 @@ jobs:
             sleep 10
           done
           echo "::warning::$URL answered ${code:-nothing} within two minutes; expected 200 or 405"
+
+  # Every deploy of the e2e environment ends with the functional suite, whichever
+  # workflow started it (deploy-e2e or deploy-dispatch), so a
+  # green deploy of e2e always means a tested rollout. Other environments are
+  # tested by hand, see docs/environments.md.
+  e2e-tests:
+    needs: deploy
+    if: ${{ inputs.environment == 'e2e.eduide.student.k8s.aet.cit.tum.de' && !inputs.dry_run }}
+    uses: EduIDE/theia-scale-tests/.github/workflows/functional-tests.yml@main
+    with:
+      environment: ${{ inputs.environment }}
+    # Repository secrets, not secrets of the e2e GitHub Environment: a job that
+    # calls a reusable workflow cannot select an environment, so environment
+    # secrets would arrive empty.
+    secrets:
+      KEYCLOAK_USER: ${{ secrets.E2E_KEYCLOAK_USER }}
+      KEYCLOAK_PWD: ${{ secrets.E2E_KEYCLOAK_PWD }}

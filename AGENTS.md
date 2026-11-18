@@ -54,7 +54,7 @@ nothing to migrate.
 
 ```bash
 CHART=oci://ghcr.io/eduide/charts/eduide
-helm template eduide $CHART --version 2.0.0 \
+helm template eduide $CHART --version <chart version> \
   -f environments/_base.yaml -f environments/test1/values.yaml
 ./scripts/test-deploy-logic.sh          # override, tag, listener and storage logic
 ```
@@ -81,7 +81,7 @@ mounts them into every session pod by literal name. Left at the chart's
 defaults they point the proxy at `https://keycloak.url/auth/realms/TheiaCloud`,
 so sessions fail at the proxy rather than running unauthenticated - the worst of
 both, with no clue why. An installation with no identity provider yet sets
-`keycloak.allowUnauthenticated: true` and says so; Bonn does.
+`keycloak.allowUnauthenticated: true` and says so. No environment sets it on main today; Bonn authenticates against the external realm.
 
 **Monitoring is on by default and opted out per environment** with
 `monitoring.enabled: false`. The PodMonitor itself is in the cluster
@@ -121,9 +121,15 @@ server and differ only by realm; Bonn and Mannheim bring their own. Nothing
 about the identity provider belongs in `_base.yaml`, and secrets never go in a
 manifest.
 
-**`e2e-test` follows main and is tested automatically.** Do not point manual
-work at it; a red build there should mean the code is broken, not that somebody
-was mid-experiment. `staging` is the manual one.
+**The e2e environment (`e2e.eduide.student.k8s.aet.cit.tum.de`, metadata name `e2e-test`) follows main and is tested automatically.** Every deploy of it
+(`deploy-e2e` or `deploy-dispatch`) ends with the functional
+suite of EduIDE/theia-scale-tests, called from `deploy.yml`'s `e2e-tests` job,
+so do not add a second test call to a caller. Do not point manual work at it;
+a red build there should mean the code is broken, not that somebody was
+mid-experiment. `staging` is the manual one. The test account's credentials are
+the repository secrets `E2E_KEYCLOAK_USER`/`E2E_KEYCLOAK_PWD`: a job that calls
+a reusable workflow cannot select a GitHub Environment, so environment secrets
+would arrive empty.
 
 **TUM production is on a different domain on purpose.** Every other production
 installation is under `eduide.aet.cit.tum.de`; `tum-production` is
@@ -156,7 +162,7 @@ fails the render on a missing secret and `test-deploy-logic.sh` checks the
 policy is complete.
 
 **The Gateway section prefix is not the landing host.** Production's landing
-host is `eduide` but its Gateway sections are `prod-*`; `e2e-test`'s are `e2e-*`.
+host is `eduide` but its Gateway sections are `prod-*`; the e2e environment's are `e2e-*`.
 The shared Gateway's listeners are derived from the `sectionName`s an
 environment declares, so those strings are load-bearing. Getting one wrong
 attaches a route to a section that does not exist, and nothing fails until
@@ -236,7 +242,7 @@ cluster-scoped EduIDE resources sit in one namespace. `envoy-gateway-system` is
 a different thing entirely - Envoy Gateway's own operator namespace - and is
 not ours to move.
 
-**Preloading is a separate Helm release.** It pulls ~10 multi-GB images on every
+**Preloading is a separate Helm release.** It pulls 14 multi-GB images on every
 node; under `--wait` it would time out and `--atomic` would then roll back a
 healthy deploy.
 

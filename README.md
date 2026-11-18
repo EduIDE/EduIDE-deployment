@@ -47,11 +47,11 @@ Two charts, always at the same version. The cluster one first.
 # once per cluster - CRDs, conversion webhook, ClusterRoles, issuers,
 # the shared Gateway, PodMonitors and dashboards
 helm install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
-  --version 2.0.0 -n eduide-system --create-namespace -f cluster-values.yaml
+  --version <chart version> -n eduide-system --create-namespace -f cluster-values.yaml
 
 # once per environment
 helm install eduide oci://ghcr.io/eduide/charts/eduide \
-  --version 2.0.0 -n eduide-test1 \
+  --version <chart version> -n eduide-test1 \
   -f environments/_base.yaml -f environments/test1/values.yaml
 ```
 
@@ -65,15 +65,18 @@ file. `Deploy` does the second.
 | I want to | Do this |
 |---|---|
 | Put a PR's images on a test environment | Comment `/deploy test2.eduide.student.k8s.aet.cit.tum.de` on the PR |
-| Deploy any environment by hand | Actions → **Deploy (dispatch)** |
+| Deploy any environment by hand | Actions → **Deploy environment** |
 | Move staging | Actions → **Deploy staging** |
-| Move production | Tick the production bump on Renovate's Dependency Dashboard, or bump `chartVersion` in `environments/eduide.artemis.cit.tum.de/env.yaml` by hand, open a PR, merge it, then Actions → **Deploy (dispatch)**. Merging alone deploys nothing |
+| Move production | Tick the production bump on Renovate's Dependency Dashboard, or bump `chartVersion` in `environments/eduide.artemis.cit.tum.de/env.yaml` by hand, open a PR, merge it, then Actions → **Deploy environment**. Merging alone deploys nothing |
 | Undo a bad deploy | Actions → **Rollback** |
 | Bring up a new cluster | Actions → **Bootstrap cluster** |
 
-`e2e.eduide.student.k8s.aet.cit.tum.de` deploys from `main` automatically and
-the functional tests run against it. Do not point manual work at it - use the
-`staging.` one.
+`e2e.eduide.student.k8s.aet.cit.tum.de` deploys from `main` automatically, and
+every deploy of it, however it was started, ends with the functional tests from
+[theia-scale-tests](https://github.com/EduIDE/theia-scale-tests) (the
+`e2e-tests` job of `deploy.yml`). Do not point manual work at it - use the
+`staging.` one. To test another environment, see
+[docs/environments.md](docs/environments.md#testing-an-environment).
 
 Every deploy asserts which cluster it reached before touching anything, shows a
 `helm diff` before applying, runs `--wait --atomic`, and prints a summary read
@@ -109,7 +112,9 @@ environment and they hold different secrets:
 | Per cluster, for `Bootstrap cluster` | `spec.bootstrapEnvironment`, by convention `cluster-<name>` | `KUBECONFIG`, `THEIA_WILDCARD_CERTIFICATE_CERT`, `THEIA_WILDCARD_CERTIFICATE_KEY` |
 
 `THEIA_ADMIN_API_TOKEN` is a repository secret today, so every environment
-shares one token.
+shares one token. The token alone does not enable the admin scaling endpoints:
+from Cloud 3.0.x (chart 3.0.0) they also need `service.adminApiEnabled: true`,
+which is off by default.
 
 Anything `tier: production` or `staging` should have required reviewers set, so
 GitHub holds the run until someone approves and records the approval.
@@ -122,7 +127,7 @@ how to produce it, and what each environment holds today.
 ```bash
 ./scripts/test-deploy-logic.sh            # overrides, tags, listeners, storage, cache
 
-helm template eduide oci://ghcr.io/eduide/charts/eduide --version 2.0.0 \
+helm template eduide oci://ghcr.io/eduide/charts/eduide --version <chart version> \
   -f environments/_base.yaml -f environments/test1/values.yaml
 ```
 
