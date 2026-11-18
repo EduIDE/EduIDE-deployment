@@ -40,9 +40,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          # The environment must be one we actually have. This also stops any
-          # path traversal through the name.
-          if [[ ! "$ENVIRONMENT" =~ ^[a-z0-9-]+$ ]] || [[ ! -f "environments/${ENVIRONMENT}/env.yaml" ]]; then
+          # The environment must be one we actually have. Names are hostnames,
+          # so dots are allowed, but only between DNS labels: no "..", no "/",
+          # so no path traversal through the name.
+          if [[ ! "$ENVIRONMENT" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$ ]] || [[ ! -f "environments/${ENVIRONMENT}/env.yaml" ]]; then
             echo "::error::unknown environment: ${ENVIRONMENT}"; exit 1
           fi
 
