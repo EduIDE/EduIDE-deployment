@@ -78,3 +78,4 @@ appDefinitions:
     - java-17
     - java-17-standalone
     - java-25
+    - java-25-standalone
