@@ -57,7 +57,7 @@ Expect: step 1 shows a message for `template-not-found`; step 2 shows the `sessi
 ### LAND-09 Service pod lost, retry behaviour
 Safety: test-only, disruptive
 Steps:
-1. With 2 service replicas, `k delete pod -l app.kubernetes.io/component=service --wait=false` for ONE pod, and click a tile at the same time.
+1. With 2 service replicas, `k delete $(k get pod -l app.kubernetes.io/component=service -o name | head -1) --wait=false` (one pod only), and click a tile at the same time.
 2. Scale the service to 0 for one launch (`k scale deploy/$FULL-service --replicas=0`), click a tile, scale back to 2 after 20 s.
 Expect: step 1: no error shown (the other replica answers, API-18). Step 2: the page shows a maintenance or retry text, does not hang; record exactly what the student sees.
 Cleanup: replicas restored (`k scale deploy/$FULL-service --replicas=2`, `k rollout status deploy/$FULL-service`).

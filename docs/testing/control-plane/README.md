@@ -74,7 +74,7 @@ export ENV=test3.eduide.student.k8s.aet.cit.tum.de
 export CTX=stud                                           # always explicit, never the current context by accident
 export NS=eduide-test3
 export RUN_ID=$(date +%Y-%m-%d)-1                         # also used in the report file name
-export FT_RUN=$RUN_ID-${MODULE:-main}                      # label value of every fixture; set MODULE=05 per agent, never share one value
+export FT_RUN=$RUN_ID-${MODULE:-main}-$(openssl rand -hex 2)   # label value of every fixture; unique per shell, so two runs never delete each other's fixtures; set MODULE=05 per agent
 export LANDING=https://$ENV API=https://$ENV/api/v1
 export INSTANCE_HOST=instance.$ENV WEBVIEW_HOST=webview.instance.$ENV
 export PF_CTRL=${PF_CTRL:-18081} PF_PROXY=${PF_PROXY:-18080}      # local ports of agent_pf; give every parallel agent its own pair
@@ -310,7 +310,7 @@ To use it without ever printing it:
    })()
    ```
 
-3. Trigger one authenticated call from the page: open an item of the overview, or click a tile (this launches a session; record it for cleanup). The overview stream (`/me/overview/events`) is also a `fetch` with the header, so a reconnect works too. If the client captured `window.fetch` before the hook, no token arrives: install the same hook for `XMLHttpRequest.prototype.setRequestHeader` as the old plan did, and if that fails too, mark the dependent tests `blocked` and describe what happened.
+3. Trigger one authenticated call from the page: open an item of the overview, or click a tile (this launches a session: list the sessions before, `k get idesessions -o name | sort > /tmp/sess.before`, and delete only the new ones at cleanup, `comm -13 /tmp/sess.before <(k get idesessions -o name | sort)`, never a session that existed before). The overview stream (`/me/overview/events`) is also a `fetch` with the header, so a reconnect works too. If the client captured `window.fetch` before the hook, no token arrives: install the same hook for `XMLHttpRequest.prototype.setRequestHeader` as the old plan did, and if that fails too, mark the dependent tests `blocked` and describe what happened.
 4. Call the API from the landing page context, so the token never leaves the browser and no CORS rule applies. Return only status, the Problem `code`, and a short body:
 
    ```js
@@ -379,7 +379,7 @@ Each module ends with an **Explore** section: open-ended ideas for the agent to 
 2. Run the selected modules. Server modules (01, 03 server part, 04, 05, 06, 07, 09, 10) are independent of each other and can run in parallel, each with its own `ft-<module>-` name prefix, its own `FT_USER` and its own subagent. Disruptive tests (operator, authz, service restarts, capacity pressure) run alone and last. Browser modules (02, 08, 12, 13 browser part, 14 browser part, and the token part of 03) share one browser and one login: run them one after the other.
 3. Per test record `pass`, `fail`, `blocked` (could not run: missing access, precondition false), or `skipped` (deliberately not run: mode, selection, Artemis). Evidence is the command plus the relevant output lines, or a screenshot path, never secret values.
 4. Explore beyond the plan (next section).
-5. Run cleanup (`ft_cleanup`, restore anything a disruptive test changed) and check that no `ft-` object is left: `k get idesessions,ideworkspaces,idepools,idetemplates,pods,secrets | grep ft-`.
+5. Run cleanup (`ft_cleanup`, delete sessions the token capture created, restore anything a disruptive test changed) and check that no `ft-` object is left: `k get idesessions,ideworkspaces,idepools,idetemplates,pods,secrets | grep ft-`.
 6. Write the report (below) and propose plan updates.
 
 ## Beyond the plan
@@ -411,5 +411,6 @@ The plan changes through pull requests to this directory, never silently during 
 
 | Date | Change |
 |---|---|
+| 2026-11-19 | Review fixes (PR 181): unique `FT_RUN` suffix, cleanup of sessions made by the token capture, single-pod delete in LAND-09, body check in API-14, WS-06 expiry window, log, authz and egress probes in SEC-05 and SEC-07, port-forward lifetime and label check in MON-02, MON-09 and MON-10, test3 workflow choices in UPG, strict 401 rule and authz replica restore in AUTHZ-08, 09 and 13, 20 user-view samples in PERF-03. |
 | 2026-11-19 | First run on test3 ([reports/2026-11-19-test3-1.md](reports/2026-11-19-test3-1.md)): fixture label per module (`FT_RUN`), `ft_session` brace fix, per-agent forward ports, bodies from files with `-H @-`, pool scaler optional; new tests PLAT-10, PLAT-11, API-25, API-26, POOL-20, AGENT-17 to AGENT-19; corrected expectations PLAT-01, 05, 09, SEC-02, 04, 17, MON intro, 08, 10, 12, API-13, 14, WS-11, POOL-01, 07, 18, AGENT-02, 05, 14, 16, OPR-10, 17, 19, AUTHZ-01, 07, 09, 13, LAND-12, PERF-03. |
 | 2026-11-18 | First version for the Go control plane: 14 modules adapted from the old plan ([mapping.md](mapping.md)), new modules AUTHZ and PERF, new tests for strategies, instance token, NetworkPolicies, capacity pressure, workspace retention, SSE, overview, traces and the metrics contract. Not yet run. |

@@ -43,7 +43,7 @@ Cleanup: `ft_cleanup` (or continue with WS-08).
 
 ### WS-06 Expiry stage 2: deletion after the grace period
 Safety: test-only, disruptive (restarts the operator with a changed config); destructive if any real workspace is already `Expired`
-Needs: no `Expired` workspace other than fixtures (`k get ideworkspaces | grep Expired`); otherwise approval of the environment owner in chat.
+Needs: no `Expired` workspace other than fixtures (`k get ideworkspaces | grep Expired`), and no other workspace whose `expiresAt` falls inside the test and recovery window (next 30 minutes: `k get ideworkspaces -o json | jq -r --arg t "$(date -u -v+30M +%FT%TZ 2>/dev/null || date -u -d '+30 min' +%FT%TZ)" '.items[] | select(.status.expiresAt != null and .status.expiresAt < $t) | .metadata.name' | grep -vc '^ft-'`, expect 0); otherwise wait, run in an isolated environment, or get approval of the environment owner in chat.
 Steps:
 1. Record the ConfigMap and set `workspaces.grace` to `2m` in `config.yaml` (`k get cm $FULL-config -o yaml > /tmp/cfg.bak` outside the repo; edit with `k edit cm $FULL-config`), `k rollout restart deploy/$FULL-operator`, wait for it.
 2. `ft_workspace ft-ws-g "$T_STD" "" 1m`.

@@ -33,7 +33,8 @@ Safety: prod-safe
 Steps: count only, never print matching lines:
 ```bash
 for d in operator service authz; do   # add pool-scaler when it is deployed (not on test3)
-  printf '%s ' $d; k logs deploy/$FULL-$d --since=24h --all-pods 2>/dev/null | grep -c -E 'ARTEMIS_TOKEN|X-EduIDE-Instance-Token|Authorization|Bearer |eyJ[A-Za-z0-9_-]{10,}|dummy-value' || true; done
+  printf '%s ' $d; L=$(k logs deploy/$FULL-$d --since=24h --all-pods 2>/dev/null) || { echo "blocked: logs not readable"; continue; }
+  printf %s "$L" | grep -c -E 'ARTEMIS_TOKEN|X-EduIDE-Instance-Token|Authorization|Bearer |eyJ[A-Za-z0-9_-]{10,}|dummy-value'; done
 k logs deploy/$FULL-operator --since=24h | head -3 | jq -e . >/dev/null && echo "json logs"
 ```
 Expect: 0 for every component; logs are JSON lines with `trace_id` where a trace exists; the log level is `info` (debug only with `LOG_LEVEL=debug`, record if set). The full check with a real launch is SEC-14.
@@ -45,12 +46,12 @@ Expect: one token Secret per session pod (idle and claimed), owned by the Pod, k
 
 ### SEC-07 Session pods are isolated from each other and from the infrastructure
 Safety: test-only
-Steps: start two fixture sessions `ft-sec-a` and `ft-sec-b` (`ft_session ... "" "$ME"` or fixture owner, any). From the `ide` container of A, with a 5 s limit, try TCP connections to B's pod IP on 8080 (agent proxy), 8081 (agent control), 8082, the IDE port of the template and to the service and authz pods' ports 8080, 9001, 9090 (`IP_SVC=$(k get pod -l app.kubernetes.io/component=service -o jsonpath='{.items[0].status.podIP}')`):
+Steps: start two fixture sessions `ft-sec-a` and `ft-sec-b` (`ft_session ... "" "$ME"` or fixture owner, any). From the `ide` container of A, with a 5 s limit, try TCP connections to B's pod IP on 8080 (agent proxy), 8081 (agent control), 8082, the IDE port of the template and to the service pod's ports 8080 and 9090 and the authz pod's ports 9001 (ext_authz) and 9090 (`IP_SVC=$(k get pod -l app.kubernetes.io/component=service -o jsonpath='{.items[0].status.podIP}')`, `IP_AZ=$(k get pod -l app.kubernetes.io/component=authz -o jsonpath='{.items[0].status.podIP}')`):
 ```bash
-k exec $POD_A -c ide -- bash -c 'for t in "$0:8080" "$0:8081" "$0:8082" "$0:3000" "$1:8080" "$1:9090"; do h=${t%:*}; p=${t#*:}; timeout 5 bash -c "</dev/tcp/$h/$p" 2>/dev/null && echo "OPEN $t" || echo "closed $t"; done' "$IP_B" "$IP_SVC"
+k exec $POD_A -c ide -- bash -c 'for t in "$0:8080" "$0:8081" "$0:8082" "$0:3000" "$1:8080" "$1:9090" "$2:9001" "$2:9090"; do h=${t%:*}; p=${t#*:}; timeout 5 bash -c "</dev/tcp/$h/$p" 2>/dev/null && echo "OPEN $t" || echo "closed $t"; done' "$IP_B" "$IP_SVC" "$IP_AZ"
 ```
-Then the cluster infrastructure (`NODE_IP` = the InternalIP of a node): `curl -sk -m5 -o /dev/null -w '%{http_code}' https://kubernetes.default.svc/version`, `https://$NODE_IP:10250/healthz`, a TCP connect to `$NODE_IP:22`, and `http://169.254.169.254/`. Internet egress: `curl -sI -m5 https://github.com | head -1`.
-Expect: every port to B, the service and authz `closed` (default deny, no rule admits session pods; the IDE port is on 127.0.0.1 and has no network listener); the API server, kubelet, node SSH and metadata address time out (private ranges are excluded from egress); internet egress works when the deployment allows it. No service account token is mounted in the IDE pod (`k exec $POD_A -c ide -- ls /var/run/secrets/kubernetes.io 2>&1` fails). On stud the nodes sit on a public subnet that `privateEgressCidrs` may not exclude: the old stack's finding; record the answers per target.
+Then the cluster infrastructure, each probe through `k exec $POD_A -c ide -- ...` so that the pod's egress policy decides (`NODE_IP` = the InternalIP of a node): `curl -sk -m5 -o /dev/null -w '%{http_code}' https://kubernetes.default.svc/version`, `https://$NODE_IP:10250/healthz`, a TCP connect to `$NODE_IP:22` (as in the loop above), and `http://169.254.169.254/`. Internet egress: `k exec $POD_A -c ide -- curl -sI -m5 https://github.com | head -1`.
+Expect: every port to B, the service and the authz pod (8080, 9001, 9090) `closed` (default deny, no rule admits session pods; the IDE port is on 127.0.0.1 and has no network listener); the API server, kubelet, node SSH and metadata address time out (private ranges are excluded from egress); internet egress works when the deployment allows it. No service account token is mounted in the IDE pod (`k exec $POD_A -c ide -- ls /var/run/secrets/kubernetes.io 2>&1` fails). On stud the nodes sit on a public subnet that `privateEgressCidrs` may not exclude: the old stack's finding; record the answers per target.
 Cleanup: `ft_cleanup`.
 
 ### SEC-09 No anonymous mode

@@ -19,7 +19,7 @@ curl -s 'http://127.0.0.1:19090/api/v1/targets?state=active' | jq -r --arg ns "$
 curl -s http://127.0.0.1:19090/api/v1/query --data-urlencode 'query=count by (pod) (up{namespace="'$NS'"} == 1)' | jq '.data.result|length'
 ```
 Expect: one `up` target per operator pod, per service replica, per authz replica (2 each) and the pool scaler; no `down` target, no duplicate scrape. Session pods are not scraped (nothing in them exports metrics; the agent has no metrics endpoint in v1).
-Cleanup: stop the port-forward.
+Keep the Prometheus port-forward open: MON-03 and MON-05 use it. Stop it after MON-05.
 
 ### MON-03 Alert rules are loaded and render
 Safety: prod-safe
@@ -39,7 +39,7 @@ Expect: every selector returns series for this deployment once the related event
 ### MON-05 Nothing firing that should not
 Safety: prod-safe
 Steps: `curl -s http://127.0.0.1:19090/api/v1/alerts | jq -r '.data.alerts[] | select(.labels.namespace=="'$NS'") | .labels.alertname + " " + .state'`
-Expect: no firing alert for this deployment, or each one is explained in the report. Alerts raised by the disruptive tests of this run (OPR-15 capacity pressure, AUTHZ-09 authz down) are expected; list them with the test that caused them.
+Expect: no firing alert for this deployment, or each one is explained in the report. Stop the Prometheus port-forward now. Alerts raised by the disruptive tests of this run (OPR-15 capacity pressure, AUTHZ-09 authz down) are expected; list them with the test that caused them.
 
 ### MON-06 Alert routing
 Safety: prod-safe
@@ -68,17 +68,16 @@ k port-forward deploy/$FULL-authz 19092:9090 >/dev/null 2>&1 & P3=$!
 sleep 3
 for u in 19464 19091 19092; do curl -s http://127.0.0.1:$u/metrics; done | grep -v '^#' | sed 's/[{ ].*//; s/_\(bucket\|sum\|count\|total\)$//' | sort -u > /tmp/exposed.txt
 sed 's/_total$//' /tmp/contract.txt | sort -u | comm -23 - /tmp/exposed.txt     # contract names that are not exposed
-kill $P1 $P2 $P3
 ```
-Then check labels of a few series against the table, for example `curl -s http://127.0.0.1:19464/metrics | grep '^eduide_session_startup_seconds_bucket' | head -2`, and look for any label named like `user`, `owner`, `email`, `token`, `session` (a session name label is allowed only where the contract lists it; the contract lists none): `... | grep -c -E '(user|owner|email|token)='`.
+Then check labels of a few series against the table, for example `curl -s http://127.0.0.1:19464/metrics | grep '^eduide_session_startup_seconds_bucket' | head -2`, and look at the label names of all scraped series for `user`, `owner`, `email`, `token`, `session` and variants such as `user_id` or `session_name` (a session name label is allowed only where the contract lists it; the contract lists none): `for u in 19464 19091 19092; do curl -s http://127.0.0.1:$u/metrics; done | grep -v '^#' | grep -c -i -E '(^|[{,])[a-z_]*(user|owner|email|token|session)[a-z_]*='`, then `kill $P1 $P2 $P3`.
 Expect: nothing is printed by `comm` once the events happened (metrics without a sample are registered but may be absent as series: record those, run a launch, a claim, an authz allow and a deny and compare again); histograms have `_bucket`, `_sum`, `_count`; label sets are exactly those of the table (`template`, `strategy`, `result` and so on); no metric carries a user name, e-mail address or token (G18). The old `application_application_theiacloud_session_startup_seconds` names do not exist in the new binaries.
-Cleanup: `rm /tmp/contract.txt /tmp/exposed.txt`.
+Cleanup: `kill $P1 $P2 $P3` (if not done), `rm /tmp/contract.txt /tmp/exposed.txt`.
 
 ### MON-10 A launch trace shows all phases
 Safety: test-only
 Needs: browser token (or a fixture and the `traceparent` annotation set by hand); Jaeger port-forward. Run once for a warm launch (pool) and once for a cold one.
 Steps:
-1. Pick a trace id and launch with it: `T=$(openssl rand -hex 16)`; `await api('POST','/sessions',{template:'<T>'},{traceparent:'00-<T>-0123456789abcdef-01'})` (the id is random test data, not a secret).
+1. Pick a trace id and launch with it: `T=$(openssl rand -hex 16)`; `await api('POST','/sessions',{template:'<T>'},{traceparent:'00-<T>-0123456789abcdef-01'})`, where `<T>` is the value printed by `echo $T` pasted into both places (a literal `<T>` is not a hex id; the id is random test data, not a secret).
 2. Wait for Ready; `k get idesession <n> -o jsonpath='{.metadata.annotations.eduide\.github\.io/traceparent}'`.
 3. `curl -s http://127.0.0.1:16686/api/services | jq -r '.data[]'`.
 4. `curl -s http://127.0.0.1:16686/api/traces/$T | jq -r '.data[0].spans[] | [.operationName, (.processID as $p | $p), .startTime, .duration] | @tsv' | sort -k3`; map process ids to service names with `.data[0].processes`.

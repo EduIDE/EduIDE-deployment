@@ -2,7 +2,7 @@
 
 Server module with GitHub workflows. Test environments only (test3 first); never production, never `e2e.`, never `clean_install`. Each deploy affects everyone on that environment: announce it. The new stack has two charts: `eduide-control-plane-crds` (per cluster, additive only, installed first) and `eduide-control-plane` (per deployment), both published as OCI charts (decision G10, ADR 0018). `EduIDE-Helm` embeds them and adds the landing page, the Gateway and the issuer.
 
-Workflows (repository EduIDE-deployment): `.github/workflows/deploy-dispatch.yml` ("Deploy environment"), `rollback.yml` ("Rollback"), `bootstrap-cluster.yml`. They need an environment directory for test3 (`environments/test3.eduide.student.k8s.aet.cit.tum.de`) that does not exist yet; until the migration work package for the umbrella chart lands it, record UPG-01 to UPG-05 as `blocked: no environment manifest for test3`. Never run `helm` against the cluster by hand.
+Workflows (repository EduIDE-deployment): `.github/workflows/deploy-dispatch.yml` ("Deploy environment"), `rollback.yml` ("Rollback"), `bootstrap-cluster.yml`. They need an environment directory for test3 (`environments/test3.eduide.student.k8s.aet.cit.tum.de`) that does not exist yet; until the migration work package for the umbrella chart lands it, record UPG-01 to UPG-05 as `blocked: no environment manifest for test3`. The manifest alone does not unblock them: the `environment` choice lists of `deploy-dispatch.yml` and `rollback.yml` must also contain test3 and the GitHub Environment must exist. Never run `helm` against the cluster by hand.
 
 Variables: `FROM` = the chart version currently deployed (PLAT-01), `TO` = the version under test.
 

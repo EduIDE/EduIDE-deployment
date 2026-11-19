@@ -127,7 +127,8 @@ Expect: the foreign origin gets no `Access-Control-Allow-Origin`. The landing pa
 Safety: prod-safe
 Steps:
 ```bash
-for p in /metrics /healthz /readyz; do curl -s -o /dev/null -w "%{http_code} $p\n" "$LANDING$p"; curl -s -o /dev/null -w "%{http_code} api$p\n" "$API$p"; done
+for p in /metrics /healthz /readyz; do for u in "$LANDING$p" "$API$p"; do
+  curl -s -o /tmp/pub.txt -w "%{http_code} $u " "$u"; echo "TYPE lines: $(grep -c '^# TYPE' /tmp/pub.txt)"; done; done; rm -f /tmp/pub.txt
 k port-forward deploy/$FULL-service 19090:9090 >/dev/null 2>&1 & PF=$!; sleep 3
 for p in /metrics /healthz /readyz; do curl -s -o /dev/null -w "%{http_code} $p\n" http://127.0.0.1:19090$p; done
 curl -s http://127.0.0.1:19090/metrics | grep -c '^eduide_api_requests_total'
