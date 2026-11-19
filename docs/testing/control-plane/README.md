@@ -122,6 +122,8 @@ Do not hard-code template names: the catalog differs per deployment. Pick from t
 
 ### Fixtures (test-only)
 
+The helper functions in this README need bash (they rely on word splitting, for example `${4:+-H ... -d "$4"}`); in zsh source them with `bash -c 'source helpers.sh; ...'`.
+
 Server modules create their own objects instead of touching students' sessions.
 Sessions and workspaces created directly as custom resources need no user token; they are not visible to the service as that user's own unless their owner is that user (`ME`, see below).
 
