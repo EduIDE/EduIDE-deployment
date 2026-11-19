@@ -1,6 +1,6 @@
 # 10 Monitoring, metrics contract and traces (MON)
 
-Server module, mostly read-only. Metrics are Prometheus endpoints of every binary (operator `:9464`, service and authz `:9090`, all `/metrics`, next to `/healthz` and `/readyz`); traces go by OTLP to a Jaeger v2 (in `eduide-test3` for this plan; one per cluster later, decision G17); logs are JSON with `trace_id`. The names and labels are a contract: `docs/contracts/metrics.md` in the control plane repo, checked there by `internal/telemetry/metrics_test.go`.
+Server module, mostly read-only. Metrics are Prometheus endpoints of every binary (operator `:9464`, service and authz `:9090`, all `/metrics`; the service and authz serve `/healthz` and `/readyz` on the same port, the operator on `:8081`); traces go by OTLP to a Jaeger v2 (in `eduide-test3` for this plan; one per cluster later, decision G17); logs are JSON with `trace_id`. The names and labels are a contract: `docs/contracts/metrics.md` in the control plane repo, checked there by `internal/telemetry/metrics_test.go`.
 
 Sources: `charts/eduide-control-plane/templates/monitoring.yaml` (PodMonitor `$FULL`, PrometheusRule `$FULL`, dashboard ConfigMap `$FULL-dashboard`), `docs/contracts/metrics.md`, `internal/telemetry`, ADR 0013.
 
@@ -54,7 +54,7 @@ Expect: the dashboard exists and is discovered; with sessions running, no panel 
 ### MON-08 Certificate alerts cover this deployment's certificates
 Safety: prod-safe
 Steps: `k get certificate -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.conditions[0].status}{"\n"}{end}'`; evaluate `certmanager_certificate_ready_status{namespace="eduide-test3"}` and `certmanager_certificate_expiration_timestamp_seconds{namespace="eduide-test3"}` in Prometheus; read the expressions of the cluster chart's certificate alerts (`kc -n eduide-system get prometheusrule -o json | jq -r '.items[].spec.groups[].rules[] | select(.alert|test("Certificate")) | .expr'`).
-Expect: the certificates of the deployment's own Gateway (host, instance and webview names) are ready and expire in more than 21 days; the cluster's certificate alert expressions select `eduide-*` namespaces, so `eduide-test3` is covered and other tenants' certificates do not match. Counts per namespace only. (The cluster chart is not changed by this deployment, decision U9.)
+Expect: the certificates of the deployment's own Gateway (host, instance and webview names) are ready and expire in more than 21 days; the cluster's certificate alert expressions select an explicit namespace list (first run: `eduide-e2e-test|eduide-staging|eduide-test1|eduide-test2|eduide-system`), so check that the list contains `eduide-test3` (`echo eduide-test3 | grep -cE '<regex>'`); if not, the certificates of this deployment are covered by no alert (finding) and other tenants' certificates must not match. Counts per namespace only. (The cluster chart is not changed by this deployment, decision U9.)
 
 ### MON-09 Metrics contract: every documented name is exposed
 Safety: prod-safe (read-only scrape; counters appear only after their event, so run after modules 03, 05, 13)
@@ -83,7 +83,7 @@ Steps:
 3. `curl -s http://127.0.0.1:16686/api/services | jq -r '.data[]'`.
 4. `curl -s http://127.0.0.1:16686/api/traces/$T | jq -r '.data[0].spans[] | [.operationName, (.processID as $p | $p), .startTime, .duration] | @tsv' | sort -k3`; map process ids to service names with `.data[0].processes`.
 5. Repeat with `lookback`: `curl -s "http://127.0.0.1:16686/api/traces?service=<operator service>&lookback=1h&limit=20"`.
-Expect: services `operator`, `service`, `authz`, `agent` (or the names the binaries register; record them) are listed; the trace `$T` holds spans from the service (launch), the operator (one span per start phase: claim, pod ready, agent ready, ready) and the agent (claim); all in one trace, parent-linked, with start times in the order of `status.timestamps` (`ft_times`); the sum of the phase spans matches the session's creation-to-Ready time within a second. The warm trace has a claim span and no pod creation; the cold trace has pod ready as the dominant span. Start-path traces are sampled 100 percent (a launch without a traceparent also appears). Attribute keys: session id and the pseudonymous user id only (SEC-15).
+Expect: services `operator`, `service`, `authz`, `agent` (or the names the binaries register; record them) are listed; the trace `$T` holds spans from the service (launch), the operator (one span per start phase: claim, pod ready, agent ready, ready) and the agent (claim); all in one trace, parent-linked, with start times in the order of `status.timestamps` (`ft_times`); the sum of the phase spans matches the session's creation-to-Ready time within a second. The warm trace has a claim span and no pod creation; the cold trace has pod ready as the dominant span. Start-path traces are sampled 100 percent when the service writes the root span `launch`; a hand-made IDESession without a `traceparent` annotation is sampled at 1 percent only, so set the annotation on fixtures. On Jaeger 2.x use the v3 API (`/api/v3/traces?query.service_name=<name>`); the v1 search was not usable on 2.23. Attribute keys: session id and the pseudonymous user id only (SEC-15).
 Cleanup: stop the port-forward and the sessions.
 
 ### MON-11 Logs carry the trace id
@@ -95,7 +95,7 @@ Expect: JSON lines with `trace_id` equal to the launch trace for service and ope
 ### MON-12 Jaeger is internal and keeps traces
 Safety: prod-safe
 Steps: `k get svc | grep -i jaeger`; `k get httproute -o name | grep -ci jaeger`; `curl -s -o /dev/null -w '%{http_code}\n' https://$ENV/jaeger/` and `https://$INSTANCE_HOST/jaeger/`; `k get pvc | grep -i jaeger`; storage and retention from the Jaeger config (`k get cm | grep -i jaeger`, read the retention key).
-Expect: the Jaeger service is `ClusterIP`; no HTTPRoute exposes it; public probes answer 404 or a login redirect, never the UI; a small PVC with Badger storage and a retention of about 7 days (decision G17); the OTLP endpoint in `config.telemetry.otlpEndpoint` points at it. An unreachable Jaeger must not slow down or break launches (spans are dropped, not queued: record the service latency when Jaeger is scaled to 0 on a spare window, test-only, disruptive).
+Expect: the Jaeger service is `ClusterIP`; no HTTPRoute exposes it; public probes answer 404, a login redirect or the landing page's SPA fallback (200 with the index page, check that it is not Jaeger), never the UI; a small PVC with Badger storage and a retention of about 7 days (decision G17); the OTLP endpoint in `config.telemetry.otlpEndpoint` points at it. An unreachable Jaeger must not slow down or break launches (spans are dropped, not queued: record the service latency when Jaeger is scaled to 0 on a spare window, test-only, disruptive).
 
 ## Explore
 

@@ -59,7 +59,7 @@ Rules that hold in every mode:
 - Never print, log, or put into the report a token, cookie, password, Secret value, or the content of an env var that holds one. Read secrets into shell variables, use them, and print only status codes, counts, or hashes. Pass tokens to curl with `-H @-` (header from stdin), not on the command line.
 - Never enter a password. When a browser login is needed, ask the user to log in in the browser pane.
 - Never obtain a user token on production.
-- Objects a run creates are named `ft-...` and labelled `eduide.dev/functional-test=<run id>`. Cleanup removes exactly those.
+- Objects a run creates are named `ft-...` and labelled `eduide.dev/functional-test=$FT_RUN` (run id plus module, so parallel agents never delete each other's fixtures). Cleanup removes exactly those.
 - Every kubectl call goes through `k` (context `stud`, namespace `eduide-test3`). Cluster-scoped reads (`k get crd`, `kubectl get nodes`) are read-only.
 - Never run `helm` against the cluster. Deployments go through the workflows (module 11).
 - Test data is dummy data (`ft-...` strings, `https://github.com/...` on the allowlist). Never put a real Artemis token or a real user's data into a fixture.
@@ -67,15 +67,17 @@ Rules that hold in every mode:
 
 ## Setup
 
-Run from a checkout of this repository. The snippets are bash: when the agent's shell is zsh or fish, run them through `bash -c` or take care with quoting.
+Run from a checkout of this repository. Background port-forwards use the plain `kubectl` binary, not the `k` function (its PID cannot be killed). The snippets are bash: when the agent's shell is zsh or fish, run them through `bash -c` or take care with quoting.
 
 ```bash
 export ENV=test3.eduide.student.k8s.aet.cit.tum.de
 export CTX=stud                                           # always explicit, never the current context by accident
 export NS=eduide-test3
 export RUN_ID=$(date +%Y-%m-%d)-1                         # also used in the report file name
+export FT_RUN=$RUN_ID-${MODULE:-main}                      # label value of every fixture; set MODULE=05 per agent, never share one value
 export LANDING=https://$ENV API=https://$ENV/api/v1
 export INSTANCE_HOST=instance.$ENV WEBVIEW_HOST=webview.instance.$ENV
+export PF_CTRL=${PF_CTRL:-18081} PF_PROXY=${PF_PROXY:-18080}      # local ports of agent_pf; give every parallel agent its own pair
 k() { kubectl --context "$CTX" -n "$NS" "$@"; }
 
 # Sanity: the context reaches the right cluster and the namespace exists.
@@ -85,7 +87,7 @@ kubectl config get-contexts "$CTX" >/dev/null && k get ns "$NS" -o name
 # Discover the prefix instead of hard-coding the release name; PLAT-01 records it.
 export FULL=$(k get deploy -l app.kubernetes.io/component=operator -o jsonpath='{.items[0].metadata.name}' | sed 's/-operator$//')
 export CP_SEL=app.kubernetes.io/name=eduide-control-plane          # all control plane pods
-# Deployments: $FULL-operator (1 replica, leader election lease eduide-operator), $FULL-service (2), $FULL-authz (2), $FULL-pool-scaler.
+# Deployments: $FULL-operator (1 replica, leader election lease eduide-operator), $FULL-service (2), $FULL-authz (2), $FULL-pool-scaler (only when `poolScaler.enabled`; not deployed on test3).
 ```
 
 Names assumed from the chart at the time of writing (`$FULL-operator`, `$FULL-service`, `$FULL-authz`, `$FULL-config`, NetworkPolicies `$FULL-session-*`, SecurityPolicy `$FULL-session`, HTTPRoutes `$FULL-api` and `$FULL-oauth2`).
@@ -132,7 +134,7 @@ OWNER_HASH() { printf %s "$1" | shasum -a 256 | cut -c1-40; }     # api/v1alpha1
 #   ft_template "$T_STD" ft-t1 '.spec.timeouts={"idle":"4m","warning":"2m"}'
 #   ft_template "$T_STD" ft-t2 '.spec.injectableKeys += [{"name":"FT_PROBE","source":"Request","format":"Token","maxLength":64}]'
 ft_template() {
-  k get idetemplate "$1" -o json | jq --arg n "$2" --arg r "$RUN_ID" "
+  k get idetemplate "$1" -o json | jq --arg n "$2" --arg r "$FT_RUN" "
     del(.metadata.uid,.metadata.resourceVersion,.metadata.creationTimestamp,.metadata.generation,
         .metadata.managedFields,.metadata.annotations,.metadata.ownerReferences,.status)
     | .metadata.name=\$n | .metadata.labels={\"eduide.dev/functional-test\":\$r}
@@ -143,7 +145,7 @@ ft_pool() { # $1 name (also the pool's identity), $2 template, $3 minIdle, [$4 m
   k apply -f - <<EOF
 apiVersion: eduide.github.io/v1alpha1
 kind: IDEPool
-metadata: {name: $1, labels: {eduide.dev/functional-test: "$RUN_ID"}}
+metadata: {name: $1, labels: {eduide.dev/functional-test: "$FT_RUN"}}
 spec: {templateRef: $2, minIdle: $3, targetIdle: $3, maxInstances: ${4:-$(($3 + 5))}}
 EOF
 }
@@ -155,7 +157,7 @@ apiVersion: eduide.github.io/v1alpha1
 kind: IDEWorkspace
 metadata:
   name: $1
-  labels: {app.kubernetes.io/managed-by: eduide, eduide.dev/functional-test: "$RUN_ID", eduide.github.io/owner-hash: $(OWNER_HASH "$o")}
+  labels: {app.kubernetes.io/managed-by: eduide, eduide.dev/functional-test: "$FT_RUN", eduide.github.io/owner-hash: $(OWNER_HASH "$o")}
 spec:
   owner: $o
   templateRef: $2
@@ -170,22 +172,23 @@ EOF
 # Launch data goes in FT_DATA as a JSON object of strings, e.g. FT_DATA='{"FT_PROBE":"dummy"}'. Use dummy values only.
 # Assumption: the Secret keys are the launch data keys (check internal/ once the service writes them; adapt this function if not).
 ft_session() { # $1 name, $2 template, [$3 workspace, empty = no persistence], [$4 owner]
-  local o=${4:-$FT_USER} d=${FT_DATA:-'{}'} uid
+  local o=${4:-$FT_USER} d=${FT_DATA:-'{}'} uid t=
+  [ -n "$FT_SESSION_TITLE" ] && t="display: {title: \"$FT_SESSION_TITLE\"}"   # not ${..:+display: {..}}, the first } would end the expansion
   k apply -f - <<EOF
 apiVersion: eduide.github.io/v1alpha1
 kind: IDESession
 metadata:
   name: $1
-  labels: {app.kubernetes.io/managed-by: eduide, eduide.dev/functional-test: "$RUN_ID", eduide.github.io/owner-hash: $(OWNER_HASH "$o")}
+  labels: {app.kubernetes.io/managed-by: eduide, eduide.dev/functional-test: "$FT_RUN", eduide.github.io/owner-hash: $(OWNER_HASH "$o")}
 spec:
   owner: $o
   templateRef: $2
   dataSecretRef: $1-data
   ${3:+workspaceRef: $3}
-  ${FT_SESSION_TITLE:+display: {title: "$FT_SESSION_TITLE"}}
+  $t
 EOF
   uid=$(k get idesession "$1" -o jsonpath='{.metadata.uid}')
-  jq -n --arg s "$1" --arg uid "$uid" --arg r "$RUN_ID" --argjson d "$d" '{apiVersion:"v1",kind:"Secret",
+  jq -n --arg s "$1" --arg uid "$uid" --arg r "$FT_RUN" --argjson d "$d" '{apiVersion:"v1",kind:"Secret",
     metadata:{name:($s+"-data"),labels:{"app.kubernetes.io/managed-by":"eduide","eduide.dev/functional-test":$r},
       ownerReferences:[{apiVersion:"eduide.github.io/v1alpha1",kind:"IDESession",name:$s,uid:$uid}]},stringData:$d}' | k apply -f -
 }
@@ -205,11 +208,11 @@ ft_times() { # $1 session: seconds from creation to each recorded timestamp (the
 }
 
 ft_cleanup() {
-  k delete idesessions -l eduide.dev/functional-test=$RUN_ID --wait=true
-  k delete ideworkspaces -l eduide.dev/functional-test=$RUN_ID --wait=true
-  k delete idepools -l eduide.dev/functional-test=$RUN_ID --wait=true
-  k delete idetemplates -l eduide.dev/functional-test=$RUN_ID --wait=true
-  k delete pod,secret,configmap,pvc,resourcequota -l eduide.dev/functional-test=$RUN_ID --wait=true
+  k delete idesessions -l eduide.dev/functional-test=$FT_RUN --wait=true
+  k delete ideworkspaces -l eduide.dev/functional-test=$FT_RUN --wait=true
+  k delete idepools -l eduide.dev/functional-test=$FT_RUN --wait=true
+  k delete idetemplates -l eduide.dev/functional-test=$FT_RUN --wait=true
+  k delete pod,secret,configmap,pvc,resourcequota -l eduide.dev/functional-test=$FT_RUN --wait=true
 }
 ```
 
@@ -242,20 +245,20 @@ The control port is closed to everything except the operator, but `kubectl port-
 The token is read into a shell variable inside the function and handed to curl on stdin; it is never printed.
 
 ```bash
-agent_pf() { # $1 instance id: forwards 18081 (control) and 18080 (proxy) of ide-<instance>
-  k port-forward "pod/ide-$1" 18081:8081 18080:8080 >/dev/null 2>&1 & AGENT_PF=$!; sleep 2
+agent_pf() { # $1 instance id: forwards $PF_CTRL (control) and $PF_PROXY (proxy) of ide-<instance>; plain kubectl, so $AGENT_PF is the real PID
+  kubectl --context "$CTX" -n "$NS" port-forward "pod/ide-$1" $PF_CTRL:8081 $PF_PROXY:8080 >/dev/null 2>&1 & AGENT_PF=$!; sleep 2
 }
 agent() { # $1 instance, $2 method, $3 path, [$4 JSON body]; prints "<body> <http code>"
   local tok; tok=$(k get secret "ide-$1-token" -o jsonpath='{.data.token}' | base64 -d)
   printf 'Authorization: Bearer %s\n' "$tok" | curl -s -m 10 -w ' %{http_code}\n' -X "$2" -H @- \
-    ${4:+-H 'Content-Type: application/json' -d "$4"} "http://127.0.0.1:18081$3"
+    ${4:+-H 'Content-Type: application/json' -d "$4"} "http://127.0.0.1:$PF_CTRL$3"
 }
 proxy() { # $1 instance, $2 token mode none|wrong|right, $3 path: request through the agent proxy
   local h=()
   case "$2" in wrong) h=(-H 'X-EduIDE-Instance-Token: wrong');; right) h=(-H @-);; esac
   if [ "$2" = right ]; then k get secret "ide-$1-token" -o jsonpath='{.data.token}' | base64 -d | sed 's/^/X-EduIDE-Instance-Token: /;$a\' |
-    curl -s -m 10 -o /dev/null -w '%{http_code}\n' -H @- "http://127.0.0.1:18080$3"
-  else curl -s -m 10 -o /dev/null -w '%{http_code}\n' "${h[@]}" "http://127.0.0.1:18080$3"; fi
+    curl -s -m 10 -o /dev/null -w '%{http_code}\n' -H @- "http://127.0.0.1:$PF_PROXY$3"
+  else curl -s -m 10 -o /dev/null -w '%{http_code}\n' "${h[@]}" "http://127.0.0.1:$PF_PROXY$3"; fi
 }
 # Stop with: kill $AGENT_PF
 ```
@@ -406,4 +409,5 @@ The plan changes through pull requests to this directory, never silently during 
 
 | Date | Change |
 |---|---|
+| 2026-11-19 | First run on test3 ([reports/2026-11-19-test3-1.md](reports/2026-11-19-test3-1.md)): fixture label per module (`FT_RUN`), `ft_session` brace fix, per-agent forward ports, bodies from files with `-H @-`, pool scaler optional; new tests PLAT-10, PLAT-11, API-25, API-26, POOL-20, AGENT-17 to AGENT-19; corrected expectations PLAT-01, 05, 09, SEC-02, 04, 17, MON intro, 08, 10, 12, API-13, 14, WS-11, POOL-01, 07, 18, AGENT-02, 05, 14, 16, OPR-10, 17, 19, AUTHZ-01, 07, 09, 13, LAND-12, PERF-03. |
 | 2026-11-18 | First version for the Go control plane: 14 modules adapted from the old plan ([mapping.md](mapping.md)), new modules AUTHZ and PERF, new tests for strategies, instance token, NetworkPolicies, capacity pressure, workspace retention, SSE, overview, traces and the metrics contract. Not yet run. |

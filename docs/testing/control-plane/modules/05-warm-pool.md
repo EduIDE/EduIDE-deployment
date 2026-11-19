@@ -17,7 +17,7 @@ Helper `pool_pods <pool>` is in the README.
 ### POOL-01 Pool is filled
 Safety: test-only
 Steps: `ft_template "$T_POOL" ft-pool-t` (clone of a template that allows `none`), `ft_pool ft-pool ft-pool-t 2`, wait up to 10 minutes, `pool_pods ft-pool`, `k get svc,httproute,secret | grep -c ide-`, `k get deploy,rs | grep -c ft-pool`.
-Expect: two pods `ide-<instance>` with `state=idle`, all containers ready (IDE answers through the agent), each with its Service, HTTPRoute (label `route=session`) and token Secret; `IDEPool` status `idleReady=2`, `idleStarting=0`, `claimed=0`, `replicas=2`; no Deployment and no ReplicaSet exist for the pool.
+Expect: two pods `ide-<instance>` with `state=idle`, all containers ready (IDE answers through the agent), each with its Service, HTTPRoute (label `eduide.github.io/route=session`) and token Secret (all found by the label `eduide.github.io/instance=<instance>`; only the Pod carries the pool label); `IDEPool` status `idleReady=2`, `idleStarting=0`, `claimed=0`, `replicas=2`; no Deployment and no ReplicaSet exist for the pool.
 
 ### POOL-02 Real pools are filled
 Safety: prod-safe
@@ -48,7 +48,7 @@ Expect (design intent, check ADR 0008 and the controller; record what happens): 
 ### POOL-07 Pool size via targetIdle, minIdle and maxInstances
 Safety: test-only
 Steps: `k patch idepool ft-pool --type merge -p '{"spec":{"targetIdle":4}}'`, wait, `pool_pods ft-pool`; then `targetIdle` 1 (floor `minIdle` 2 applies), then `minIdle` 0 and `targetIdle` 0 (no idle pods), then `maxInstances: 1` with one claimed session, then try `maxInstances: 1` with `minIdle: 2` and `targetIdle: 3`.
-Expect: idle pods follow `clamp(max(minIdle, targetIdle), 0, maxInstances - claimed)` after each step: 4, then 2, then 0; with one claimed and `maxInstances 1` no idle pod is kept; the last patch is rejected by the CRD (`minIdle must not exceed maxInstances`). Surplus idle pods are deleted with their Service, HTTPRoute and Secret; a claimed pod is never touched by a resize.
+Expect: idle pods follow `clamp(max(minIdle, targetIdle), 0, maxInstances - claimed)` after each step: 4, then 2, then 0; with one claimed and `maxInstances 1` no idle pod is kept; the last patch is rejected by the CRD (`minIdle must not exceed maxInstances`; a `targetIdle` above `maxInstances` says `targetIdle must not exceed maxInstances`). Surplus idle pods are deleted with their Service, HTTPRoute and Secret; a claimed pod is never touched by a resize.
 Cleanup: reset the pool, delete sessions.
 
 ### POOL-08 Orphaned claim
@@ -102,6 +102,7 @@ Expect: `/scale` writes `spec.targetIdle` (3, then the floor `minIdle` applies f
 
 ### POOL-18 Pool scaler integration
 Safety: prod-safe
+Needs: the pool scaler deployed (`poolScaler.enabled`); record `blocked` otherwise (not deployed on test3).
 Steps: `k get deploy $FULL-pool-scaler` and its logs (`--since=1h`, no values), `k get idepools -o json | jq '.items[]|{name:.metadata.name,ann:(.metadata.annotations|with_entries(select(.key|startswith("eduide.github.io/scaler"))))}'`, and the metrics the scaler reads (`eduide_pool_instances`, `eduide_sessions`, MON-09).
 Expect: the scaler runs and logs no errors about missing metrics; annotations use the prefix `eduide.github.io/` (`scaler-mode`, `scaler-override`), none the old `pool-scaler.eduide/`; it writes only `spec.targetIdle` (not `minIdle`, not the template) and reads the status instead of counting pods.
 
@@ -109,6 +110,13 @@ Expect: the scaler runs and logs no errors about missing metrics; annotations us
 Safety: prod-safe
 Steps: `k get ds`; `k get ds <one> -o jsonpath='{.spec.template.spec.nodeSelector} {.spec.template.spec.initContainers[*].image} {.spec.template.spec.containers[*].image}'`; `k get pods -l eduide.github.io/component=session -o custom-columns=NAME:.metadata.name,NODE:.spec.nodeName,NP:.metadata.labels.eduide\.github\.io/node-pool`.
 Expect: one prepull DaemonSet per template that pulls the template image in an init container and then runs the pause image, on the nodes of the template's placement only; session and pool pods run on nodes whose pool label equals the pod's `node-pool` label.
+
+### POOL-20 Idle instance children are repaired
+Safety: test-only
+Needs: the pool of POOL-01 with at least three ready idle pods.
+Steps: for three different ready idle pods delete one child each: the HTTPRoute `ide-<instance>`, the token Secret `ide-<instance>-token` and the Service `ide-<instance>`; wait 60 s; `k get httproute,svc,secret | grep <instance>`; then create three sessions at once (`ft_session`, `ft_wait`).
+Expect: the deleted objects are recreated (route and Secret agree on the token, SEC-06) or the pod is replaced; every session reaches Ready, none stays `Starting` (first run: a claimed pod without its token Secret hung, fixed in fix batch 1). Record which repair happened.
+Cleanup: `ft_cleanup`.
 
 ## Explore
 

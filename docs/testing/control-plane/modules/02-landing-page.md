@@ -75,7 +75,7 @@ Expect: redirect through Keycloak logout back to the logged-out state of LAND-01
 ### LAND-12 Imprint and privacy
 Safety: prod-safe
 Steps: open `/imprint` and `/privacy` from the footer.
-Expect: both render; the privacy page names the controller of the deployment, not a chart placeholder.
+Expect: since decision U6 the imprint and privacy pages are no longer built in: the footer links come from `config.legal` of the deployment. Record the configured links (or their absence) and check that they open; a built-in TUM text is a finding.
 
 ### LAND-13 Launch idempotency from the page (G14)
 Safety: test-only

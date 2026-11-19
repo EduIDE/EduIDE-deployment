@@ -28,7 +28,7 @@ for h in $INSTANCE_HOST $WEBVIEW_HOST; do for i in <owner instance> <free instan
   curl -s -o /dev/null -w "%{http_code} $h %{redirect_url}\n" "https://$h/$i/" | sed 's#\(https://[^/]*\).*#\1#'; done; done
 curl -s -o /dev/null -w '%{http_code} oauth2\n' "https://$INSTANCE_HOST/oauth2/callback"
 ```
-Expect: 302 to the Keycloak host for every instance on both hosts, the same for existing and non-existing ids (nothing leaks); never IDE content, never 200 from a session. `/oauth2/...` answers from the OIDC filter or the service (302, 400, 401 or 404), never from a session. This also holds right after the authz pods restarted (no cache-miss window).
+Expect: 302 to the Keycloak host for every instance on both hosts, the same for existing and non-existing ids (nothing leaks); never IDE content, never 200 from a session. `/oauth2/...` answers from the OIDC filter or the service (302, 400, 401 or 404), never from a session. This also holds right after the authz pods restarted (no cache-miss window), but anonymous probes cannot show that: the OIDC filter answers 302 before ext_authz is consulted, so that half needs the owner's cookie in the browser (AUTHZ-09).
 
 ### AUTHZ-02 Owner is allowed, silently (case c)
 Safety: test-only
@@ -64,7 +64,7 @@ Expect: the session leaves `Ready` (or gets its deletion timestamp) before the p
 ### AUTHZ-07 Invalid ID token cookie is cleared (case b)
 Safety: prod-safe (anonymous request with a made-up cookie)
 Steps: `curl -s -o /dev/null -D - -H 'Cookie: eduide-id=not-a-jwt' "https://$INSTANCE_HOST/<any instance>/" | grep -i -E '^(HTTP|location|set-cookie)' | sed 's/=[^;]*/=<v>/'`; repeat with a syntactically valid but unsigned JWT-shaped value (three dot-separated base64url parts of dummy text), and with the cookie name taken from `oidc.idTokenCookie` of the config.
-Expect: 302 to the same URL (`location` equals the request URL) with `Set-Cookie` lines that expire `eduide-id` and the OIDC filter's cookies (names starting `BearerToken`, `OauthHMAC`, `OauthExpires`, `IdToken`, `RefreshToken`; `Max-Age=0` or an expiry in the past), `Domain` equal to the instance host and `Path=/`; no 403 and no IDE content. `eduide_authz_decisions_total{result="login"}` rises.
+Expect: 302 to the same URL (`location` equals the request URL) with `Set-Cookie` lines that expire the auth cookies the request carried, only those (names such as `eduide-id`, `BearerToken`, `OauthHMAC`, `OauthExpires`, `IdToken`, `RefreshToken`; `Max-Age=0` or an expiry in the past), `Domain` equal to the instance host and `Path=/`; no 403 and no IDE content. `eduide_authz_decisions_total{result="login"}` rises.
 
 ### AUTHZ-08 Expired token leads to a transparent re-login
 Safety: test-only
@@ -76,7 +76,7 @@ Expect: the reload goes through at most one extra 302 round trip (case b clears 
 Safety: test-only, disruptive (nobody opens a session while authz is down)
 Needs: logged in as `ME`; a Ready session of `ME` with its IDE open in tab 1; announce it.
 Steps: `k scale deploy/$FULL-authz --replicas=0`; wait 20 s; in tab 2 navigate to the session URL (new connection); in tab 1 keep using the IDE (type, run a command: the WebSocket stays); then `k scale deploy/$FULL-authz --replicas=2` and `k rollout status deploy/$FULL-authz`; reload.
-Expect: while authz is down new requests to any session route are refused (403 or 5xx from Envoy: record), never served (`failOpen: false`); the IDE connection that was already open keeps working (WebSockets are checked only at the upgrade) but a reload of tab 1 fails; the landing page and the API keep working (they are not behind authz); after authz is back the reload works within the informer sync time (record seconds). Alert on authz down fires (MON-05).
+Expect: anonymous and bogus-cookie requests are answered 302 by the OIDC filter whether authz is up or down, so they prove nothing; only a request with the owner's cookie shows the result (first run: 500, never IDE content). While authz is down new requests to any session route are refused (403 or 5xx from Envoy: record), never served (`failOpen: false`); the IDE connection that was already open keeps working (WebSockets are checked only at the upgrade) but a reload of tab 1 fails; the landing page and the API keep working (they are not behind authz); after authz is back the reload works within the informer sync time (record seconds). Alert on authz down fires (MON-05).
 Cleanup: replicas restored to the recorded count (2).
 
 ### AUTHZ-10 Not-Ready and deleting sessions are refused
@@ -100,11 +100,12 @@ Expect: `eduide_authz_decisions_total` has series for `result` `allow`, `deny` a
 Safety: test-only, disruptive
 Needs: logged in as `ME`; an open session of `ME`.
 Steps: in the tab run `setInterval(()=>fetch(location.href,{credentials:'include',redirect:'manual'}).then(r=>{ if(r.status!==200) (window.__bad=window.__bad||[]).push([Date.now(),r.status]) }), 500)` on the IDE origin; `k delete pod <one authz pod> --grace-period=0 --force`; wait for it to come back; `k rollout restart deploy/$FULL-authz` and wait; read `window.__bad` and clear the interval.
-Expect: no non-200 answers for the owner during the pod loss (the other replica answers, Envoy retries) and during the rolling restart (maxUnavailable 0 or the PodDisruptionBudget holds one replica); a new replica serves only after its informer synced (readiness `/readyz` waits for it), so it never denies an owner because its cache is empty. Count and times of any blip go into the report (known risk: authz is in the critical path of every session).
+Expect (anonymous probes cannot see this, see AUTHZ-09): no non-200 answers for the owner during the pod loss (the other replica answers, Envoy retries) and during the rolling restart (maxUnavailable 0 or the PodDisruptionBudget holds one replica); a new replica serves only after its informer synced (readiness `/readyz` waits for it), so it never denies an owner because its cache is empty. Count and times of any blip go into the report (known risk: authz is in the critical path of every session).
 Cleanup: none (the deployment is restored by the rollout).
 
 ## Explore
 
+- Logged in as the owner of A, request `/x/../<B>/` and `/<A>/../<B>/` (B another instance): never served (authz denies `bad-path` or the owner check fails).
 - Token of another client or audience (a valid token of the realm that is not the gateway client's): refused by authz (audience check)? Needs a second Keycloak client; otherwise `blocked`.
 - A session URL opened with a trailing path that escapes the prefix after a rewrite (`/<instance>/../<other>/`): authz sees the original path; Envoy normalises before routing?
 - Case variants of the instance id (upper case) and the instance id as a later path segment (`/x/<instance>/`): never allowed.

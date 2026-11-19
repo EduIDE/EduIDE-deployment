@@ -16,7 +16,7 @@ for h in $INSTANCE_HOST $WEBVIEW_HOST; do
   for p in "/<instance>/" "/<instance>/a/b" "/<instance>/%2e%2e/<other instance>/" "/<instance>/../<other instance>/" "//<instance>/" "/<instance>" "/"; do
     curl -s --path-as-is -o /dev/null -w "%{http_code} $h $p %{redirect_url}\n" "https://$h$p" | sed 's#redirect_url=##; s#\(https://[^/]*\).*#\1#'; done; done
 ```
-Expect: every request returns a 302 to the Keycloak login of the deployment's realm (the OIDC filter), a 307 slash redirect on the same host, or a 404 for paths that match no route; none returns IDE content, a 101, or a body of the session. Paths that traverse into another instance are never served to an anonymous caller. Known non-redirect answers: `/oauth2/...` is handled by the filter or the service (404). The Keycloak host in the redirect is printed as a host only.
+Expect: every request returns a 302 to the Keycloak login of the deployment's realm (the OIDC filter), a 307 slash redirect on the same host, or a 404 for paths that match no route; none returns IDE content, a 101, or a body of the session. Paths that traverse into another instance are never served to an anonymous caller. Known non-redirect answers: `/oauth2/callback` answers 401 on the instance host and 404 on the webview host. The Keycloak host in the redirect is printed as a host only.
 
 ### SEC-03 Instance ids do not reveal or collide
 Safety: prod-safe
@@ -32,7 +32,7 @@ Expect: all components run as non-root (`runAsNonRoot: true`), `allowPrivilegeEs
 Safety: prod-safe
 Steps: count only, never print matching lines:
 ```bash
-for d in operator service authz pool-scaler; do
+for d in operator service authz; do   # add pool-scaler when it is deployed (not on test3)
   printf '%s ' $d; k logs deploy/$FULL-$d --since=24h --all-pods 2>/dev/null | grep -c -E 'ARTEMIS_TOKEN|X-EduIDE-Instance-Token|Authorization|Bearer |eyJ[A-Za-z0-9_-]{10,}|dummy-value' || true; done
 k logs deploy/$FULL-operator --since=24h | head -3 | jq -e . >/dev/null && echo "json logs"
 ```
@@ -75,8 +75,8 @@ Expect: `Strict-Transport-Security` on every host; the landing page sends CSP, `
 
 ### SEC-12 Instance token: direct pod access needs the header
 Safety: test-only
-Needs: a running session; `agent_pf <instance>` (forwards the agent proxy to 18080).
-Steps: `proxy $INST none /`; `proxy $INST wrong /`; `proxy $INST right /`; also `/some/other/path` and a WebSocket-style request without the header: `curl -s -o /dev/null -w '%{http_code}\n' -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: ZnRrZXk=' http://127.0.0.1:18080/`.
+Needs: a running session; `agent_pf <instance>` (forwards the agent proxy to `$PF_PROXY`).
+Steps: `proxy $INST none /`; `proxy $INST wrong /`; `proxy $INST right /`; also `/some/other/path` and a WebSocket-style request without the header: `curl -s -o /dev/null -w '%{http_code}\n' -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: ZnRrZXk=' http://127.0.0.1:$PF_PROXY/`.
 Expect: 403 without the header and with a wrong one (also for the WebSocket upgrade), 200 with the right token (read from the Secret, header via stdin, never printed). The token Secret's value and the HTTPRoute header value are the same (hash compare, SEC-06). The IDE port itself is not reachable at all: `k port-forward pod/ide-$INST 13000:<template port>` shows connection refused from outside the pod because the IDE binds `127.0.0.1` (the forward goes to the pod's network namespace, so it may connect: record; the NetworkPolicy and agent are the barrier for other pods, SEC-13).
 Cleanup: `kill $AGENT_PF`; `ft_cleanup`.
 
@@ -84,7 +84,7 @@ Cleanup: `kill $AGENT_PF`; `ft_cleanup`.
 Safety: test-only
 Needs: two session pods A and B (fixtures) and a foreign pod in the namespace without any EduIDE labels:
 ```bash
-k run ft-probe --image=curlimages/curl:8.11.1 --labels=eduide.dev/functional-test=$RUN_ID --restart=Never --command -- sleep 3600
+k run ft-probe --image=curlimages/curl:8.11.1 --labels=eduide.dev/functional-test=$FT_RUN --restart=Never --command -- sleep 3600
 k wait --for=condition=Ready pod/ft-probe --timeout=120s
 ```
 Steps: from `ft-probe`: `k exec ft-probe -- curl -s -m 5 -o /dev/null -w '%{http_code}\n' http://<A pod IP>:8080/` (agent proxy), the same on `:8081/readyz` (control, even the unauthenticated endpoint), `:8082`, and with the right token header on 8080 (`-H @-` fed from the Secret). From the `ide` container of A to B on 8080 and 8081 (SEC-07). Positive controls: A is `Ready` (the kubelet probe reaches 8081), a warm launch works (Envoy reaches 8080, AUTHZ-02), a claim works (the operator reaches 8081, POOL-03). Optionally from the shared Gateway's Envoy pod namespace: not testable here.
@@ -127,8 +127,8 @@ Expect: `automountServiceAccountToken: false`, `enableServiceLinks: false`; the 
 
 ### SEC-17 Minimal RBAC
 Safety: test-only (needs rights to impersonate service accounts; `blocked` otherwise)
-Steps: `for sa in operator service authz pool-scaler; do for v in "get secrets" "delete pods" "create pods" "get idesessions" "update idesessions/status" "get secrets -n kube-system" "list nodes"; do printf '%s %s: ' $sa "$v"; kubectl --context $CTX -n $NS auth can-i $v --as=system:serviceaccount:$NS:$FULL-$sa; done; done`
-Expect (adapt names): the operator may manage pods, Services, HTTPRoutes, PVCs, Secrets and the four CRDs (with `/status` and `/finalizers`) in its namespace only; the service may create and read IDESessions, IDEWorkspaces and Secrets, and list templates, but not delete pods; authz may only get, list and watch IDESessions; the pool scaler may update IDEPools; nobody may read Secrets or anything else in another namespace, and nobody has cluster-wide rights except the read of CRDs/Nodes the design names (record each yes). Roles are namespaced Roles, not ClusterRoles, where the design says so (`k get clusterrole,clusterrolebinding | grep $FULL`).
+Steps: `for sa in operator service authz; do for v in "get secrets" "delete pods" "create pods" "get idesessions" "update idesessions/status" "get secrets -n kube-system" "list nodes"; do printf '%s %s: ' $sa "$v"; kubectl --context $CTX -n $NS auth can-i $v --as=system:serviceaccount:$NS:$FULL-$sa; done; done`
+Expect (adapt names): the operator may manage pods, Services, HTTPRoutes, PVCs, Secrets and the four CRDs (with `/status` and `/finalizers`) in its namespace only; the service may create and read IDESessions, IDEWorkspaces and Secrets, and list templates, but not delete pods; authz may only list and watch IDESessions (it reads an informer, so `can-i get` answers no); the pool scaler, when deployed, may update IDEPools; nobody may read Secrets or anything else in another namespace, and nobody has cluster-wide rights except the read of CRDs/Nodes the design names (record each yes). Roles are namespaced Roles, not ClusterRoles, where the design says so (`k get clusterrole,clusterrolebinding | grep $FULL`).
 
 ## Explore
 

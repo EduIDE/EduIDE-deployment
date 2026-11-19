@@ -63,7 +63,7 @@ Expect: below 10 MiB per agent at idle (design target) and below its limit (64 M
 ### PERF-03 Warm start time
 Safety: test-only
 Needs: `ft-pool-t` with a pool of at least 3 idle (`ft_pool ft-perf-pool ft-pool-t 3`), logged in as `ME` for the user view.
-Steps: 20 sequential samples. For each: wait until `pool_pods` shows all idle ready, launch (API for the server and trace views; the tile for the user view in at least 5 of them), then `ft_wait`, `ft_times`, and for the traced ones MON-10's span listing with a `traceparent`. Collect `startStrategy` of every sample.
+Steps: 20 sequential samples. For each: wait until `pool_pods` shows all idle ready, launch (API for the server and trace views; the tile for the user view in at least 5 of them), then `ft_wait`, `ft_times`, and for the traced ones MON-10's span listing with a `traceparent`. Collect `startStrategy` of every sample. Sessions made with `ft_session` carry about 0.5 s of extra `agent_ready` time because the helper writes the data Secret after the session while the service writes it first; use the API for the server view.
 Expect: every sample `warm-ready`; server view: `ready - creation` is 0 to 2 s (budget: p95 under 2 s until reachable); trace view: spans `claim` and `agent_ready` in the low hundreds of milliseconds, no pod creation; user view: `click to redirect` about 1 s or less, `total` (to usable workbench) the number the design budget is judged against; report the three medians and p95s side by side, the largest phase, and any sample that was not warm-ready (pool empty, `warm-starting`). `eduide_session_startup_seconds{strategy="warm-ready"}` agrees (histogram buckets).
 Cleanup: `ft_cleanup`.
 

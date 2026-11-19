@@ -293,4 +293,4 @@ Fate of the old tests is in the table below.
 | kept | 6 | LAND-11, LAND-12, IDE-02, UPG-04, ART-02, ART-04 |
 | changed | 103 | all others |
 
-The module files hold the active tests: PLAT 9, LAND 15, API 22, OPR 20, POOL 17, AGENT 12, WS 12, IDE 11, SEC 15, MON 12, UPG 7, ART 6 (skipped), AUTHZ 13, PERF 7, in total 178.
+The module files hold the active tests: PLAT 11, LAND 15, API 24, OPR 20, POOL 18, AGENT 15, WS 12, IDE 11, SEC 15, MON 12, UPG 7, ART 6 (skipped), AUTHZ 13, PERF 7, in total 186 (eight tests were added after the first run: PLAT-10, PLAT-11, API-25, API-26, POOL-20, AGENT-17 to AGENT-19).

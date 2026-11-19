@@ -67,9 +67,9 @@ Steps: `k get networkpolicy`; `k get networkpolicy $FULL-session-from-envoy $FUL
 Expect: `default-deny` for ingress on session pods; `from-envoy` admits only the Envoy pods of the gateway on 8080 (agent proxy); `from-operator` admits only the operator pods on 8081; `session-egress` allows DNS and the configured egress and blocks private ranges and the metadata address (compare SEC-07). Policies for service, authz, operator and pool scaler exist. No rule admits session pods to each other. Negative tests are SEC-13.
 
 ### OPR-10 Operator restart with running sessions
-Safety: test-only, disruptive (the operator is down for about a minute)
+Safety: test-only, disruptive (a rollout restart takes about 3 s because the lease is handed over at once; the real down case is OPR-14)
 Steps: one restart can serve OPR-10, POOL-09, AGENT-07 and OPR-13. Before it, prepare: one opened cold session, one opened warm session (claimed pool pod), one unopened warm and one unopened cold session, one idle pool instance, and OPR-13's closed-tab session. Snapshot: session UIDs, `status.url`, pod UIDs and `status.timestamps`, `eduide_claim_total` (MON), the agent's `/v1/status` of each claimed pod. Then `k rollout restart deploy/$FULL-operator`, wait for the rollout and two minutes, snapshot again and diff.
-Expect: running sessions keep their pods and URLs (same pod UIDs, still Ready, timestamps unchanged); no session is claimed a second time (`eduide_claim_total{result="claimed"}` did not rise for existing sessions; each agent still reports its session); the leader lease moved to the new pod; the unopened sessions are served as before; new sessions start afterwards; no exception loop in the log.
+Expect: running sessions keep their pods and URLs (same pod UIDs, still Ready, timestamps unchanged); no session is claimed a second time (the operator's counters restart at 0: `eduide_claim_total{result="claimed"}` after the restart equals the number of new sessions; each agent still reports its session); the leader lease moved to the new pod; the unopened sessions are served as before; new sessions start afterwards; no exception loop in the log.
 
 ### OPR-11 Session pod never starts
 Safety: test-only
@@ -116,8 +116,8 @@ Cleanup: as OPR-15.
 
 ### OPR-17 Quota-forbidden pod counts as pressure
 Safety: test-only, disruptive (new pods in the whole namespace are refused until the quota is removed)
-Steps: count pods (`k get pods --no-headers | wc -l`), create a quota with exactly that count: `k create quota ft-opr-quota --hard=pods=<count>` and label it (`k label resourcequota ft-opr-quota eduide.dev/functional-test=$RUN_ID`); `ft_session ft-opr-q1 "$T_STD" "" "$ME"`; watch for 60 s; delete the quota at once afterwards.
-Expect: the pod creation is refused (`exceeded quota` event), the operator treats it like Unschedulable (G8): idle pods are evicted, pools held at 0, and after 45 s the session is `Failed` with `capacity-exhausted`. After deleting the quota the pools refill. Record how many idle pods were evicted when quota, not scheduling, was the cause (the design says quota pressure triggers no preemption, so eviction by the operator is the only relief).
+Steps: count pods (`k get pods --no-headers | wc -l`), create a quota with the pod count minus the idle pods (a quota equal to the count is relieved by evicting one idle pod and the session just starts): `k create quota ft-opr-quota --hard=pods=<count>` and label it (`k label resourcequota ft-opr-quota eduide.dev/functional-test=$FT_RUN`); `ft_session ft-opr-q1 "$T_STD" "" "$ME"`; watch for 60 s; delete the quota at once afterwards.
+Expect: the pod creation is refused (the pod is never created, so there is no `exceeded quota` Event; the evidence is the operator log), the operator treats it like Unschedulable (G8): idle pods are evicted, pools held at 0, and after 45 s the session is `Failed` with `capacity-exhausted`. After deleting the quota the pools refill. Record how many idle pods were evicted when quota, not scheduling, was the cause (the design says quota pressure triggers no preemption, so eviction by the operator is the only relief).
 Cleanup: delete the quota first, then `ft_cleanup`.
 
 ### OPR-18 Writes only on real change
@@ -127,7 +127,7 @@ Expect: no status update without a change; `status.lastActivity` moves at most e
 
 ### OPR-19 Session pod contract
 Safety: prod-safe
-Steps: `k get pod ide-<instance> -o json | jq '{containers:[.spec.containers[]|{name,image,ports,readiness:.readinessProbe.httpGet,liveness:.livenessProbe.httpGet,env:[.env[]?|.name]}], automount:.spec.automountServiceAccountToken, links:.spec.enableServiceLinks, vols:[.spec.volumes[]|keys[0]], ann:.metadata.annotations, labels:.metadata.labels}'`.
+Steps: `k get pod ide-<instance> -o json | jq '{containers:[.spec.containers[]|{name,image,ports,readiness:.readinessProbe.httpGet,liveness:.livenessProbe.httpGet,env:[.env[]?|.name]}], automount:.spec.automountServiceAccountToken, links:.spec.enableServiceLinks, vols:[.spec.volumes[]|del(.name)|keys[0]], ann:.metadata.annotations, labels:.metadata.labels}'`.
 Expect: containers exactly `ide` (template image, template env, no launch data) and `agent` (ports 8080 `proxy` and 8081 `control`, readiness `GET :8081/readyz`, liveness `/healthz`, env `AGENT_IDE_PORT` and `AGENT_TOKEN_FILE=/var/run/eduide/token` from the token Secret volume); `automountServiceAccountToken: false`, `enableServiceLinks: false`; the workspace volume (PVC for `volume`, `emptyDir` otherwise) at the mount path; bandwidth annotations `kubernetes.io/ingress-bandwidth` and `egress-bandwidth` when the template sets them; labels `managed-by=eduide`, `component=session`, `template`, `instance`, `state`, `node-pool` when a pool label is configured; no env var holds an e-mail, token or URL of the user.
 
 ### OPR-20 Per-instance routing objects

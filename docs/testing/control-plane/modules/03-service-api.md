@@ -121,7 +121,7 @@ for o in "$LANDING" "https://evil.example.org"; do
   curl -s -o /dev/null -D - -X OPTIONS -H "Origin: $o" -H 'Access-Control-Request-Method: POST' \
     -H 'Access-Control-Request-Headers: authorization,content-type' "$API/sessions" | grep -i '^access-control-allow-origin' || echo "no ACAO for $o"; done
 ```
-Expect: the foreign origin gets no `Access-Control-Allow-Origin`. The landing page and the API share one host, so the landing origin needs no CORS rule (`no ACAO` is also fine for it, as long as the page works). A wildcard `*` is a finding.
+Expect: the foreign origin gets no `Access-Control-Allow-Origin`. The landing page and the API share one host, so the landing origin needs no CORS rule (`no ACAO` is also fine for it, as long as the page works). A wildcard `*` is a finding. Record the status of the preflight itself (first run: 405 with `allow: GET, HEAD`, harmless because the page is same-origin).
 
 ### API-14 Management port is internal only
 Safety: prod-safe
@@ -133,7 +133,7 @@ for p in /metrics /healthz /readyz; do curl -s -o /dev/null -w "%{http_code} $p\
 curl -s http://127.0.0.1:19090/metrics | grep -c '^eduide_api_requests_total'
 kill $PF
 ```
-Expect: public paths 404 or 401, never metrics; through the port-forward `/metrics`, `/healthz`, `/readyz` are 200 and `eduide_api_requests_total` has series once any request was served. The OpenAPI document is not required to be public.
+Expect: public paths never serve Prometheus text (`# TYPE` count 0): 404, 401, or on `$LANDING` the landing page's SPA fallback (200, HTML) or its own `/healthz`; through the port-forward `/metrics`, `/healthz`, `/readyz` are 200 and `eduide_api_requests_total` has series once any request was served. The OpenAPI document is not required to be public.
 
 ### API-15 Service configuration and secrets
 Safety: prod-safe
@@ -197,6 +197,16 @@ Needs: browser token.
 Steps: `await api('POST','/sessions',{template:'<T_STD>'},{traceparent:'00-0123456789abcdef0123456789abcdef-0123456789abcdef-01'})`; `k get idesession <name> -o jsonpath='{.metadata.annotations}'`; a second launch (distinct data) with `traceparent: garbage`.
 Expect: the annotation `eduide.github.io/traceparent` holds the given context; a malformed header is ignored or rejected with 400, never a 5xx and never stored unchecked. The trace id appears in Jaeger (MON-10).
 Cleanup: stop the sessions.
+
+### API-25 Unknown routes and methods
+Safety: prod-safe
+Steps: `curl -s -i $API/nope`, `curl -s -i -X PUT $API/sessions`, `curl -s -i $API/templates/`, `curl -s -i -X OPTIONS $API/sessions`.
+Expect: 404 and 405, never 5xx, no stack trace or internal host in the body; the body is Problem Details (`application/problem+json`, ADR 0010; plain `text/plain` was the first run's finding, fixed in fix batch 1).
+
+### API-26 Anonymous body limits
+Safety: prod-safe
+Steps: `B=$(mktemp); head -c 5242880 /dev/zero | tr '\0' a > "$B"`; `curl -s -o /dev/null -w '%{http_code} %{content_type}\n' -X POST -H 'Content-Type: application/json' --data-binary @"$B" $API/sessions`; the same on `/workspaces`; `rm "$B"`.
+Expect: 401 `application/problem+json`, no 413 and no 5xx: authentication is checked before the body is read, so anonymous callers have no body-size attack surface. (The authenticated limits are API-09.)
 
 ## Explore
 

@@ -22,7 +22,7 @@ Expect: image equals `config.agent.image`; ports 8080 `proxy` and 8081 `control`
 ### AGENT-02 Warm claim delivers the data
 Safety: test-only
 Steps: `ft_template "$T_POOL" ft-ag-t '.spec.injectableKeys += [{"name":"FT_PROBE","source":"Request","format":"Token","maxLength":64}]'`, `ft_pool ft-ag-pool ft-ag-t 1`, wait for an idle pod, then `FT_DATA='{"FT_PROBE":"dummy-value-1"}' ft_session ft-ag-s1 ft-ag-t "" "$ME"`, `ft_wait`; `INST=$(k get idesession ft-ag-s1 -o jsonpath='{.status.instance}')`; `agent_pf $INST`; `agent $INST GET /v1/status`; the local API one-liner (README) in the pod.
-Expect: status `{"claimed":true,"session":"ft-ag-s1","ready":true,...}`; the local API returns `claimed:true`, `version >= 1` and `keys` containing `FT_PROBE`; `timestamps.agentReady` is set before `timestamps.ready`; the operator log has a line for the claim of `ft-ag-s1` and no value (`k logs deploy/$FULL-operator --since=5m | grep -c dummy-value-1` is 0, SEC-14).
+Expect: status `{"claimed":true,"session":"ft-ag-s1","ready":true,...}`; the local API returns `claimed:true`, `version >= 1` and `keys` containing `FT_PROBE`; `timestamps.agentReady` is set and equals `timestamps.ready` (both are taken at the same moment); the agent log has the line `claimed` for `ft-ag-s1` (the operator logs the claim too since the logging fix) and no value (`k logs deploy/$FULL-operator --since=5m | grep -c dummy-value-1` is 0, SEC-14).
 Cleanup: `kill $AGENT_PF`; `ft_cleanup`.
 
 ### AGENT-03 Cold session gets its data, also when the Secret is late
@@ -34,13 +34,13 @@ Cleanup: `kill $AGENT_PF`; `ft_cleanup`.
 ### AGENT-04 Control port refuses wrong or missing tokens
 Safety: test-only
 Needs: a running session (AGENT-02).
-Steps: through the port-forward: `curl -s -o /dev/null -w '%{http_code} none\n' http://127.0.0.1:18081/v1/status`; with `Authorization: Bearer wrong`; with a valid token (`agent $INST GET /v1/status`); `/healthz` and `/readyz` without any header; `POST /v1/notify` without token.
+Steps: through the port-forward: `curl -s -o /dev/null -w '%{http_code} none\n' http://127.0.0.1:$PF_CTRL/v1/status`; with `Authorization: Bearer wrong`; with a valid token (`agent $INST GET /v1/status`); `/healthz` and `/readyz` without any header; `POST /v1/notify` without token.
 Expect: 401, 401, 200 with the status; `/healthz` 200 and `/readyz` 200 without auth; notify without token 401 and nothing queued (the local `notices` stays empty). Status after the failed attempts is unchanged.
 
 ### AGENT-05 Claim validation and idempotence
 Safety: test-only
 Needs: a claimed pod of a fixture session `ft-ag-s1`.
-Steps: `agent $INST POST /v1/claim '{"session":"ft-ag-s1","data":{"FT_PROBE":"dummy-value-1"}}'` (same session), then with `"session":"ft-ag-other"`, then `'notjson'`, then `'{"session":"ft-ag-s1","data":{"a":1}}'`, then a body over 16 KiB built from stdin (`head -c 17000 /dev/zero | tr '\0' x` inside the JSON via `jq -n --arg v "$(head -c 17000 /dev/zero | tr '\0' x)" '{session:"ft-ag-s1",data:{FT_PROBE:$v}}' | curl ... --data-binary @-`, with the token header from stdin) with and without the token.
+Steps: `agent $INST POST /v1/claim '{"session":"ft-ag-s1","data":{"FT_PROBE":"dummy-value-1"}}'` (same session), then with `"session":"ft-ag-other"`, then `'notjson'`, then `'{"session":"ft-ag-s1","data":{"a":1}}'`, then a body over 16 KiB written to a file (`jq -n --arg v "$(head -c 17000 /dev/zero | tr '\0' x)" '{session:"ft-ag-s1",data:{FT_PROBE:$v}}' > "$BODY"`, then `curl ... --data-binary @"$BODY"`; the token header comes from stdin, so the body must not: curl reads stdin only once) with and without the token.
 Expect: 200 (idempotent, `version` unchanged or only increased as the spec allows: record); 409 for the other session; 400 for malformed JSON and for a non-string value; 413 with the token and 401 without (auth before the size check). Error bodies name the problem and never echo a data value. Status still reports `ft-ag-s1`.
 
 ### AGENT-07 Claim after operator restart
@@ -74,7 +74,7 @@ Cleanup: `ft_cleanup`.
 Safety: test-only
 Needs: browser pane, a session of `ME`.
 Steps: `agent $INST GET /v1/status` before opening the IDE (`lastActivity` absent, `connections: 0`); open the IDE tab and wait for it to load; status again; type in the IDE and check `lastActivity` moves (the heartbeat is sent at most once per minute); `k exec $POD -c ide -- curl -s -X POST -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8082/v1/heartbeat`; close the tab and status after 30 s.
-Expect: before the browser: no activity and 0 connections (counts as inactive, OPR-04); with the tab open `connections` is at least 1 (WebSocket through the proxy) and `lastActivity` is set; the manual heartbeat returns 204 and moves `lastActivity`; after closing the tab `connections` returns to 0. `lastActivity` is the later of heartbeat and proxied request.
+Expect: before the browser: no activity and 0 connections (counts as inactive, OPR-04); with the tab open `connections` is at least 1 (WebSocket through the proxy) and `lastActivity` is set; the manual heartbeat returns 204 and moves `lastActivity`; after closing the tab `connections` returns to 0. Only heartbeats count for `lastActivity`; proxied requests do not (ADR 0016).
 Cleanup: `ft_cleanup`.
 
 ### AGENT-15 Notify reaches the IDE
@@ -87,8 +87,28 @@ Cleanup: `ft_cleanup`.
 ### AGENT-16 Proxy forwards HTTP and WebSocket
 Safety: test-only
 Needs: a running session, `agent_pf`.
-Steps: `proxy $INST right /` (token from the Secret, header on stdin); a large request body through the proxy (`head -c 52428800 /dev/zero | curl -s -o /dev/null -w '%{http_code} %{size_upload}\n' -X POST --data-binary @- -H @- http://127.0.0.1:18080/` with the token header from stdin; the IDE may answer 404 or 405, what counts is that the upload is accepted whole); open the IDE in the browser, run a terminal command and open a file.
+Steps: `proxy $INST right /` (token from the Secret, header on stdin); a large request body through the proxy (`head -c 52428800 /dev/zero > "$BODY"`, then `curl -s -o /dev/null -w '%{http_code} %{size_upload}\n' -X POST --data-binary @"$BODY" -H @- http://127.0.0.1:$PF_PROXY/` with the token header from stdin; the IDE may answer 404 or 405, what counts is that the upload is accepted whole); open the IDE in the browser, run a terminal command and open a file.
 Expect: HTTP 200 with the IDE page for the right token; the 50 MiB upload is forwarded completely (`size_upload` 52428800) without the agent buffering it into memory (agent memory stays within PERF-02); the IDE terminal and editor work over WebSocket through the proxy; the instance token header is not visible to the IDE (it is stripped, check the IDE's request log if available, otherwise record `blocked`).
+Cleanup: `kill $AGENT_PF`; `ft_cleanup`.
+
+### AGENT-17 Agent container restart is re-claimed
+Safety: test-only
+Needs: a Ready cold session with data (`FT_DATA`), `agent_pf`.
+Steps: record the local API `version` and keys; kill only the agent container: an ephemeral container with the agent's uid 65532 on the same pod (`k debug pod/ide-$INST --target=agent -c ft-kill --image=<the template's IDE image> --custom=<file with {"securityContext":{"runAsUser":65532}}> -- sh -c 'kill -TERM 1'`); watch `agent` restartCount, `agent $INST GET /v1/status` and the local API; repeat for a warm (pool) session.
+Expect: the `agent` container restarts (restartCount 1, `ide` 0), the operator claims again within one poll interval (first run: 2 s), status `claimed:true` with the same keys, `version` changed, the session stays `Ready`; `eduide_agent_requests_total{op="claim",result="ok"}` rises by exactly one per restart and no repeated claims follow. Before fix batch 1 the data was lost silently.
+Cleanup: `kill $AGENT_PF`; `ft_cleanup`.
+
+### AGENT-18 Operator enforces the template allowlist on launch data
+Safety: test-only
+Steps: `ft_template "$T_STD" ft-ag-t '.spec.injectableKeys += [{"name":"FT_PROBE","source":"Request","format":"Token","maxLength":64}]'`; a session whose data Secret holds `FT_PROBE`, a key outside the allowlist (`NOT_ALLOWED`) and an `FT_PROBE` value of 123 characters (dummy strings; `FT_DATA` built with `jq`); read the local API keys (names only) and the session phase.
+Expect: record what happens (key dropped, value cut, or the session `Failed`); the extension never sees a key that the template does not list; no value in any log (SEC-14). The first run saw both sessions Ready with every key (defense in depth missing, fixed in fix batch 1).
+Cleanup: `ft_cleanup`.
+
+### AGENT-19 Parallel claims for two sessions: one wins
+Safety: test-only
+Needs: an unclaimed pod (an idle pool pod), `agent_pf <instance>`.
+Steps: 20 parallel `POST /v1/claim` with `session` `ft-ag-a` (10 calls) and `ft-ag-b` (10 calls), data of dummy strings; then `agent $INST GET /v1/status`; `k logs pod/ide-$INST -c agent | grep -c claimed`.
+Expect: all calls for one session answer 200, all calls for the other 409; status shows exactly one session; one `claimed` line in the agent log.
 Cleanup: `kill $AGENT_PF`; `ft_cleanup`.
 
 ## Explore

@@ -54,9 +54,9 @@ Cleanup: restore the recorded ConfigMap (`k apply -f /tmp/cfg.bak` after removin
 ### WS-07 Config parsing fails loudly, without touching the shared operator
 Safety: test-only
 Needs: rights to create pods and ConfigMaps in the namespace.
-Steps: for each case create a ConfigMap `ft-cfg-<case>` holding a `config.yaml` (take the live file from PLAT-08 and change one thing) and a pod `ft-op-<case>` with the operator image (same tag as the Deployment), the ConfigMap mounted at `/etc/eduide`, `serviceAccountName: default`, `restartPolicy: Never`, labelled `eduide.dev/functional-test=$RUN_ID`. Cases: `workspaces.retention: "14"` (no unit), `workspaces.retention: 14d` (days are not a Go duration), `sessionsPerUser: -1`, an unknown key (`bogus: 1`), `hosts.instance` removed. Read `k logs` and the exit code.
+Steps: for each case create a ConfigMap `ft-cfg-<case>` holding a `config.yaml` (take the live file from PLAT-08 and change one thing) and a pod `ft-op-<case>` with the operator image (same tag as the Deployment), the ConfigMap mounted at `/etc/eduide`, `serviceAccountName: default`, `restartPolicy: Never`, labelled `eduide.dev/functional-test=$FT_RUN`. Cases: `workspaces.retention: "14"` (no unit), `workspaces.retention: 14d` (days are not a Go duration), `sessionsPerUser: -1`, an unknown key (`bogus: 1`), `hosts.instance` removed. Read `k logs` and the exit code.
 Expect: every case exits non-zero within seconds with a message that names the field (`config: ...`, `oidc.issuerURL is required`, unknown field); no case joins leader election (the shared operator keeps its lease, `k get lease eduide-operator`); the old trap of a unit-less value meaning seconds is not possible. Config values are never printed.
-Cleanup: `k delete pod,cm -l eduide.dev/functional-test=$RUN_ID`.
+Cleanup: `k delete pod,cm -l eduide.dev/functional-test=$FT_RUN`.
 
 ### WS-08 Retain annotation cancels expiry
 Safety: test-only
@@ -81,13 +81,13 @@ Cleanup: `ft_cleanup`.
 ### WS-11 Overview warning before expiry
 Safety: test-only
 Needs: logged in as `ME`.
-Steps: `ft_workspace ft-ws-w "$T_STD" "$ME" 2d` (expires in under 3 days) and `ft_workspace ft-ws-n "$T_STD" "$ME"` (default retention); `await api('GET','/me/overview')` and the overview page.
+Steps: `ft_workspace ft-ws-w "$T_STD" "$ME" 48h` (expires in under 3 days; `2d` is not a Go duration and is rejected) and `ft_workspace ft-ws-n "$T_STD" "$ME"` (default retention); `await api('GET','/me/overview')` and the overview page.
 Expect: the item for `ft-ws-w` has `expiresAt` within 3 days and the page shows a warning that names the date; `ft-ws-n` has none; "Starten" on `ft-ws-w` pushes `expiresAt` out again (WS-09).
 Cleanup: `ft_cleanup`.
 
 ### WS-12 Import of an existing volume
 Safety: test-only
-Needs: a spare PVC created by the test: `k apply` a PVC `ft-ws-import` (1Gi, the cluster's storage class, label `eduide.dev/functional-test=$RUN_ID`), written once by a throwaway pod if you want to see the data survive.
+Needs: a spare PVC created by the test: `k apply` a PVC `ft-ws-import` (1Gi, the cluster's storage class, label `eduide.dev/functional-test=$FT_RUN`), written once by a throwaway pod if you want to see the data survive.
 Steps: create an IDEWorkspace with `spec.persistence.existingClaimName: ft-ws-import` (copy `ft_workspace` and add the field), read `status.claimName`, `lastUsed`, start a session on it and `ls /home/project` in the `ide` container.
 Expect: `status.claimName` equals `ft-ws-import`, no second PVC is created, `lastUsed` is the import time, the session mounts the imported volume with its data intact. Record whether deleting the workspace also deletes the imported PVC (the design does not say; the test PVC is expendable).
 Cleanup: `ft_cleanup` (PVC carries the label).
