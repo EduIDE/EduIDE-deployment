@@ -65,7 +65,7 @@ Cleanup: replicas restored (`k scale deploy/$FULL-service --replicas=2`, `k roll
 ### LAND-10 Artemis deep link keeps the token out of the URL (G16)
 Safety: prod-safe (nothing is clicked)
 Steps: open `$LANDING/?appDef=<a template>&gitUri=https://untrusted.example.org/x.git#artemisToken=dummy` in a logged-out tab, log in when asked, then read `location.href`, `sessionStorage.length` and the page.
-Expect: the page reads the fragment first, keeps the token in `sessionStorage` only, removes the fragment (`history.replaceState`), and starts Keycloak only after that, so the token survives the login detour; after login the URL has no `artemisToken`. A host that is not trusted (`allowedHosts`) does not auto start: the page shows the repository host and a launch button, which the test does not click. The legacy form `?artemisToken=dummy` still works during the migration and logs a deprecation in the browser console. Never use a real token.
+Expect: the page reads the fragment first, keeps the token in `sessionStorage` only, removes the fragment (`history.replaceState`), and starts Keycloak only after that, so the token survives the login detour; after login the URL has no `artemisToken`. A host that is not trusted (`config.allowedHosts` of the service) starts no session: the service refuses the launch with 400 and the page says that repositories from that host cannot be opened here, naming the host, never the raw API detail; `k get idesessions` shows no new session. The legacy form `?artemisToken=dummy` still works during the migration and logs a deprecation in the browser console. Never use a real token.
 
 ### LAND-11 Logout
 Safety: prod-safe
