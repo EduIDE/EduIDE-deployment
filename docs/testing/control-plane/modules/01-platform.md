@@ -84,7 +84,7 @@ Expect: 0 for every component (controller-runtime and client-go logs reach the J
 ### PLAT-11 Gateway listeners without overlapping TLS configuration
 Safety: prod-safe
 Steps: `k get gateway -o json | jq -r '.items[].status.listeners[] | .name + " " + ([.conditions[] | select(.status=="True") | .type] | join(","))'`; for `$ENV`, `$INSTANCE_HOST` and `$WEBVIEW_HOST`: `openssl s_client -alpn h2,http/1.1 -servername $h -connect $h:443 </dev/null 2>/dev/null | grep -i 'ALPN protocol'`.
-Expect: no listener has the condition `OverlappingTLSConfig`; all three hosts negotiate `h2`. A host that falls back to `http/1.1` is a finding: the certificate of another Gateway lists the same name (first run: webview host of test3, shared Gateway's static certificate).
+Expect: no listener has the condition `OverlappingTLSConfig`; all three hosts negotiate `h2`. A host that falls back to `http/1.1` is a finding: the certificate of another Gateway lists the same name (first run: webview host of test3, shared Gateway's static certificate; accepted on test3 by the environment owner on 2026-11-19, webviews work over HTTP/1.1; check again on the production cluster).
 
 ## Explore
 

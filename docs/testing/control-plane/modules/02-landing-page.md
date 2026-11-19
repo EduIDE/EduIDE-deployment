@@ -9,7 +9,7 @@ Element hooks (`data-testid`) are those of the new page; read the accessibility 
 ### LAND-01 Logged-out page
 Safety: prod-safe
 Steps: open `$LANDING` in a fresh (logged-out) tab; `curl -s $LANDING/config.json | jq 'keys, .legacy, .apiBaseUrl'`.
-Expect: a login prompt and a Login button, no overview and no tiles, footer with Imprint and Privacy; `config.json` has `apiBaseUrl` `/api/v1`, `legacy` false, a `keycloak` block (url, realm, clientId; no secret).
+Expect: the landing page sends a logged-out visitor straight to the Keycloak login (`onLoad: 'login-required'`, decided 2026-11-19, R2-8 of run 2): no overview, no tiles, no own logged-out page; `/imprint`, `/privacy` and `/status` open without a login; `config.json` has `apiBaseUrl` `/api/v1`, `legacy` false, a `keycloak` block (url, realm, clientId; no secret).
 
 ### LAND-02 Tiles and badges from the template list
 Safety: prod-safe
@@ -70,7 +70,7 @@ Expect: the page reads the fragment first, keeps the token in `sessionStorage` o
 ### LAND-11 Logout
 Safety: prod-safe
 Steps: click the logout button.
-Expect: redirect through Keycloak logout back to the logged-out state of LAND-01; a reload does not log in again silently. A session tab opened earlier keeps working until its ID token cookie expires and then re-authenticates against Keycloak (AUTHZ-08): record whether the IDE tab is signed out as well.
+Expect: redirect through Keycloak logout back to the Keycloak login of LAND-01; a reload does not log in again silently. A session tab opened earlier keeps working until its ID token cookie expires and then re-authenticates against Keycloak (AUTHZ-08): record whether the IDE tab is signed out as well.
 
 ### LAND-12 Imprint and privacy
 Safety: prod-safe
