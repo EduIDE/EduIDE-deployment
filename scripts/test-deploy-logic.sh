@@ -9,6 +9,9 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FAILED=0
 
+# Which control plane an environment runs; java when env.yaml does not say.
+stack_of() { yq -r '.spec.platform.stack // "java"' "$1"; }
+
 ok()   { printf '  PASS  %s\n' "$1"; }
 bad()  { printf '  FAIL  %s\n        %s\n' "$1" "$2"; FAILED=1; }
 
@@ -64,6 +67,8 @@ for cf in "$ROOT"/clusters/*.yaml; do
   n=0; prefixes=""
   for f in "$ROOT"/environments/*/env.yaml; do
     [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" ]] || continue
+    # A go environment renders its own Gateway and adds no shared listeners.
+    [[ "$(stack_of "$f")" == "java" ]] || continue
     env=$(basename "$(dirname "$f")")
     v="$ROOT/environments/$env/values.yaml"
     [[ -f "$v" ]] || continue
@@ -126,6 +131,7 @@ env_ver_arg() {
 chart_versions() {
   local f
   for f in "$ROOT"/environments/*/env.yaml; do
+    [[ "$(stack_of "$f")" == "java" ]] || continue
     yq -r '.spec.platform.chartVersion' "$f"
   done | sort -u
 }
@@ -156,6 +162,7 @@ if chart_reachable; then
   printf 'keycloak:\n  cookieSecret: x\nservice:\n  adminApiToken: dG9r\n' > "$W/sec.yaml"
   {
     for f in "$ROOT"/environments/*/env.yaml; do
+      [[ "$(stack_of "$f")" == "java" ]] || continue
       env=$(basename "$(dirname "$f")")
       ns=$(yq -r '.spec.namespace' "$f")
       read -r -a ver_arg <<<"$(env_ver_arg "$f")"
@@ -196,6 +203,99 @@ else
   echo "  SKIP  chart $CHART not reachable (set EDUIDE_CHART to a local checkout)"
 fi
 
+# --- go environments render against the 3.x chart --------------------------
+# The same cluster-defaults mapping the deploy writes (storage class, Gateway
+# class, ACME contact, node pool), then _base-go.yaml and the values. Skipped
+# while the chart version is not published, which is the case for the release
+# candidates until EduIDE-Helm publishes them; set EDUIDE_CHART_GO to a local
+# charts/eduide checkout (with `helm dependency build` run) to render anyway.
+echo
+echo "=== go environments render against the 3.x chart ==="
+CHART_GO="${EDUIDE_CHART_GO:-oci://ghcr.io/eduide/charts/eduide}"
+# Prepared 3.x values of a java environment render against the newest 3.x
+# version any go environment selects.
+GO_VERSION=$(for f in "$ROOT"/environments/*/env.yaml; do
+  [[ "$(stack_of "$f")" == "go" ]] && yq -r '.spec.platform.chartVersion' "$f"
+done | sort -V | tail -1)
+for f in "$ROOT"/environments/*/env.yaml; do
+  env=$(basename "$(dirname "$f")")
+  [[ "$(stack_of "$f")" == "go" || -f "$ROOT/environments/$env/values-3.0.yaml" ]] || continue
+  cv=$(yq -r '.spec.platform.chartVersion' "$f")
+  [[ "$(stack_of "$f")" == "go" ]] || cv="$GO_VERSION"
+  ns=$(yq -r '.spec.namespace' "$f")
+  cluster=$(yq -r '.spec.cluster' "$f")
+  cf="$ROOT/clusters/$cluster.yaml"
+  gv_arg=()
+  if [[ "$CHART_GO" == oci://* ]]; then gv_arg=(--version "$cv"); fi
+  if ! helm show chart "$CHART_GO" "${gv_arg[@]}" >/dev/null 2>&1; then
+    echo "  SKIP  $env: chart $CHART_GO $cv not published (set EDUIDE_CHART_GO to render locally)"
+    continue
+  fi
+  W2=$(mktemp -d)
+  pool=$(yq -r '(.spec.nodeSelector // {}) | keys | .[0] // ""' "$cf")
+  {
+    printf 'gateway:\n  className: %s\n' "$(yq -r '.spec.gatewayClassName' "$cf")"
+    printf 'issuer:\n  acme:\n    email: %s\n' "$(yq -r '.spec.acmeEmail' "$cf")"
+    printf 'eduide-control-plane:\n  config:\n    workspaces:\n      storageClassName: %s\n' "$(yq -r '.spec.storageClassName' "$cf")"
+    printf '    placement:\n      nodeSelector: %s\n' "$(yq -o=json -I=0 '.spec.nodeSelector // {}' "$cf")"
+    if [[ -n "$pool" ]]; then printf '      nodePoolLabel: %s\n' "$pool"; fi
+  } > "$W2/cd.yaml"
+  # The prepared 3.x values of an environment still on java render too.
+  for vf in "$ROOT/environments/$env/values.yaml" "$ROOT/environments/$env/values-3.0.yaml"; do
+    [[ -f "$vf" ]] || continue
+    [[ "$(stack_of "$f")" == "go" || "$vf" == *values-3.0.yaml ]] || continue
+    if out=$(helm template eduide "$CHART_GO" "${gv_arg[@]}" -n "$ns" -f "$W2/cd.yaml" \
+               -f "$ROOT/environments/_base-go.yaml" -f "$vf" 2>&1); then
+      ok "$env $(basename "$vf") renders"
+    else
+      bad "$env $(basename "$vf") does not render against chart $cv" "$(tail -3 <<<"$out" | tr '\n' ' ')"
+    fi
+  done
+  rm -rf "$W2"
+done
+
+# --- go values do not set what the cluster owns ----------------------------
+# Storage class, node pool, Gateway class and ACME contact are cluster
+# properties, written by the deploy. Setting them in an environment would be
+# overridden silently or, worse, disagree with the cluster.
+echo
+echo "=== go values leave cluster properties to the cluster ==="
+for v in "$ROOT"/environments/*/values.yaml "$ROOT"/environments/*/values-3.0.yaml; do
+  [[ -f "$v" ]] || continue
+  envdir=$(dirname "$v")
+  [[ "$(basename "$v")" == values-3.0.yaml || "$(stack_of "$envdir/env.yaml")" == "go" ]] || continue
+  name="$(basename "$envdir")/$(basename "$v")"
+  bad_keys=""
+  for k in '.["eduide-control-plane"].config.workspaces.storageClassName' \
+           '.["eduide-control-plane"].config.placement.nodeSelector' \
+           '.gateway.className' '.issuer.acme.email'; do
+    if [[ "$(yq -r "$k" "$v")" != "null" ]]; then bad_keys+="${k#.} "; fi
+  done
+  ns=$(yq -r '.spec.namespace' "$envdir/env.yaml")
+  gwns=$(yq -r '.["eduide-control-plane"].config.gateway.namespace' "$v")
+  if [[ -n "$bad_keys" ]]; then
+    bad "$name sets $bad_keys" "these come from clusters/<name>.yaml"
+  elif [[ "$gwns" != "$ns" ]]; then
+    bad "$name gateway namespace is '$gwns'" "the Gateway is rendered in the release namespace '$ns'"
+  else
+    ok "$name"
+  fi
+done
+
+# --- a cluster with go environments pins the CRD chart ---------------------
+echo
+echo "=== clusters with go environments pin the CRD chart ==="
+for cf in "$ROOT"/clusters/*.yaml; do
+  cluster=$(yq -r '.metadata.name' "$cf")
+  has_go=0
+  for f in "$ROOT"/environments/*/env.yaml; do
+    [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" && "$(stack_of "$f")" == "go" ]] && has_go=1
+  done
+  [[ $has_go -eq 1 ]] || continue
+  crd=$(yq -r '.spec.controlPlaneCRDs // ""' "$cf")
+  if [[ -n "$crd" ]]; then ok "$cluster: eduide-control-plane-crds $crd"; else bad "$cluster has go environments but no spec.controlPlaneCRDs" ""; fi
+done
+
 # --- the dependency cache stays off in production --------------------------
 # The chart declares the cache with `condition: eduide-shared-cache.enabled`, so one key
 # now switches it off cleanly - including its vendored reposilite subchart and
@@ -205,6 +305,7 @@ echo "=== dependency cache off in production ==="
 for f in "$ROOT"/environments/*/env.yaml; do
   env=$(basename "$(dirname "$f")")
   [[ "$(yq -r '.metadata.tier' "$f")" == "production" ]] || continue
+  [[ "$(stack_of "$f")" == "java" ]] || continue
   v="$ROOT/environments/$env/values.yaml"
   a=$(yq -r '.["eduide-shared-cache"].enabled' "$v")
   if [[ "$a" == "false" ]]; then
@@ -221,6 +322,7 @@ done
 echo
 echo "=== persistent workspaces start lazily ==="
 for f in "$ROOT"/environments/*/env.yaml; do
+  [[ "$(stack_of "$f")" == "java" ]] || continue
   env=$(basename "$(dirname "$f")")
   merged=$(yq eval-all '. as $item ireduce ({}; . * $item)' \
              "$ROOT/environments/_base.yaml" "$ROOT/environments/$env/values.yaml")
@@ -240,7 +342,7 @@ done
 # disagreeing on the spam-mitigation token at runtime.
 echo
 echo "=== values files have no duplicate top-level keys ==="
-for f in "$ROOT"/environments/_base.yaml "$ROOT"/environments/*/values.yaml; do
+for f in "$ROOT"/environments/_base*.yaml "$ROOT"/environments/*/values*.yaml; do
   [[ -f "$f" ]] || continue
   dupes=$(grep -oE '^[a-zA-Z_][a-zA-Z0-9_.-]*:' "$f" | sort | uniq -d | tr -d ':' | tr '\n' ' ')
   name="$(basename "$(dirname "$f")")/$(basename "$f")"
@@ -326,6 +428,8 @@ for cf in "$ROOT"/clusters/*.yaml; do
   for f in "$ROOT"/environments/*/env.yaml; do
     env=$(basename "$(dirname "$f")")
     [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" ]] || continue
+    # A go environment ships its own PodMonitor and is not in the derived list.
+    [[ "$(stack_of "$f")" == "java" ]] || continue
     v="$ROOT/environments/$env/values.yaml"
     ns=$(yq -r '.spec.namespace' "$f")
     if [[ "$(yq -r '.monitoring.enabled // true' "$v")" == "true" ]]; then
@@ -441,6 +545,7 @@ echo
 echo "=== hostname comments match the composed hosts ==="
 for v in "$ROOT"/environments/*/values.yaml; do
   env=$(basename "$(dirname "$v")")
+  [[ "$(stack_of "$(dirname "$v")/env.yaml")" == "java" ]] || continue
   base=$(yq -r '.hosts.configuration.baseHost' "$v")
   expected=$(printf '%s.%s\n%s.%s\n%s.%s\n*.webview.%s.%s\n' \
     "$(yq -r '.hosts.configuration.landing'  "$v")" "$base" \

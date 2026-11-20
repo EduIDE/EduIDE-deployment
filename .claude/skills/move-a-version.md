@@ -21,6 +21,15 @@ Getting this backwards - trying to move the IDE version from here alone - leads
 to setting `versions.ide`, which is an override for unreleased images and not
 how a release reaches an environment.
 
+## Two stacks
+
+`spec.platform.stack` decides which chart line an environment may use: `java`
+(or omitted) takes `2.x`, `go` takes `3.x`. A bump never crosses that line;
+moving an environment from one stack to the other is a rollout, not a version
+bump (`docs/rollout-3.0-tum-production.md`). Renovate does not know the
+difference, so reject a PR that proposes 3.x for a java environment. A `go`
+chart is checked by CI only once it is published (a notice appears until then).
+
 ## The change
 
 One line per environment, in `environments/<name>/env.yaml`:
@@ -50,7 +59,7 @@ The three production installations:
 | Environment | Cluster |
 |---|---|
 | `eduide.artemis.cit.tum.de` | tum-production |
-| `bonn.eduide.aet.cit.tum.de` | eduide |
+| `bonn.eduide.aet.cit.tum.de` (stack go) | eduide |
 | `mannheim.eduide.aet.cit.tum.de` | eduide |
 
 ## Check these before opening the PR

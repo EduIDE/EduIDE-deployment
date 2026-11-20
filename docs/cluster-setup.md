@@ -277,6 +277,15 @@ bootstrap a cluster that already carries a different name in
 
 Then run it again with `dry_run: false`.
 
+### go environments on this cluster
+
+If an environment on the cluster has `stack: go`, the same workflow also
+installs the CRD chart `eduide-control-plane-crds` at `spec.controlPlaneCRDs` as
+release `eduide-crds` in `eduide-system`. The 3.x `eduide-cluster` chart is not
+used while Theia Cloud CRDs exist. A cluster with only go environments gets
+just the CRD chart and the identity stamp; cluster alerting and the
+GatewayClass then have to be provided another way.
+
 ## Step 7: verify
 
 ```bash

@@ -57,6 +57,19 @@ dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | tr -d -- '\n' | tr -- '+
 Per environment, not shared. Rotating it logs everyone out of that
 installation and nothing else.
 
+### `OIDC_CLIENT_SECRET` - per go environment
+
+The client secret of the confidential gateway client
+(`eduide-control-plane.config.oidc.gatewayClientID`) in Keycloak. `Deploy`
+writes it to the Secret `eduide-oidc` (key `client-secret`) in the
+environment's namespace with `kubectl apply`, never printing it, and fails if it
+is empty. Java environments do not use it. Its redirect URI is
+`https://<instance host>/oauth2/callback`.
+
+```bash
+gh secret set OIDC_CLIENT_SECRET --repo EduIDE/EduIDE-deployment --env "$ENV"
+```
+
 ### `THEIA_ADMIN_API_TOKEN` - currently repository-wide
 
 The bearer token for the admin scaling API. From Cloud 3.0.x (chart 3.0.0) the
