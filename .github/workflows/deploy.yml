@@ -10,6 +10,11 @@
 #   - the summary is read from the cluster afterwards, not echoed from inputs
 #   - nothing cluster-scoped is installed here; see bootstrap-cluster.yml
 #
+# Two stacks, chosen per environment by spec.platform.stack (default java):
+#   java  chart eduide 2.x (Theia Cloud), values on top of environments/_base.yaml
+#   go    chart eduide 3.x (Go control plane), values on top of environments/_base-go.yaml
+# Steps that exist for only one of them say so in their name or condition.
+#
 # Preloading is a separate release deliberately. It pulls ~10 multi-GB images
 # on every node, so including it under --wait would time out and --atomic would
 # then roll back a perfectly healthy deploy.
@@ -111,14 +116,54 @@ jobs:
             echo "namespace=$(yq -r '.spec.namespace' "$M")"
             echo "tier=$(yq -r '.metadata.tier' "$M")"
             echo "channel=$(yq -r '.spec.platform.channel' "$M")"
+            stack="$(yq -r '.spec.platform.stack // "java"' "$M")"
+            echo "stack=$stack"
             V="environments/${{ inputs.environment }}/values.yaml"
-            echo "landing=$(yq -r '.hosts.configuration | .landing + "." + .baseHost' "$V")"
+            if [[ "$stack" == "go" ]]; then
+              # The service host also serves the landing page.
+              echo "landing=$(yq -r '.["eduide-control-plane"].config.hosts.service' "$V")"
+            else
+              echo "landing=$(yq -r '.hosts.configuration | .landing + "." + .baseHost' "$V")"
+            fi
             v="${{ inputs.chart_version }}"
               if [[ -z "$v" ]]; then v="$(yq -r '.spec.platform.chartVersion' "$M")"; fi
             echo "chart_version=$v"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Cluster defaults
+      - name: Cluster defaults (go)
+        if: ${{ steps.env.outputs.stack == 'go' }}
+        run: |
+          set -euo pipefail
+          # The same cluster properties as for java, under the keys the Go
+          # chart reads. An environment must not set them itself.
+          C="clusters/${{ steps.env.outputs.cluster }}.yaml"
+          SC=$(yq -r '.spec.storageClassName // ""' "$C")
+          GW=$(yq -r '.spec.gatewayClassName // ""' "$C")
+          EMAIL=$(yq -r '.spec.acmeEmail // ""' "$C")
+          for v in "$SC" "$GW" "$EMAIL"; do
+            [[ -n "$v" ]] || { echo "::error::${C} needs spec.storageClassName, spec.gatewayClassName and spec.acmeEmail for a go environment"; exit 1; }
+          done
+          NS=$(yq -o=json -I=0 '.spec.nodeSelector // {}' "$C")
+          # The pool label is the key of the selector; none means every node.
+          POOL=$(yq -r '(.spec.nodeSelector // {}) | keys | .[0] // ""' "$C")
+          {
+            echo "gateway:"
+            echo "  className: ${GW}"
+            echo "issuer:"
+            echo "  acme:"
+            echo "    email: ${EMAIL}"
+            echo "eduide-control-plane:"
+            echo "  config:"
+            echo "    workspaces:"
+            echo "      storageClassName: ${SC}"
+            echo "    placement:"
+            echo "      nodeSelector: ${NS}"
+            if [[ -n "$POOL" ]]; then echo "      nodePoolLabel: ${POOL}"; fi
+          } > cluster-defaults.yaml
+          cat cluster-defaults.yaml
+
+      - name: Cluster defaults (java)
+        if: ${{ steps.env.outputs.stack == 'java' }}
         run: |
           set -euo pipefail
           # Storage class is a property of the cluster, not of the environment,
@@ -191,7 +236,12 @@ jobs:
       - name: Verify the cluster has been bootstrapped
         run: |
           set -euo pipefail
-          if ! kubectl get crd appdefinitions.theia.cloud >/dev/null 2>&1; then
+          if [[ "${{ steps.env.outputs.stack }}" == "go" ]]; then
+            if ! kubectl get crd idetemplates.eduide.github.io >/dev/null 2>&1; then
+              echo "::error::IDETemplate CRD not present. Run the Bootstrap cluster workflow for ${{ steps.env.outputs.cluster }} (it installs eduide-control-plane-crds), or install that chart by hand."
+              exit 1
+            fi
+          elif ! kubectl get crd appdefinitions.theia.cloud >/dev/null 2>&1; then
             echo "::error::AppDefinition CRD not present. Run the Bootstrap cluster workflow for ${{ steps.env.outputs.cluster }} first."
             exit 1
           fi
@@ -217,14 +267,22 @@ jobs:
           # argument containing a space and it dies with
           # `unknown flag: --set versions.ide`. The flag and its value have to
           # be separate elements.
-          if [[ -n "$cp"  ]]; then printf '%s\n' --set "versions.cloud=${cp}"       >> image-args.txt; fi
-          if [[ -n "$ide" ]]; then printf '%s\n' --set "versions.ide=${ide}"        >> image-args.txt; fi
-          if [[ -n "$lp"  ]]; then printf '%s\n' --set "versions.landingPage=${lp}" >> image-args.txt; fi
+          if [[ "${{ steps.env.outputs.stack }}" == "go" ]]; then
+            # Go chart: one knob per source repository, as for java.
+            if [[ -n "$cp"  ]]; then printf '%s\n' --set "eduide-control-plane.image.tag=${cp}"   >> image-args.txt; fi
+            if [[ -n "$ide" ]]; then printf '%s\n' --set "images.tag=${ide}"                     >> image-args.txt; fi
+            if [[ -n "$lp"  ]]; then printf '%s\n' --set "eduide-landing-page.image.tag=${lp}"   >> image-args.txt; fi
+          else
+            if [[ -n "$cp"  ]]; then printf '%s\n' --set "versions.cloud=${cp}"       >> image-args.txt; fi
+            if [[ -n "$ide" ]]; then printf '%s\n' --set "versions.ide=${ide}"        >> image-args.txt; fi
+            if [[ -n "$lp"  ]]; then printf '%s\n' --set "versions.landingPage=${lp}" >> image-args.txt; fi
+          fi
           if [[ -s image-args.txt ]]; then
             echo "::notice::image overrides: $(tr '\n' ' ' < image-args.txt)"
           fi
 
-      - name: Secrets file
+      - name: Secrets file (java)
+        if: ${{ steps.env.outputs.stack == 'java' }}
         run: |
           set -euo pipefail
           # A values file, not --set: --set puts secrets in the process list and
@@ -237,6 +295,19 @@ jobs:
             adminApiToken: "$(printf '%s' '${{ secrets.THEIA_ADMIN_API_TOKEN }}' | base64 | tr -d '\n')"
           EOF
 
+      - name: Values files
+        run: |
+          set -euo pipefail
+          # One file per line, like image-args.txt, so helm gets each -f and
+          # its path as separate arguments.
+          if [[ "${{ steps.env.outputs.stack }}" == "go" ]]; then
+            printf '%s\n' -f cluster-defaults.yaml -f environments/_base-go.yaml \
+              -f "environments/${{ inputs.environment }}/values.yaml" > values-args.txt
+          else
+            printf '%s\n' -f cluster-defaults.yaml -f environments/_base.yaml \
+              -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml > values-args.txt
+          fi
+
       - name: Log in to GHCR
         run: |
           set -euo pipefail
@@ -248,10 +319,11 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t IMG < image-args.txt || true
+          mapfile -t VALS < values-args.txt
           helm diff upgrade eduide oci://ghcr.io/eduide/charts/eduide \
             --namespace "${{ steps.env.outputs.namespace }}" \
             --version "${{ steps.env.outputs.chart_version }}" \
-            -f cluster-defaults.yaml -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
+            "${VALS[@]}" "${IMG[@]}" \
             --allow-unreleased --no-color > helm.diff 2>&1 || true
           {
             echo "<details><summary>Pending change (helm diff)</summary>"
@@ -274,11 +346,41 @@ jobs:
           if [[ "${{ steps.env.outputs.tier }}" == "production" ]]; then
             echo "::error::clean_install is not permitted for a production environment"; exit 1
           fi
-          kubectl -n "$NS" delete sessions.theia.cloud,workspaces.theia.cloud --all --ignore-not-found
-          kubectl -n "$NS" delete appdefinitions.theia.cloud --all --ignore-not-found
+          if [[ "${{ steps.env.outputs.stack }}" == "go" ]]; then
+            kubectl -n "$NS" delete idesessions.eduide.github.io,ideworkspaces.eduide.github.io --all --ignore-not-found
+            kubectl -n "$NS" delete idepools.eduide.github.io,idetemplates.eduide.github.io --all --ignore-not-found
+          else
+            kubectl -n "$NS" delete sessions.theia.cloud,workspaces.theia.cloud --all --ignore-not-found
+            kubectl -n "$NS" delete appdefinitions.theia.cloud --all --ignore-not-found
+          fi
           kubectl -n "$NS" delete deploy,daemonset,statefulset --all --ignore-not-found
           kubectl -n "$NS" wait --for=delete pod --all --timeout=120s || true
           kubectl -n "$NS" delete pvc --all --ignore-not-found
+
+      - name: OIDC client secret (go)
+        if: ${{ steps.env.outputs.stack == 'go' && !inputs.dry_run }}
+        env:
+          OIDC_CLIENT_SECRET: ${{ secrets.OIDC_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          # The control plane chart only names this Secret, so it has to exist
+          # before helm runs. Piped through apply and never echoed: the value
+          # stays out of the log and the process list.
+          if [[ -z "${OIDC_CLIENT_SECRET:-}" ]]; then
+            echo "::error::OIDC_CLIENT_SECRET is not set on the '${{ inputs.environment }}' GitHub Environment."
+            echo "::error::It is the client secret of the confidential gateway client (gatewayClientID) in Keycloak."
+            exit 1
+          fi
+          NS="${{ steps.env.outputs.namespace }}"
+          kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+          # shellcheck disable=SC2016
+          NAME=$(yq eval-all '. as $i ireduce ({}; . * $i) | .["eduide-control-plane"].oidc.clientSecretName' \
+                   environments/_base-go.yaml "environments/${{ inputs.environment }}/values.yaml")
+          [[ -n "$NAME" && "$NAME" != "null" ]] || { echo "::error::no eduide-control-plane.oidc.clientSecretName in the values"; exit 1; }
+          kubectl -n "$NS" create secret generic "$NAME" \
+            --from-literal=client-secret="$OIDC_CLIENT_SECRET" \
+            --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+          echo "secret ${NAME} applied in ${NS}"
 
       - name: Deploy
         if: ${{ !inputs.dry_run }}
@@ -292,14 +394,15 @@ jobs:
           if ! kubectl get namespace "$NS" >/dev/null 2>&1; then
             kubectl create namespace "$NS"
           fi
+          mapfile -t VALS < values-args.txt
           helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide \
             --namespace "$NS" \
             --version "${{ steps.env.outputs.chart_version }}" \
-            -f cluster-defaults.yaml -f environments/_base.yaml -f "environments/${{ inputs.environment }}/values.yaml" -f secrets.yaml "${IMG[@]}" \
+            "${VALS[@]}" "${IMG[@]}" \
             --wait --atomic --timeout 15m
 
       - name: Force a pull when the tag is floating
-        if: ${{ !inputs.dry_run && steps.env.outputs.channel == 'main' }}
+        if: ${{ !inputs.dry_run && steps.env.outputs.stack == 'java' && steps.env.outputs.channel == 'main' }}
         run: |
           set -euo pipefail
           NS="${{ steps.env.outputs.namespace }}"
@@ -321,6 +424,18 @@ jobs:
         if: ${{ !inputs.dry_run }}
         run: |
           set -euo pipefail
+          if [[ "${{ steps.env.outputs.stack }}" == "go" ]]; then
+            # Public status of the Go service, no token needed. 200 means the
+            # service is up; the body says which parts (sign-in, workspaces) are not.
+            URL="https://${{ steps.env.outputs.landing }}/api/v1/status"
+            for _ in $(seq 1 12); do
+              code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || echo 000)
+              if [[ "$code" == "200" ]]; then echo "$URL -> 200 (service reachable)"; exit 0; fi
+              sleep 10
+            done
+            echo "::warning::$URL answered ${code:-nothing} within two minutes; expected 200"
+            exit 0
+          fi
           # The service has no /health endpoint - that probe returned 404 on
           # every environment and warned on every deploy. /service is the real
           # endpoint; it only accepts POST, so a GET returning 405 is the proof

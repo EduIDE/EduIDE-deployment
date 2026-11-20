@@ -53,6 +53,21 @@ if k get appdefinitions.theia.cloud >/dev/null 2>&1; then
   echo ""
 fi
 
+# Go control plane: templates and their warm pools.
+if k get idetemplates.eduide.github.io >/dev/null 2>&1; then
+  echo "**IDETemplates**"
+  echo ""
+  echo "| Name | Image | Pool (min idle / max) |"
+  echo "|---|---|---|"
+  k get idetemplates.eduide.github.io -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.image}{"\n"}{end}' \
+    | while IFS=$'\t' read -r name image; do
+        [[ -n "$name" ]] || continue
+        pool=$(k get idepools.eduide.github.io "$name" -o jsonpath='{.spec.minIdle}{"/"}{.spec.maxInstances}' || true)
+        echo "| \`$name\` | \`$image\` | ${pool:--} |"
+      done
+  echo ""
+fi
+
 echo "**Gateway routes**"
 echo ""
 if k get httproutes.gateway.networking.k8s.io >/dev/null 2>&1; then
