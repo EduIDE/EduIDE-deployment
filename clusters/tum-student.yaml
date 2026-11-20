@@ -10,7 +10,7 @@ spec:
   # CRDs of the EduIDE 3.x Go control plane, installed by bootstrap once an
   # environment on this cluster has `platform.stack: go`. Safe next to the 2.x
   # Theia Cloud CRDs; the full 3.x eduide-cluster chart is not.
-  controlPlaneCRDs: 0.2.0
+  controlPlaneCRDs: 0.2.1
 
   # EduIDE runs on the 9 large workers only. The other 16 have 93 to 96 GiB
   # root disks, which the preloaded images filled. The nodes stay open to other
