@@ -1,0 +1,106 @@
+# Helm values for the test3 environment, on the Go control plane (EduIDE 3.x).
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f cluster-defaults.yaml \
+#     -f environments/_base-go.yaml -f this file
+#
+# Storage class, node pool, Gateway class and the ACME contact come from
+# clusters/tum-student.yaml. Image tags are the chart defaults (appVersion);
+# a deploy overrides them with image_overrides. Derived from
+# EduIDE-Helm deployments/test3/values-test3.yaml.
+
+x-hosts: &hosts
+  service: test3.eduide.student.k8s.aet.cit.tum.de
+  instance: instance.test3.eduide.student.k8s.aet.cit.tum.de
+  webview: webview.instance.test3.eduide.student.k8s.aet.cit.tum.de
+
+x-gateway: &gateway
+  name: eduide
+  namespace: eduide-test3
+  sectionName: ""
+  # Only the HTTPS listeners: sessions and pages are never served on the ACME :80 listeners.
+  port: 443
+
+x-keycloak: &keycloak
+  url: https://keycloak-test.aet.cit.tum.de/
+  realm: tum
+  clientId: eduide
+
+# All test3 templates are Artemis editions: Artemis sends the repository URL with the VCS token (Artemis#14702).
+templateDefaults:
+  gitUriAllowCredentials: true
+
+templates:
+  # The landing page offers the standalone editions; Artemis links start the unlisted artemis editions below.
+  java-17-standalone:
+    pool: {minIdle: 1, maxInstances: 5}
+  java-25-standalone: {}
+  c-standalone: {}
+  java-17:
+    pool: {minIdle: 1, maxInstances: 5}
+  c: {}
+  # Java 25 for testing with Artemis.
+  java-25: {}
+
+eduide-control-plane:
+  # Pool scaler, active with tight limits so the shared cluster is not loaded.
+  poolScaler:
+    enabled: true
+    mode: active
+    config:
+      prometheus: {url: http://rancher-monitoring-prometheus.cattle-monitoring-system:9090}
+      poolLimits:
+        java-17: {floor: 1, ceiling: 4}
+        java-17-standalone: {floor: 1, ceiling: 4}
+  config:
+    deployment: test3
+    hosts: *hosts
+    gateway: *gateway
+    oidc:
+      issuerURL: https://keycloak-test.aet.cit.tum.de/realms/tum
+      clientIDs: [eduide]
+      gatewayClientID: eduide
+      # Admin panel: client role eduide-admin on client eduide in realm tum.
+      admin: {rolePath: resource_access.eduide.roles, role: eduide-admin}
+    admin:
+      prometheusURL: http://rancher-monitoring-prometheus.cattle-monitoring-system:9090
+    allowedHosts:
+    - github.com
+    - gitlab.com
+    - codeberg.org
+    # Artemis test hosts in use (repository URLs and ARTEMIS_URL).
+    - artemis-test3.artemis.cit.tum.de
+    placement:
+      # Pulls the IDE and agent images onto every eduide node; a cold start without it waited 47 s for pulls.
+      prepull: {enabled: true}
+    telemetry:
+      otlpEndpoint: jaeger-collector.eduide-test3:4317
+  networkPolicy:
+    monitoringNamespace: cattle-monitoring-system
+    # stud uses public address ranges inside the cluster: nodes 131.159.88.0/24 and 2a09:80c0:88::/64,
+    # pods 198.18.0.0/16, services 198.19.0.0/16. Artemis and Keycloak sit in 131.159.89.0/24, outside.
+    sessionEgressExtraDeny: [131.159.88.0/24, 198.18.0.0/16, 198.19.0.0/16, "2a09:80c0:88::/64"]
+  monitoring:
+    podMonitor: {enabled: true}
+    # stud routes EduIDE alerts through the AlertmanagerConfig in eduide-system (namespace matcher).
+    rules: {enabled: true, extraLabels: {namespace: eduide-system}}
+    # Grafana on stud only reads dashboards from cattle-dashboards.
+    dashboard: {enabled: true, namespace: cattle-dashboards}
+  oidc:
+    # Set, so Envoy Gateway does not discover them through the OIDC upstream.
+    authorizationEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/auth
+    tokenEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/token
+    endSessionEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/logout
+
+eduide-landing-page:
+  # Placeholders for test3 (the chart requires both).
+  legal:
+    imprint:
+      url: https://example.org/imprint
+    privacy:
+      url: https://example.org/privacy
+  host: test3.eduide.student.k8s.aet.cit.tum.de
+  gateway: *gateway
+  config:
+    title: EduIDE test3
+    keycloak: *keycloak
