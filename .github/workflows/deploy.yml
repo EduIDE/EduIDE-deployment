@@ -372,7 +372,10 @@ jobs:
             exit 1
           fi
           NS="${{ steps.env.outputs.namespace }}"
-          kubectl create namespace "$NS" --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+          # Get before create: a kubeconfig scoped to the namespace may read it but not patch it.
+          if ! kubectl get namespace "$NS" >/dev/null 2>&1; then
+            kubectl create namespace "$NS"
+          fi
           # shellcheck disable=SC2016
           NAME=$(yq eval-all '. as $i ireduce ({}; . * $i) | .["eduide-control-plane"].oidc.clientSecretName' \
                    environments/_base-go.yaml "environments/${{ inputs.environment }}/values.yaml")

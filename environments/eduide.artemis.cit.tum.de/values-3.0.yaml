@@ -79,7 +79,9 @@ eduide-control-plane:
   monitoring:
     podMonitor: {enabled: true}
     rules: {enabled: true, extraLabels: {namespace: eduide-system}}
-    dashboard: {enabled: true, namespace: cattle-dashboards}
+    # The dashboard ConfigMap would go to cattle-dashboards, outside the namespace the deploy
+    # credentials may write. It belongs to bootstrap (follow-up); off until then.
+    dashboard: {enabled: false}
   oidc:
     authorizationEndpoint: https://keycloak.aet.cit.tum.de/realms/tum/protocol/openid-connect/auth
     tokenEndpoint: https://keycloak.aet.cit.tum.de/realms/tum/protocol/openid-connect/token

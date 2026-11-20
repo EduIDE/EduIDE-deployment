@@ -36,6 +36,10 @@ Two things matter more than the format:
 - **It should be scoped.** A deploy needs write access in one namespace plus
   read on the identity ConfigMap. A bootstrap genuinely needs cluster-admin: it
   installs CRDs, ClusterRoles and a ClusterIssuer.
+  One exception on the Go stack: an environment with `poolScaler.enabled: true`
+  (test3 today) renders a ClusterRole and ClusterRoleBinding for the pool
+  scaler (get/list on nodes and pods), so its deploy kubeconfig also needs to
+  create those two objects.
 
 Take care that the file does not carry more contexts than intended; the
 workflows use whatever `current-context` it names.

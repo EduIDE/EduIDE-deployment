@@ -15,7 +15,7 @@ Do all of these before the first deploy.
    - `eduide.artemis.cit.tum.de` (landing page and `/api/v1`, already exists)
    - `instance.eduide.artemis.cit.tum.de` (already exists)
    - `webview.instance.eduide.artemis.cit.tum.de` (new; java used `*.webview.instance...`)
-3. **Keycloak.** In realm `tum`, the client `eduide` is confidential for the gateway, with valid redirect URI `https://eduide.artemis.cit.tum.de/oauth2/callback`. The landing page keeps using the public client of the same name or a separate public client listed in `clientIDs`. See [keycloak-setup.md](keycloak-setup.md).
+3. **Keycloak.** In realm `tum`, the gateway client (`gatewayClientID`) has the valid redirect URI `https://instance.eduide.artemis.cit.tum.de/oauth2/callback` (the instance host, not the landing host). test1 to test3 and Bonn use one client `eduide` for the gateway and the landing page; see [keycloak-setup.md](keycloak-setup.md).
 4. **GitHub Environment secret** `OIDC_CLIENT_SECRET` on the environment `eduide.artemis.cit.tum.de`: the client secret of that confidential client.
 5. **CRDs.** Done by `Bootstrap cluster` for `tum-production` once the environment has `stack: go` (`spec.controlPlaneCRDs` in `clusters/tum-production.yaml`). The CRD chart sits next to the Theia Cloud CRDs. Do not install the 3.x `eduide-cluster` chart here: it refuses while Theia Cloud CRDs exist.
 6. **Artemis** runs a version with ls1intum/Artemis#14702 (it sends the token in the URL fragment and the repository URL with credentials), and its EduIDE link configuration points at `https://eduide.artemis.cit.tum.de/`.
@@ -31,10 +31,11 @@ No productive deployment moves during an exam period. Do not start either option
 Java keeps serving; 3.0 runs next to it with its own hosts, so Artemis can be pointed at it when ready.
 
 1. Copy `values-3.0.yaml` to a new environment directory, for example `environments/eduide3.artemis.cit.tum.de/` with namespace `eduide-tum-production-3`, `stack: go`, and new hosts (`eduide3.artemis.cit.tum.de` and so on). Mind that the hostnames in the copy, `config.deployment`, and the Gateway namespace change together. Create its GitHub Environment with `KUBECONFIG` and `OIDC_CLIENT_SECRET`, and a Keycloak redirect URI for the new instance host.
-2. Run `Bootstrap cluster` for `tum-production` with `dry_run: true`, then for real. Check `kubectl get crd | grep eduide.github.io`.
-3. Run `Deploy environment` with `dry_run: true`, then for real.
-4. Verify (checklist below), then point Artemis at the new host.
-5. Retire the java environment after the grace period (the way back stays open until the end of the month after the switch).
+2. Create DNS records for the three hosts of the copy (`eduide3.artemis.cit.tum.de`, `instance.eduide3.artemis.cit.tum.de`, `webview.instance.eduide3.artemis.cit.tum.de`), all pointing at the `envoy` GatewayClass address (131.159.88.82), and add the new environment to the `environment` choice lists in `.github/workflows/deploy-dispatch.yml` and `rollback.yml`.
+3. Run `Bootstrap cluster` for `tum-production` with `dry_run: true`, then for real. Check `kubectl get crd | grep eduide.github.io`.
+4. Run `Deploy environment` with `dry_run: true`, then for real.
+5. Verify (checklist below), then point Artemis at the new host.
+6. Retire the java environment after the grace period (the way back stays open until the end of the month after the switch).
 
 ## Option B: in place
 
@@ -44,7 +45,8 @@ Same hosts, same namespace. Sessions of the java stack end.
 2. In one PR: `env.yaml` gets `stack: go` and `chartVersion: 3.x`; `values-3.0.yaml` replaces `values.yaml` (keep `values.yaml` in git history). Merging deploys nothing.
 3. `Bootstrap cluster` for `tum-production`: it installs the CRD chart and no longer derives listeners for this environment. The shared-Gateway listeners of the old java release stay until the java release is removed.
 4. Uninstall the java release `eduide` in `eduide-tum-production` (`helm uninstall eduide -n eduide-tum-production`) or let the deploy upgrade over it. The upgrade drops the java workloads and routes; Theia Cloud CRs stay behind and are unused.
-5. `Deploy environment`, first with `dry_run: true`.
+5. `Deploy environment` with `dry_run: true` and review the diff.
+6. `Deploy environment` without `dry_run`. Step 4 may already have removed the java release, so do not stop after the dry run.
 
 Session data is not migrated (running sessions end). Workspaces are ephemeral on this installation, so nothing needs importing.
 

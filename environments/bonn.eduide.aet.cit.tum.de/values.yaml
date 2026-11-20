@@ -70,8 +70,9 @@ eduide-control-plane:
     podMonitor: {enabled: true}
     # The AlertmanagerConfig in eduide-system routes on this namespace (docs/monitoring-setup.md).
     rules: {enabled: true, extraLabels: {namespace: eduide-system}}
-    # Grafana on this cluster reads dashboards from cattle-dashboards only.
-    dashboard: {enabled: true, namespace: cattle-dashboards}
+    # The dashboard ConfigMap would go to cattle-dashboards, outside the namespace the deploy
+    # credentials may write. It belongs to bootstrap (follow-up); off until then.
+    dashboard: {enabled: false}
   oidc:
     # Set, so Envoy Gateway does not discover them through the OIDC upstream.
     authorizationEndpoint: https://keycloak.aet.cit.tum.de/realms/external_register/protocol/openid-connect/auth
@@ -107,6 +108,6 @@ eduide-landing-page:
 
         Data protection officer: datenschutz(at)tum.de.
 
-        EduIDE stores your files in a personal workspace and deletes the workspace
-        90 days after your last session. Anonymised usage data from this
+        EduIDE stores your files in a personal workspace. The workspace expires
+        90 days after your last session and is deleted one day later. Anonymised usage data from this
         installation is evaluated for research.

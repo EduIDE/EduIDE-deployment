@@ -84,8 +84,9 @@ eduide-control-plane:
     podMonitor: {enabled: true}
     # stud routes EduIDE alerts through the AlertmanagerConfig in eduide-system (namespace matcher).
     rules: {enabled: true, extraLabels: {namespace: eduide-system}}
-    # Grafana on stud only reads dashboards from cattle-dashboards.
-    dashboard: {enabled: true, namespace: cattle-dashboards}
+    # The dashboard ConfigMap would go to cattle-dashboards, outside the namespace the deploy
+    # credentials may write. It belongs to bootstrap (follow-up); off until then.
+    dashboard: {enabled: false}
   oidc:
     # Set, so Envoy Gateway does not discover them through the OIDC upstream.
     authorizationEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/auth

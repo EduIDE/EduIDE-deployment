@@ -554,7 +554,7 @@ jobs:
           fi
           CRDS=oci://ghcr.io/eduide/eduide-control-plane/charts/eduide-control-plane-crds
           helm diff upgrade eduide-crds "$CRDS" --version "$V" -n eduide-system \
-            --allow-unreleased --no-color > crds.diff 2>&1 || true
+            --allow-unreleased --no-color > crds.diff 2>&1 || { cat crds.diff; echo "::error::CRD chart ${V} preview failed"; exit 1; }
           {
             echo "<details><summary>CRD chart ${V} pending change</summary>"
             echo ''; echo '```diff'; head -c 40000 crds.diff; echo '```'; echo "</details>"
