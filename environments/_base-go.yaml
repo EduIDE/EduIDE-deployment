@@ -1,0 +1,38 @@
+# Values identical in every environment on the Go control plane (platform.stack
+# go, chart eduide 3.x). The Java stack keeps _base.yaml.
+#
+# The deploy runs:
+#   helm upgrade --install eduide ... -f cluster-defaults.yaml \
+#     -f environments/_base-go.yaml -f environments/<env>/values.yaml
+#
+# Cluster properties are not here: storage class, node pool, Gateway class and
+# the ACME contact come from clusters/<name>.yaml, written by the deploy into
+# cluster-defaults.yaml. An environment must not set them.
+
+# Every installation renders its own Gateway in its own namespace. The
+# GatewayClass merges them into one data plane (mergeGateways, see clusters/).
+gateway:
+  create: true
+
+# A namespaced Issuer, because the ClusterIssuer on these clusters solves
+# HTTP-01 only through the shared Java Gateway. This one solves through the
+# Gateway of the release. The contact address is the cluster's acmeEmail.
+issuer:
+  create: true
+  name: letsencrypt-prod-gateway
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+# Envoy offers only X25519 and P-256 for upstream TLS; TUM's Keycloak servers
+# accept only P-384 and P-521, so the gateway login needs the TLS bridge. Its
+# Service is named <release>-oidc-bridge and the release is always `eduide`.
+oidcBridge:
+  enabled: true
+
+eduide-control-plane:
+  oidc:
+    # The deploy creates this Secret (key client-secret) from the GitHub
+    # Environment secret OIDC_CLIENT_SECRET, before helm runs.
+    clientSecretName: eduide-oidc
+    providerBackendRefs:
+    - {name: eduide-oidc-bridge, port: 443}

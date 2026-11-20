@@ -9,7 +9,8 @@ Deploys EduIDE to TUM's Kubernetes clusters. **No application code lives here.**
 ```
 clusters/<name>.yaml            where things run (identity, storage, runner)
 environments/<name>/env.yaml    what runs there (hosts, branding, versions)
-environments/_base.yaml         settings identical in every environment
+environments/_base.yaml         settings identical in every java environment
+environments/_base-go.yaml      settings identical in every go environment
 environments/<name>/values.yaml  plain Helm values, -f'd directly
 .claude/skills/                 moving a version into an environment, production included;
                                 running the functional check
@@ -20,13 +21,37 @@ An environment is one namespace on one cluster.
 
 | Cluster | Environments |
 |---|---|
-| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`e2e.…`<br>`staging.…` |
+| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`test3.…`<br>`e2e.…`<br>`staging.…` |
 | `tum-production` | `eduide.artemis.cit.tum.de` |
 | `eduide` | `bonn.eduide.aet.cit.tum.de`<br>`mannheim.eduide.aet.cit.tum.de` |
 
 **An environment is named after the hostname it serves.** The directory under
 `environments/`, the GitHub Environment and the landing host are the same
 string, so there is nothing to map and nothing to keep in sync.
+
+**Two stacks, chosen per environment** by `spec.platform.stack` (`java` when
+omitted). `java` is chart `eduide` 2.x on Theia Cloud with `_base.yaml`; `go` is
+chart `eduide` 3.x, the Go control plane, with `_base-go.yaml`. Today `bonn` and
+`test3` are `go`, everything else is `java`; `eduide.artemis.cit.tum.de` has a
+prepared `values-3.0.yaml` that nothing deploys until its `env.yaml` is switched
+(`docs/rollout-3.0-tum-production.md`). `deploy.yml`, `bootstrap-cluster.yml`,
+`live-summary.sh` and `test-deploy-logic.sh` branch on it; java behaviour is
+unchanged. Never put a 3.x chart version on a java environment or the reverse.
+
+Go environments differ in ways that bite:
+
+- They render their own Gateway in their own namespace, so they add no
+  listeners to the shared one. The cluster's GatewayClass must merge Gateways
+  (`mergeGateways: true` in the EnvoyProxy; `clusters/eduide.yaml` sets it).
+- Storage class, node pool, Gateway class and the ACME contact are cluster
+  properties written by the deploy into `cluster-defaults.yaml`; a go values
+  file must not set them (`test-deploy-logic.sh` checks).
+- The deploy creates the OIDC client Secret from the GitHub Environment secret
+  `OIDC_CLIENT_SECRET`. Never put it in a values file.
+- The cluster half is only the CRD chart (`spec.controlPlaneCRDs`). The 3.x
+  `eduide-cluster` chart is never installed on a cluster that still has Theia
+  Cloud CRDs: it refuses, because removing them deletes every session.
+- The health check is the public `/api/v1/status` of the service host.
 
 The `tum-production` cluster is AET (RKE2, Rancher `c-9jjmv`), live since
 2026-11-12. Its API server is not reachable from the internet, so both GitHub
@@ -51,6 +76,10 @@ Values files are keyed at the top level (`hosts:`, `keycloak:`, `operator:`).
 The `theia-cloud-combined` umbrella, its five subcharts and the pre-restructure
 workflows are gone - the installations are being brought up fresh, so there was
 nothing to migrate.
+
+`environments/_base-go.yaml` is the go counterpart of `_base.yaml`. Image
+overrides map to `images.tag`, `eduide-control-plane.image.tag` and
+`eduide-landing-page.image.tag`.
 
 ## Before you change anything
 
@@ -273,7 +302,7 @@ list too**, or the render diff becomes noise and stops being read.
 
 ## Adding an environment
 
-One directory under `environments/`, then the GitHub Environment holding its
+Set `spec.platform.stack` (omit for java). One directory under `environments/`, then the GitHub Environment holding its
 `KUBECONFIG`. The shared Gateway listeners are derived from the manifests, so
 there is no second file to edit. See `docs/environments.md`.
 

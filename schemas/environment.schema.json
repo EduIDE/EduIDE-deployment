@@ -71,8 +71,17 @@
           ],
           "additionalProperties": false,
           "properties": {
+            "stack": {
+              "enum": [
+                "java",
+                "go"
+              ],
+              "default": "java",
+              "description": "Which control plane the environment runs. java is the Theia Cloud based 2.x stack (chart eduide 2.x, values on top of _base.yaml). go is the EduIDE 3.x Go control plane (chart eduide 3.x, values on top of _base-go.yaml). Omitted means java."
+            },
             "chartVersion": {
-              "type": "string"
+              "type": "string",
+              "description": "Version of the oci://ghcr.io/eduide/charts/eduide chart. 2.x for stack java, 3.x for stack go."
             },
             "channel": {
               "enum": [
@@ -80,7 +89,7 @@
                 "main",
                 "pinned"
               ],
-              "description": "release pins images to the chart appVersion; main follows an immutable main-<sha> tag; pinned uses spec.imageTag."
+              "description": "release installs the images the chart pins. main marks an environment that follows a floating image tag: on stack java the deploy restarts operator, service and landing page afterwards to force a pull (stack go does not restart anything). pinned is accepted but nothing reads it."
             }
           }
         }

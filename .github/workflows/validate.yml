@@ -77,6 +77,8 @@ jobs:
           for cluster in $(yq -r '.metadata.name' clusters/*.yaml); do
             dupes=$(for f in environments/*/env.yaml; do
               [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" ]] || continue
+              # go environments render their own Gateway and have no listeners here.
+              [[ "$(yq -r '.spec.platform.stack // "java"' "$f")" == "java" ]] || continue
               env=$(basename "$(dirname "$f")")
               yq -r '[.gateway.parentRefs[]?.sectionName | sub("-(landing|service|instances|webview)$"; "")] | unique | .[]' "environments/$env/values.yaml" 
             done | sort | uniq -d)
@@ -104,14 +106,23 @@ jobs:
           fail=0
           # Read each file on its own: yq separates multiple documents with ---,
           # which would otherwise come back as a version to look up.
-          versions="$(for f in environments/*/env.yaml; do yq -r '.spec.platform.chartVersion' "$f"; done | sort -u)"
-          for version in $versions; do
-            if helm show chart oci://ghcr.io/eduide/charts/eduide --version "$version" >/dev/null 2>&1; then
-              echo "chart $version is published"
-            else
-              echo "::error::chart $version is not published; no environment can deploy it"
-              fail=1
-            fi
+          for stack in java go; do
+            versions="$(for f in environments/*/env.yaml; do
+              [[ "$(yq -r '.spec.platform.stack // "java"' "$f")" == "$stack" ]] || continue
+              yq -r '.spec.platform.chartVersion' "$f"
+            done | sort -u)"
+            for version in $versions; do
+              if helm show chart oci://ghcr.io/eduide/charts/eduide --version "$version" >/dev/null 2>&1; then
+                echo "chart $version ($stack) is published"
+              elif [[ "$stack" == "go" ]]; then
+                # The 3.x release candidates are published by EduIDE-Helm
+                # later; until then the go environments cannot be rendered here.
+                echo "::notice::chart $version ($stack) is not published yet; go environments are not rendered against it"
+              else
+                echo "::error::chart $version ($stack) is not published; no environment can deploy it"
+                fail=1
+              fi
+            done
           done
           exit $fail
 

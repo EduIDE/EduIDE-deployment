@@ -24,6 +24,16 @@ One Gateway per cluster rather than one per environment, because a Gateway is
 cluster-scoped in everything but name: it owns an address, a certificate set and
 a data plane.
 
+## Go environments bring their own Gateway
+
+An environment on the go stack (EduIDE 3.x) renders a Gateway in its own
+namespace with listeners for its service, instance and webview hosts, plus
+`:80` listeners for ACME. It adds nothing to the shared Gateway below, which
+serves the java environments only. Both kinds of Gateway can sit on one
+GatewayClass only if the class merges them, so `clusters/eduide.yaml` sets
+`mergeGateways: true` in its EnvoyProxy. Applying that restarts Envoy, which
+every installation on the cluster sits behind: do it in a maintenance window.
+
 ## Listeners are derived, not written
 
 Four listeners per environment, named after the `sectionName`s that environment

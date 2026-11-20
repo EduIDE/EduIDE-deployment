@@ -10,6 +10,14 @@
 # with a six-attempt retry loop. Making one workflow the sole writer removes
 # the race rather than retrying through it.
 #
+# Two stacks can share a cluster (spec.platform.stack of each environment):
+#   java  the eduide-cluster 2.x chart: CRDs, shared Gateway, monitoring. Kept
+#         for as long as any environment on the cluster is java.
+#   go    only the CRD chart eduide-control-plane-crds, as release eduide-crds
+#         in eduide-system. A go environment renders its own Gateway and adds
+#         no listeners to the shared one. The 3.x eduide-cluster chart is never
+#         installed here: it refuses to run next to the Theia Cloud CRDs.
+#
 # The shared Gateway's listeners are derived from the environments that say
 # they live on this cluster, so adding an environment no longer means editing a
 # second file by hand.
@@ -25,7 +33,7 @@ on:
         type: choice
         options: [tum-student, tum-production, eduide]
       chart_version:
-        description: Cluster chart version
+        description: Cluster chart version (2.x; ignored when no environment on the cluster is java)
         required: true
         type: string
       dry_run:
@@ -113,7 +121,25 @@ jobs:
             echo "cluster '${CLUSTER}' confirmed"
           fi
 
+      - name: Which stacks does this cluster run
+        id: stacks
+        run: |
+          set -euo pipefail
+          java=false; go=false
+          for f in environments/*/env.yaml; do
+            [[ "$(yq -r '.spec.cluster' "$f")" == "$CLUSTER" ]] || continue
+            if [[ "$(yq -r '.spec.platform.stack // "java"' "$f")" == "go" ]]; then go=true; else java=true; fi
+          done
+          if [[ "$java" == "false" && "$go" == "false" ]]; then
+            echo "::error::no environments claim cluster ${CLUSTER}"
+            exit 1
+          fi
+          echo "java=$java" >> "$GITHUB_OUTPUT"
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+          echo "::notice::${CLUSTER}: java environments=${java}, go environments=${go}"
+
       - name: Derive listeners and monitored namespaces from the environments
+        if: ${{ steps.stacks.outputs.java == 'true' }}
         run: |
           set -euo pipefail
           # Every environment on this cluster contributes four listeners.
@@ -132,6 +158,8 @@ jobs:
           for f in environments/*/env.yaml; do
             env=$(basename "$(dirname "$f")")
             [[ "$(yq -r '.spec.cluster' "$f")" == "$CLUSTER" ]] || continue
+            # A go environment brings its own Gateway and PodMonitor.
+            [[ "$(yq -r '.spec.platform.stack // "java"' "$f")" == "java" ]] || continue
             v="environments/$env/values.yaml"
             [[ -f "$v" ]] || continue
 
@@ -387,6 +415,7 @@ jobs:
           echo "::group::derived cluster values"; cat listeners.yaml; echo "::endgroup::"
 
       - name: Wildcard TLS secret
+        if: ${{ steps.stacks.outputs.java == 'true' }}
         run: |
           set -euo pipefail
           # `create` is not optional. The chart defaults it to false and gates
@@ -408,6 +437,7 @@ jobs:
           EOF
 
       - name: Collect the alert webhook URLs
+        if: ${{ steps.stacks.outputs.java == 'true' }}
         env:
           # One JSON object mapping each channel's secretKey to its webhook
           # URL, because one cluster can host installations belonging to
@@ -488,6 +518,7 @@ jobs:
           echo "collected $(yq -r '.spec.alerting.channels | length' "clusters/${CLUSTER}.yaml") webhook(s)"
 
       - name: Preview
+        if: ${{ steps.stacks.outputs.java == 'true' }}
         run: |
           set -euo pipefail
           helm diff upgrade eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
@@ -500,13 +531,37 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install the cluster chart
-        if: ${{ !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && steps.stacks.outputs.java == 'true' }}
         run: |
           set -euo pipefail
           helm upgrade --install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
             --version "${{ inputs.chart_version }}" \
             -n eduide-system --create-namespace \
             -f listeners.yaml -f gw-secrets.yaml -f alert-secrets.yaml --wait --timeout 10m
+
+      - name: Control plane CRDs (go)
+        if: ${{ steps.stacks.outputs.go == 'true' }}
+        run: |
+          set -euo pipefail
+          # CRDs only. Upgrading is additive by contract (ADR 0011), and the
+          # chart must be upgraded before any environment that needs a newer
+          # one. helm uninstall of this release would delete every session and
+          # workspace of every go environment, so nothing here ever does it.
+          V=$(yq -r '.spec.controlPlaneCRDs // ""' "clusters/${CLUSTER}.yaml")
+          if [[ -z "$V" ]]; then
+            echo "::error::clusters/${CLUSTER}.yaml has go environments but no spec.controlPlaneCRDs."
+            exit 1
+          fi
+          CRDS=oci://ghcr.io/eduide/eduide-control-plane/charts/eduide-control-plane-crds
+          helm diff upgrade eduide-crds "$CRDS" --version "$V" -n eduide-system \
+            --allow-unreleased --no-color > crds.diff 2>&1 || { cat crds.diff; echo "::error::CRD chart ${V} preview failed"; exit 1; }
+          {
+            echo "<details><summary>CRD chart ${V} pending change</summary>"
+            echo ''; echo '```diff'; head -c 40000 crds.diff; echo '```'; echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then exit 0; fi
+          helm upgrade --install eduide-crds "$CRDS" --version "$V" \
+            -n eduide-system --create-namespace --wait --timeout 5m
 
       - name: Stamp this cluster with its name
         if: ${{ !inputs.dry_run }}
@@ -533,6 +588,6 @@ jobs:
             echo ''
             echo '```'
             kubectl -n eduide-system get gateway -o wide 2>/dev/null || true
-            kubectl get crd -o name 2>/dev/null | grep theia.cloud || true
+            kubectl get crd -o name 2>/dev/null | grep -E 'theia.cloud|eduide.github.io' || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"

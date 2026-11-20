@@ -12,6 +12,11 @@ spec:
   storageClassName: local-path
   gatewayClassName: eduide
 
+  # CRDs of the EduIDE 3.x Go control plane, installed by bootstrap once an
+  # environment on this cluster has `platform.stack: go`. Safe next to the 2.x
+  # Theia Cloud CRDs; the full 3.x eduide-cluster chart is not.
+  controlPlaneCRDs: 0.2.1
+
   tls:
     landing: shared-theia-cert
     service: shared-theia-cert
@@ -32,6 +37,11 @@ spec:
     name: eduide-envoy-proxy
     namespace: envoy-gateway-system
     spec:
+      # Every Gateway on this class shares one Envoy and one address. EduIDE
+      # 3.0 renders one Gateway per deployment in its own namespace instead of
+      # one shared Gateway, so the class has to merge them. Applying this
+      # restarts Envoy, which Bonn and Mannheim both sit behind.
+      mergeGateways: true
       logging:
         level:
           default: warn
