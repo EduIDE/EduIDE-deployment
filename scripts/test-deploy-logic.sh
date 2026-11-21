@@ -284,7 +284,7 @@ done
 
 # --- a cluster with go environments pins the CRD chart ---------------------
 echo
-echo "=== clusters with go environments pin the CRD chart ==="
+echo "=== clusters with go environments pin the CRD chart and the boards ==="
 for cf in "$ROOT"/clusters/*.yaml; do
   cluster=$(yq -r '.metadata.name' "$cf")
   has_go=0
@@ -294,6 +294,8 @@ for cf in "$ROOT"/clusters/*.yaml; do
   [[ $has_go -eq 1 ]] || continue
   crd=$(yq -r '.spec.controlPlaneCRDs // ""' "$cf")
   if [[ -n "$crd" ]]; then ok "$cluster: eduide-control-plane-crds $crd"; else bad "$cluster has go environments but no spec.controlPlaneCRDs" ""; fi
+  boards=$(yq -r '.spec.controlPlaneDashboards // ""' "$cf")
+  if [[ -n "$boards" ]]; then ok "$cluster: control plane boards $boards"; else bad "$cluster has go environments but no spec.controlPlaneDashboards" ""; fi
 done
 
 # --- the dependency cache stays off in production --------------------------

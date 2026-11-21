@@ -563,6 +563,49 @@ jobs:
           helm upgrade --install eduide-crds "$CRDS" --version "$V" \
             -n eduide-system --create-namespace --wait --timeout 5m
 
+      - name: Control plane dashboards (go)
+        if: ${{ steps.stacks.outputs.go == 'true' }}
+        run: |
+          set -euo pipefail
+          # The Grafana boards of the Go control plane ("EduIDE control plane"
+          # and "EduIDE usage"). They live in Rancher's cattle-dashboards, which
+          # the deploy credentials of an environment may not write, so every go
+          # environment sets monitoring.dashboard.enabled: false and the boards
+          # come from here, once per cluster. Both boards have a namespace
+          # picker, so one copy serves every go environment on the cluster.
+          V=$(yq -r '.spec.controlPlaneDashboards // ""' "clusters/${CLUSTER}.yaml")
+          if [[ -z "$V" ]]; then
+            echo "::notice::clusters/${CLUSTER}.yaml sets no spec.controlPlaneDashboards; boards skipped"
+            exit 0
+          fi
+          # The JSON is taken from the chart package rather than rendered: the
+          # chart's schema needs a whole installation's values to render at all.
+          helm pull oci://ghcr.io/eduide/eduide-control-plane/charts/eduide-control-plane \
+            --version "$V" --untar -d ecp-chart
+          FILES=ecp-chart/eduide-control-plane/files
+          # Preselected namespace: the first go environment on this cluster.
+          NS=""
+          for f in environments/*/env.yaml; do
+            if [[ "$(yq -r '.spec.cluster' "$f")" == "$CLUSTER" && "$(yq -r '.spec.platform.stack // "java"' "$f")" == "go" ]]; then
+              NS=$(yq -r '.spec.namespace' "$f")
+              break
+            fi
+          done
+          mkdir boards
+          sed "s/__NAMESPACE__/${NS}/g" "$FILES/dashboard.json" > boards/eduide-control-plane.json
+          sed "s/__NAMESPACE__/${NS}/g" "$FILES/usage-dashboard.json" > boards/eduide-usage.json
+          kubectl -n cattle-dashboards create configmap eduide-go-control-plane-dashboards \
+            --from-file=boards/ --dry-run=client -o yaml \
+            | kubectl label --local -f - grafana_dashboard=1 app.kubernetes.io/part-of=eduide -o yaml \
+            | kubectl annotate --local -f - "eduide.github.io/source=eduide-control-plane ${V}" -o yaml > boards.yaml
+          kubectl diff -f boards.yaml > boards.diff 2>&1 || true
+          {
+            echo "<details><summary>Control plane dashboards ${V} pending change</summary>"
+            echo ''; echo '```diff'; head -c 40000 boards.diff; echo '```'; echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "${{ inputs.dry_run }}" == "true" ]]; then exit 0; fi
+          kubectl apply -f boards.yaml
+
       - name: Stamp this cluster with its name
         if: ${{ !inputs.dry_run }}
         run: |

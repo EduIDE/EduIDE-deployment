@@ -48,6 +48,15 @@ panel on a freshly deployed environment is expected rather than broken.
 | Theia Cloud | `bdrjgy1fv3d34b` | the original overview |
 | Session Startup Time | `bf4ha4miogutcc` | startup latency quantiles |
 
+Go environments (stack `go`) get two other boards, from the `eduide-control-plane`
+chart at `spec.controlPlaneDashboards` of the cluster. `Bootstrap cluster`
+writes them to `cattle-dashboards`; `dry_run` shows the diff first.
+
+| Dashboard | uid | For |
+|---|---|---|
+| EduIDE control plane | `eduide-control-plane` | start latency, claims, pools, API, authz and agent errors |
+| EduIDE usage | `eduide-usage` | the usage metrics M1 to M7, from the `eduide:usage:*` recording rules |
+
 The environment picker on every dashboard is a query over the namespaces the
 cluster actually monitors, derived from the environments. It used to be a
 hand-written list, which went stale the moment the environments were renamed:
