@@ -15,7 +15,7 @@ spec:
   # CRDs of the EduIDE 3.x Go control plane, installed by bootstrap once an
   # environment on this cluster has `platform.stack: go`. Safe next to the 2.x
   # Theia Cloud CRDs; the full 3.x eduide-cluster chart is not.
-  controlPlaneCRDs: 0.2.1
+  controlPlaneCRDs: 0.2.2
 
   tls:
     landing: shared-theia-cert
