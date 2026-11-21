@@ -394,7 +394,7 @@ the ConfigMap first if the rename is genuinely intended.
 ## Things that are not what they look like
 
 **The Gateway section prefix is not the landing host.** Production's landing
-host is `eduide` but its Gateway sections are `prod-*`; the `e2e.` one's are `e2e-*`.
+host is `eduide` but its Gateway sections were `prod-*` on the Java stack.
 Getting this wrong attaches routes to sections that do not exist, and nothing
 fails until traffic does.
 
@@ -425,7 +425,7 @@ The end-to-end suite lives in
 The environment name and the landing page host are the same string, so the
 name is all the suite needs. The test account must exist in that
 environment's Keycloak realm, and the environment should offer the apps the
-suite launches (e2e offers the whole catalog for that reason).
+suite launches. Since 2026-11-22 e2e runs on the Go stack (3.x), so the suite must speak the 3.x API there.
 
 ## Switching an environment to lazy start
 

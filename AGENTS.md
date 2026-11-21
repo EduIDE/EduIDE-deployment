@@ -193,7 +193,7 @@ fails the render on a missing secret and `test-deploy-logic.sh` checks the
 policy is complete.
 
 **The Gateway section prefix is not the landing host.** Production's landing
-host is `eduide` but its Gateway sections are `prod-*`; the e2e environment's are `e2e-*`.
+host is `eduide` but its Gateway sections were `prod-*` on the Java stack.
 The shared Gateway's listeners are derived from the `sectionName`s an
 environment declares, so those strings are load-bearing. Getting one wrong
 attaches a route to a section that does not exist, and nothing fails until
