@@ -47,7 +47,8 @@ Go environments differ in ways that bite:
   file must not set them (`test-deploy-logic.sh` checks).
 - The deploy creates the OIDC client Secret from the GitHub Environment secret
   `OIDC_CLIENT_SECRET`. Never put it in a values file.
-- The cluster half is only the CRD chart (`spec.controlPlaneCRDs`). The 3.x
+- The cluster half is only the CRD chart (`spec.controlPlaneCRDs`) and the
+  Grafana boards in `cattle-dashboards` (`spec.controlPlaneDashboards`). The 3.x
   `eduide-cluster` chart is never installed on a cluster that still has Theia
   Cloud CRDs: it refuses, because removing them deletes every session.
 - The health check is the public `/api/v1/status` of the service host.
