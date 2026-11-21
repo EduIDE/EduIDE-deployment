@@ -28,11 +28,11 @@ An environment is one namespace on one cluster.
 
 | Stack | Chart | Environments |
 |---|---|---|
-| `java` | `eduide` 2.x (Theia Cloud), values on `_base.yaml` | `test1`, `test2`, `e2e`, `staging`, `mannheim`, `eduide.artemis.cit.tum.de` |
-| `go` | `eduide` 3.x (EduIDE 3.0, Go control plane), values on `_base-go.yaml` | `bonn`, `test3` |
+| `java` | `eduide` 2.x (Theia Cloud), values on `_base.yaml` | `test1`, `test2`, `e2e`, `staging`, `mannheim` |
+| `go` | `eduide` 3.x (EduIDE 3.0, Go control plane), values on `_base-go.yaml` | `bonn`, `test3`, `eduide.artemis.cit.tum.de` |
 
-`eduide.artemis.cit.tum.de` has a prepared `values-3.0.yaml` and moves to `go`
-by [its own rollout plan](docs/rollout-3.0-tum-production.md).
+`eduide.artemis.cit.tum.de` moved to `go` on 2026-11-21 by
+[its rollout plan](docs/rollout-3.0-tum-production.md) (option B, in place).
 
 **An environment is named after the hostname it serves.** The directory under
 `environments/`, the GitHub Environment and the landing host are the same
