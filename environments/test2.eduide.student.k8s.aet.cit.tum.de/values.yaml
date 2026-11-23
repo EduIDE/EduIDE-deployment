@@ -1,78 +1,88 @@
-# Helm values for the test2 environment.
+# Helm values for the test2 environment, on the Go control plane (EduIDE 3.x).
 #
 # A plain values file. The deploy runs:
-#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#   helm upgrade --install eduide ... -f cluster-defaults.yaml \
+#     -f environments/_base-go.yaml -f this file
 #
-# _base.yaml carries what is identical everywhere; this file carries what is
-# not. Anything appearing here for more than one environment belongs in
-# _base.yaml instead.
-#
-# Deployment metadata - which cluster, which namespace, which chart version -
-# is in env.yaml next door, because it configures the deploy rather than the
-# chart.
+# Storage class, node pool, Gateway class and the ACME contact come from
+# clusters/tum-student.yaml. Image tags are the chart defaults (appVersion).
+# Same shape as test3, connected to artemis-test2.artemis.cit.tum.de, without the
+# pool scaler, prepull and tracing.
 
-app:
-  name: Artemis Online IDE (Test2)
-gateway:
-  parentRefs:
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: test2-landing
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: test2-service
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: test2-instances
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: test2-webview
-landingPage:
-  # The 2.7.0 catalog name; _base.yaml keeps the old one for older charts.
-  appDefinition: java-17-templates
-  # Artemis links from this host start the IDE without a Launch click.
-  trustedArtemisHosts:
-    - artemis-test2.artemis.cit.tum.de
-  infoTitle: Welcome to EduIDE Cloud (Test2)
-hosts:
-  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
-  #   test2.eduide.student.k8s.aet.cit.tum.de                      landing page
-  #   service.test2.eduide.student.k8s.aet.cit.tum.de              REST service
-  #   instance.test2.eduide.student.k8s.aet.cit.tum.de             session ingress
-  #   *.webview.instance.test2.eduide.student.k8s.aet.cit.tum.de   session webviews
-  # --- end hostnames
-  configuration:
-    baseHost: eduide.student.k8s.aet.cit.tum.de
-    service: service.test2
-    landing: test2
-    instance: instance.test2
-  allWildcardInstances:
-  - '*.webview.'
-keycloak:
-  enable: true
-  authUrl: https://keycloak-test.aet.cit.tum.de/
+x-hosts: &hosts
+  service: test2.eduide.student.k8s.aet.cit.tum.de
+  instance: instance.test2.eduide.student.k8s.aet.cit.tum.de
+  webview: webview.instance.test2.eduide.student.k8s.aet.cit.tum.de
+
+x-gateway: &gateway
+  name: eduide
+  namespace: eduide-test2
+  sectionName: ""
+  # Only the HTTPS listeners: sessions and pages are never served on the ACME :80 listeners.
+  port: 443
+
+x-keycloak: &keycloak
+  url: https://keycloak-test.aet.cit.tum.de/
   realm: tum
   clientId: eduide
-eduide-shared-cache:
-  enabled: false
 
-# ---------------------------------------------------------------------------
-# Applications
-# ---------------------------------------------------------------------------
-# Test environments offer Java 17 and Java 25 only. Picked from the chart's
-# appDefinitions.catalog; needs chart 2.7.0 or later, older charts ignore it.
-# This cluster's pod and service CIDRs (198.18.0.0/16, 198.19.0.0/16) are outside
-# the chart's private range defaults, so they are added for session egress.
-networkPolicies:
-  privateEgressCidrs:
-  - 10.0.0.0/8
-  - 172.16.0.0/12
-  - 192.168.0.0/16
-  - 100.64.0.0/10
-  - 198.18.0.0/15
-appDefinitions:
-  enabled:
-    - java-17
-    - java-17-templates
-    - java-25
-    - java-25-templates
+# The Artemis editions get the repository URL with the VCS token (Artemis#14702).
+templateDefaults:
+  gitUriAllowCredentials: true
+
+templates:
+  # The landing page offers the standalone editions; Artemis links start the unlisted artemis editions below.
+  java-17-standalone: {}
+  java-25-standalone: {}
+  java-17:
+    pool: {minIdle: 1, maxInstances: 5}
+  java-25: {}
+
+eduide-control-plane:
+  config:
+    deployment: test2
+    hosts: *hosts
+    gateway: *gateway
+    oidc:
+      issuerURL: https://keycloak-test.aet.cit.tum.de/realms/tum
+      clientIDs: [eduide]
+      gatewayClientID: eduide
+      # Admin panel: client role eduide-admin on client eduide in realm tum.
+      admin: {rolePath: resource_access.eduide.roles, role: eduide-admin}
+    admin:
+      prometheusURL: http://rancher-monitoring-prometheus.cattle-monitoring-system:9090
+    allowedHosts:
+    - github.com
+    - gitlab.com
+    - codeberg.org
+    # The Artemis test host of this environment (repository URLs and ARTEMIS_URL).
+    - artemis-test2.artemis.cit.tum.de
+  networkPolicy:
+    monitoringNamespace: cattle-monitoring-system
+    # stud uses public address ranges inside the cluster: nodes 131.159.88.0/24 and 2a09:80c0:88::/64,
+    # pods 198.18.0.0/16, services 198.19.0.0/16. Artemis and Keycloak sit in 131.159.89.0/24, outside.
+    sessionEgressExtraDeny: [131.159.88.0/24, 198.18.0.0/16, 198.19.0.0/16, "2a09:80c0:88::/64"]
+  monitoring:
+    podMonitor: {enabled: true}
+    # stud routes EduIDE alerts through the AlertmanagerConfig in eduide-system (namespace matcher).
+    rules: {enabled: true, extraLabels: {namespace: eduide-system}}
+    # Bootstrap ships the boards (spec.controlPlaneDashboards).
+    dashboard: {enabled: false}
+  oidc:
+    # Set, so Envoy Gateway does not discover them through the OIDC upstream.
+    authorizationEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/auth
+    tokenEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/token
+    endSessionEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/logout
+
+eduide-landing-page:
+  # Placeholders for test2 (the chart requires both).
+  legal:
+    imprint:
+      url: https://example.org/imprint
+    privacy:
+      url: https://example.org/privacy
+  host: test2.eduide.student.k8s.aet.cit.tum.de
+  gateway: *gateway
+  config:
+    title: EduIDE test2
+    keycloak: *keycloak

@@ -28,8 +28,8 @@ An environment is one namespace on one cluster.
 
 | Stack | Chart | Environments |
 |---|---|---|
-| `java` | `eduide` 2.x (Theia Cloud), values on `_base.yaml` | `test1`, `test2`, `staging`, `mannheim` |
-| `go` | `eduide` 3.x (EduIDE 3.0, Go control plane), values on `_base-go.yaml` | `bonn`, `test3`, `e2e`, `eduide.artemis.cit.tum.de` |
+| `java` | `eduide` 2.x (Theia Cloud), values on `_base.yaml` | `mannheim` |
+| `go` | `eduide` 3.x (EduIDE 3.0, Go control plane), values on `_base-go.yaml` | `bonn`, `test1`, `test2`, `test3`, `e2e`, `staging`, `eduide.artemis.cit.tum.de` |
 
 `eduide.artemis.cit.tum.de` moved to `go` on 2026-11-21 by
 [its rollout plan](docs/rollout-3.0-tum-production.md) (option B, in place).
