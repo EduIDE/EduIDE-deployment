@@ -38,7 +38,7 @@ jobs:
       namespace: ${{ steps.r.outputs.namespace }}
       cluster: ${{ steps.r.outputs.cluster }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install yq
         run: |
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64
@@ -66,11 +66,11 @@ jobs:
       KUBECONFIG: ${{ github.workspace }}/kubeconfig
       NS: ${{ needs.resolve.outputs.namespace }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: azure/setup-helm@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
-          version: v3.16.3
-      - uses: azure/setup-kubectl@v4
+          version: v3.22.1
+      - uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede # v4
       - name: Set up kubeconfig
         run: |
           set -euo pipefail
