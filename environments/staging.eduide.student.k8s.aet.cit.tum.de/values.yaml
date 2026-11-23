@@ -1,85 +1,84 @@
-# Helm values for the staging environment.
+# Helm values for the staging environment, on the Go control plane (EduIDE 3.x).
 #
 # A plain values file. The deploy runs:
-#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#   helm upgrade --install eduide ... -f cluster-defaults.yaml \
+#     -f environments/_base-go.yaml -f this file
 #
-# _base.yaml carries what is identical everywhere; this file carries what is
-# not. Anything appearing here for more than one environment belongs in
-# _base.yaml instead.
-#
-# Deployment metadata - which cluster, which namespace, which chart version -
-# is in env.yaml next door, because it configures the deploy rather than the
-# chart.
+# Storage class, node pool, Gateway class and the ACME contact come from
+# clusters/tum-student.yaml. Image tags are the chart defaults (appVersion).
+# Same shape as e2e, without Artemis: staging is where a human looks at a
+# change before production. All standalone editions, as on the Java staging.
 
-app:
-  name: Artemis Online IDE (Staging)
-gateway:
-  parentRefs:
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: staging-landing
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: staging-service
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: staging-instances
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: staging-webview
-landingPage:
-  # The 2.7.0 catalog name; _base.yaml keeps the old one for older charts.
-  appDefinition: java-17-templates
-  # No trustedArtemisHosts: no Artemis links here. Staging1 and staging2 still
-  # point their EduIDE portal at the retired theia-staging.artemis.cit.tum.de.
-  infoTitle: Welcome to EduIDE Cloud (Staging)
-hosts:
-  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
-  #   staging.eduide.student.k8s.aet.cit.tum.de                      landing page
-  #   service.staging.eduide.student.k8s.aet.cit.tum.de              REST service
-  #   instance.staging.eduide.student.k8s.aet.cit.tum.de             session ingress
-  #   *.webview.instance.staging.eduide.student.k8s.aet.cit.tum.de   session webviews
-  # --- end hostnames
-  configuration:
-    baseHost: eduide.student.k8s.aet.cit.tum.de
-    service: service.staging
-    landing: staging
-    instance: instance.staging
-  allWildcardInstances:
-  - '*.webview.'
-keycloak:
-  enable: true
-  authUrl: https://keycloak-test.aet.cit.tum.de/
+x-hosts: &hosts
+  service: staging.eduide.student.k8s.aet.cit.tum.de
+  instance: instance.staging.eduide.student.k8s.aet.cit.tum.de
+  webview: webview.instance.staging.eduide.student.k8s.aet.cit.tum.de
+
+x-gateway: &gateway
+  name: eduide
+  namespace: eduide-staging
+  sectionName: ""
+  # Only the HTTPS listeners: sessions and pages are never served on the ACME :80 listeners.
+  port: 443
+
+x-keycloak: &keycloak
+  url: https://keycloak-test.aet.cit.tum.de/
   realm: tum
   clientId: eduide
-eduide-shared-cache:
-  enabled: false
 
-# ---------------------------------------------------------------------------
-# Applications
-# ---------------------------------------------------------------------------
-# Test environments offer Java 17 and Java 25 only. Picked from the chart's
-# appDefinitions.catalog; needs chart 2.7.0 or later, older charts ignore it.
-# This cluster's pod and service CIDRs (198.18.0.0/16, 198.19.0.0/16) are outside
-# the chart's private range defaults, so they are added for session egress.
-networkPolicies:
-  privateEgressCidrs:
-  - 10.0.0.0/8
-  - 172.16.0.0/12
-  - 192.168.0.0/16
-  - 100.64.0.0/10
-  - 198.18.0.0/15
-appDefinitions:
-  enabled:
-    - java-17
-    - java-17-templates
-    - java-25
-    - java-25-templates
-  apps:
-    java-25:
-      # Kept warm like java-17 (the chart's catalog default is 0). Only a
-      # bootstrap default: the chart reads the live value back on every upgrade
-      # so the admin scaling API is not reset, so changing this alone does
-      # nothing to an AppDefinition that already exists - patch the live
-      # resource too.
-      minInstances: 3
+templates:
+  java-17-standalone:
+    pool: {minIdle: 1, maxInstances: 5}
+  java-25-standalone: {}
+  python-standalone: {}
+  javascript-standalone: {}
+  c-standalone: {}
+  rust-standalone: {}
+  go-standalone: {}
+
+eduide-control-plane:
+  config:
+    deployment: staging
+    hosts: *hosts
+    gateway: *gateway
+    oidc:
+      issuerURL: https://keycloak-test.aet.cit.tum.de/realms/tum
+      clientIDs: [eduide]
+      gatewayClientID: eduide
+      # Admin panel: client role eduide-admin on client eduide in realm tum.
+      admin: {rolePath: resource_access.eduide.roles, role: eduide-admin}
+    admin:
+      prometheusURL: http://rancher-monitoring-prometheus.cattle-monitoring-system:9090
+    allowedHosts:
+    - github.com
+    - gitlab.com
+    - codeberg.org
+  networkPolicy:
+    monitoringNamespace: cattle-monitoring-system
+    # stud uses public address ranges inside the cluster: nodes 131.159.88.0/24 and 2a09:80c0:88::/64,
+    # pods 198.18.0.0/16, services 198.19.0.0/16.
+    sessionEgressExtraDeny: [131.159.88.0/24, 198.18.0.0/16, 198.19.0.0/16, "2a09:80c0:88::/64"]
+  monitoring:
+    podMonitor: {enabled: true}
+    # stud routes EduIDE alerts through the AlertmanagerConfig in eduide-system (namespace matcher).
+    rules: {enabled: true, extraLabels: {namespace: eduide-system}}
+    # The dashboard belongs to bootstrap (follow-up); off until then.
+    dashboard: {enabled: false}
+  oidc:
+    # Set, so Envoy Gateway does not discover them through the OIDC upstream.
+    authorizationEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/auth
+    tokenEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/token
+    endSessionEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/logout
+
+eduide-landing-page:
+  # Placeholders for staging (the chart requires both).
+  legal:
+    imprint:
+      url: https://example.org/imprint
+    privacy:
+      url: https://example.org/privacy
+  host: staging.eduide.student.k8s.aet.cit.tum.de
+  gateway: *gateway
+  config:
+    title: EduIDE staging
+    keycloak: *keycloak
