@@ -77,7 +77,7 @@ Cleanup: `kill $P1 $P2 $P3` (if not done), `rm /tmp/contract.txt /tmp/exposed.tx
 Safety: test-only
 Needs: browser token (or a fixture and the `traceparent` annotation set by hand); Jaeger port-forward. Run once for a warm launch (pool) and once for a cold one.
 Steps:
-1. Pick a trace id and launch with it: `T=$(openssl rand -hex 16)`; `await api('POST','/sessions',{template:'<T>'},{traceparent:'00-<T>-0123456789abcdef-01'})`, where `<T>` is the value printed by `echo $T` pasted into both places (a literal `<T>` is not a hex id; the id is random test data, not a secret).
+1. Pick a trace id and launch with it: `T=$(openssl rand -hex 16)`; `await api('POST','/sessions',{template:'<template>'},{traceparent:'00-<T>-0123456789abcdef-01'})`, where `<template>` is the warm (pooled) or cold template of this run and `<T>` is the value printed by `echo $T` (a literal `<T>` is not a hex id; the id is random test data, not a secret).
 2. Wait for Ready; `k get idesession <n> -o jsonpath='{.metadata.annotations.eduide\.github\.io/traceparent}'`.
 3. `curl -s http://127.0.0.1:16686/api/services | jq -r '.data[]'`.
 4. `curl -s http://127.0.0.1:16686/api/traces/$T | jq -r '.data[0].spans[] | [.operationName, (.processID as $p | $p), .startTime, .duration] | @tsv' | sort -k3`; map process ids to service names with `.data[0].processes`.

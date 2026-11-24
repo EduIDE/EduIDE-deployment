@@ -8,7 +8,7 @@ Element hooks (`data-testid`) are those of the new page; read the accessibility 
 
 ### LAND-01 Logged-out page
 Safety: prod-safe
-Steps: open `$LANDING` in a fresh (logged-out) tab; `curl -s $LANDING/config.json | jq 'keys, .legacy, .apiBaseUrl'`.
+Steps: open `$LANDING` in a fresh (logged-out) tab; `curl -s $LANDING/config.json | jq 'keys, .legacy, .apiBaseUrl'`; in the same logged-out tab open `$LANDING/imprint`, `$LANDING/privacy` and `$LANDING/status`, and record for each whether the page shows or the Keycloak login appears.
 Expect: the landing page sends a logged-out visitor straight to the Keycloak login (`onLoad: 'login-required'`, decided 2026-11-19, R2-8 of run 2): no overview, no tiles, no own logged-out page; `/imprint`, `/privacy` and `/status` open without a login; `config.json` has `apiBaseUrl` `/api/v1`, `legacy` false, a `keycloak` block (url, realm, clientId; no secret).
 
 ### LAND-02 Tiles and badges from the template list
@@ -64,13 +64,13 @@ Cleanup: replicas restored (`k scale deploy/$FULL-service --replicas=2`, `k roll
 
 ### LAND-10 Artemis deep link keeps the token out of the URL (G16)
 Safety: prod-safe (nothing is clicked)
-Steps: open `$LANDING/?appDef=<a template>&gitUri=https://untrusted.example.org/x.git#artemisToken=dummy` in a logged-out tab, log in when asked, then read `location.href`, `sessionStorage.length` and the page.
+Steps: open `$LANDING/?appDef=<a template>&gitUri=https://untrusted.example.org/x.git#artemisToken=dummy` in a logged-out tab, log in when asked, then read `location.href`, `sessionStorage.length` and the page. Repeat in a new logged-out tab with the legacy form `$LANDING/?appDef=<a template>&gitUri=https://untrusted.example.org/x.git&artemisToken=dummy` and read the browser console as well.
 Expect: the page reads the fragment first, keeps the token in `sessionStorage` only, removes the fragment (`history.replaceState`), and starts Keycloak only after that, so the token survives the login detour; after login the URL has no `artemisToken`. A host that is not trusted (`config.allowedHosts` of the service) starts no session: the service refuses the launch with 400 and the page says that repositories from that host cannot be opened here, naming the host, never the raw API detail; `k get idesessions` shows no new session. The legacy form `?artemisToken=dummy` still works during the migration and logs a deprecation in the browser console. Never use a real token.
 
 ### LAND-11 Logout
 Safety: prod-safe
 Steps: click the logout button.
-Expect: redirect through Keycloak logout back to the Keycloak login of LAND-01; a reload does not log in again silently. A session tab opened earlier keeps working until its ID token cookie expires and then re-authenticates against Keycloak (AUTHZ-08): record whether the IDE tab is signed out as well.
+Expect: redirect through Keycloak logout back to the Keycloak login of LAND-01; a reload does not log in again silently. A session tab opened earlier keeps working until its ID token cookie expires. After that the OIDC filter cannot refresh (the Keycloak session is gone), so new HTTP requests and WebSocket reconnects of that tab get 401 and a reload shows the Keycloak login form; that is the expected outcome after a logout, not R2-5 (AUTHZ-08 covers expiry with a live Keycloak session). An error page or a redirect loop is a fail.
 
 ### LAND-12 Imprint and privacy
 Safety: prod-safe
