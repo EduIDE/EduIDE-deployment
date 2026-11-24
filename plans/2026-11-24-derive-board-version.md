@@ -7,7 +7,7 @@ It drifts from the control plane the environments run, so boards lag behind new 
 ## Change
 - `bootstrap-cluster.yml`: the "Control plane dashboards (go)" step derives the version.
   For every go environment on the cluster it reads the `eduide-control-plane` dependency of the pinned `eduide` chart with `helm show chart` and takes the highest.
-  It fails with `::error::` when the chart cannot be read or has no such dependency, and prints a `::notice::` naming the version and the environment.
+  It warns and skips the boards (`::warning::`) when a chart cannot be read or has no such dependency, so the identity stamp after it still runs, and prints a `::notice::` naming the version and the environment. Prereleases rank below their release (`-` is compared as `~` in `sort -V`).
 - That key is gone from the three cluster manifests and the schema.
 - `deploy.yml`: after a go deploy, a step compares the `eduide.github.io/source` annotation of the board ConfigMap with the deployed control plane version.
   A missing or older board gives a `::warning::` to run `Bootstrap cluster`; an unreadable one gives a `::notice::`.

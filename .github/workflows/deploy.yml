@@ -426,7 +426,8 @@ jobs:
             exit 0
           fi
           if ! out=$(kubectl -n cattle-dashboards get configmap eduide-go-control-plane-dashboards \
-                -o jsonpath='{.metadata.annotations.eduide\.github\.io/source}' 2>&1); then
+                -o jsonpath='{.metadata.annotations.eduide\.github\.io/source}' 2>board.err); then
+            out=$(cat board.err)
             if [[ "$out" == *NotFound* ]]; then
               echo "::warning::no control plane boards on cluster ${{ steps.env.outputs.cluster }}; run Bootstrap cluster for it (deployed control plane ${want})"
             else
@@ -435,7 +436,8 @@ jobs:
             exit 0
           fi
           have="${out##* }"
-          if [[ -z "$have" || "$(printf '%s\n%s\n' "$have" "$want" | sort -V | tail -1)" != "$have" ]]; then
+          # "~" sorts before the release in sort -V, so 0.3.0-rc.1 ranks below 0.3.0.
+          if [[ -z "$have" || "$(printf '%s\n%s\n' "${have/-/\~}" "${want/-/\~}" | sort -V | tail -1)" != "${have/-/\~}" ]]; then
             echo "::warning::control plane boards are ${have:-of unknown version}, deployed control plane is ${want}; run Bootstrap cluster for ${{ steps.env.outputs.cluster }}"
           else
             echo "control plane boards ${have} cover ${want}"

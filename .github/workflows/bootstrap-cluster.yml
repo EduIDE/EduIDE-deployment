@@ -582,14 +582,17 @@ jobs:
             if [[ "$(yq -r '.spec.cluster' "$f")" == "$CLUSTER" && "$(yq -r '.spec.platform.stack // "java"' "$f")" == "go" ]]; then
               ENVNAME=$(basename "$(dirname "$f")")
               CV=$(yq -r '.spec.platform.chartVersion' "$f")
+              # A board problem must not stop the rest of the bootstrap (the
+              # identity stamp comes after this step), so it warns and skips.
               if ! META=$(helm show chart oci://ghcr.io/eduide/charts/eduide --version "$CV"); then
-                echo "::error::helm show chart failed for eduide ${CV} (${ENVNAME})"; exit 1
+                echo "::warning::helm show chart failed for eduide ${CV} (${ENVNAME}); boards not updated"; exit 0
               fi
               DEP=$(yq -r '.dependencies[] | select(.name == "eduide-control-plane") | .version' <<< "$META")
               if [[ -z "$DEP" ]]; then
-                echo "::error::eduide chart ${CV} (${ENVNAME}) has no eduide-control-plane dependency"; exit 1
+                echo "::warning::eduide chart ${CV} (${ENVNAME}) has no eduide-control-plane dependency; boards not updated"; exit 0
               fi
-              if [[ -z "$V" || "$(printf '%s\n%s\n' "$V" "$DEP" | sort -V | tail -1)" != "$V" ]]; then
+              # "~" sorts before the release in sort -V, so 0.3.0-rc.1 ranks below 0.3.0.
+              if [[ -z "$V" || "$(printf '%s\n%s\n' "${V/-/\~}" "${DEP/-/\~}" | sort -V | tail -1)" != "${V/-/\~}" ]]; then
                 V="$DEP"; FROM="$ENVNAME"
               fi
             fi
