@@ -412,6 +412,43 @@ jobs:
           kubectl -n "$NS" rollout restart deploy/operator-deployment deploy/service-deployment deploy/landing-page-deployment 2>/dev/null || true
           kubectl -n "$NS" rollout status deploy/operator-deployment --timeout=5m || true
 
+      - name: Check the control plane boards (go)
+        if: ${{ !inputs.dry_run && steps.env.outputs.stack == 'go' }}
+        env:
+          CHART_VERSION: ${{ steps.env.outputs.chart_version }}
+          CLUSTER_NAME: ${{ steps.env.outputs.cluster }}
+        run: |
+          # Only a hint: the boards belong to Bootstrap cluster, and this
+          # deploy's credentials may not even read cattle-dashboards.
+          # Bootstrap derives the boards from the pinned chartVersion of the
+          # environments, so a chart_version override is not seen by it.
+          fix="run Bootstrap cluster for ${CLUSTER_NAME} (if this deploy overrode chart_version, pin it in env.yaml first)"
+          want=""
+          if meta=$(helm show chart oci://ghcr.io/eduide/charts/eduide --version "$CHART_VERSION" 2>/dev/null); then
+            want=$(yq -r '.dependencies[] | select(.name == "eduide-control-plane") | .version' <<< "$meta" || true)
+          fi
+          if [[ -z "$want" ]]; then
+            echo "::notice::could not read the control plane version of the deployed chart; boards not checked"
+            exit 0
+          fi
+          if ! out=$(kubectl -n cattle-dashboards get configmap eduide-go-control-plane-dashboards \
+                -o jsonpath='{.metadata.annotations.eduide\.github\.io/source}' 2>board.err); then
+            out=$(cat board.err)
+            if [[ "$out" == *NotFound* ]]; then
+              echo "::warning::no control plane boards on cluster ${CLUSTER_NAME} (deployed control plane ${want}); ${fix}"
+            else
+              echo "::notice::could not read the control plane boards (${out}); boards not checked"
+            fi
+            exit 0
+          fi
+          have="${out##* }"
+          # "~" sorts before the release in sort -V, so 0.3.0-rc.1 ranks below 0.3.0.
+          if [[ -z "$have" || "$(printf '%s\n%s\n' "${have/-/\~}" "${want/-/\~}" | sort -V | tail -1)" != "${have/-/\~}" ]]; then
+            echo "::warning::control plane boards are ${have:-of unknown version}, deployed control plane is ${want}; ${fix}"
+          else
+            echo "control plane boards ${have} cover ${want}"
+          fi
+
       - id: url
         run: echo "url=https://${{ steps.env.outputs.landing }}" >> "$GITHUB_OUTPUT"
 
