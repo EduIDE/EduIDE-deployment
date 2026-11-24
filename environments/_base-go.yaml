@@ -36,3 +36,12 @@ eduide-control-plane:
     clientSecretName: eduide-oidc
     providerBackendRefs:
     - {name: eduide-oidc-bridge, port: 443}
+  # Keeps the usage data (eduide:usage:*) beyond the Prometheus retention,
+  # 90 days on stud and aet: one file per day plus the weekly export on a
+  # volume that helm uninstall keeps. Every cluster runs rancher-monitoring,
+  # whose single Prometheus evaluates the rules of every namespace. Storage
+  # class and node pool come from the cluster (cluster-defaults.yaml).
+  # Charts before 3.0.2 (control plane 0.2.4) ignore this key.
+  usageArchive:
+    enabled: true
+    prometheusURL: http://rancher-monitoring-prometheus.cattle-monitoring-system.svc:9090
