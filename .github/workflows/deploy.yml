@@ -414,11 +414,17 @@ jobs:
 
       - name: Check the control plane boards (go)
         if: ${{ !inputs.dry_run && steps.env.outputs.stack == 'go' }}
+        env:
+          CHART_VERSION: ${{ steps.env.outputs.chart_version }}
+          CLUSTER_NAME: ${{ steps.env.outputs.cluster }}
         run: |
           # Only a hint: the boards belong to Bootstrap cluster, and this
           # deploy's credentials may not even read cattle-dashboards.
+          # Bootstrap derives the boards from the pinned chartVersion of the
+          # environments, so a chart_version override is not seen by it.
+          fix="run Bootstrap cluster for ${CLUSTER_NAME} (if this deploy overrode chart_version, pin it in env.yaml first)"
           want=""
-          if meta=$(helm show chart oci://ghcr.io/eduide/charts/eduide --version "${{ steps.env.outputs.chart_version }}" 2>/dev/null); then
+          if meta=$(helm show chart oci://ghcr.io/eduide/charts/eduide --version "$CHART_VERSION" 2>/dev/null); then
             want=$(yq -r '.dependencies[] | select(.name == "eduide-control-plane") | .version' <<< "$meta" || true)
           fi
           if [[ -z "$want" ]]; then
@@ -429,7 +435,7 @@ jobs:
                 -o jsonpath='{.metadata.annotations.eduide\.github\.io/source}' 2>board.err); then
             out=$(cat board.err)
             if [[ "$out" == *NotFound* ]]; then
-              echo "::warning::no control plane boards on cluster ${{ steps.env.outputs.cluster }}; run Bootstrap cluster for it (deployed control plane ${want})"
+              echo "::warning::no control plane boards on cluster ${CLUSTER_NAME} (deployed control plane ${want}); ${fix}"
             else
               echo "::notice::could not read the control plane boards (${out}); boards not checked"
             fi
@@ -438,7 +444,7 @@ jobs:
           have="${out##* }"
           # "~" sorts before the release in sort -V, so 0.3.0-rc.1 ranks below 0.3.0.
           if [[ -z "$have" || "$(printf '%s\n%s\n' "${have/-/\~}" "${want/-/\~}" | sort -V | tail -1)" != "${have/-/\~}" ]]; then
-            echo "::warning::control plane boards are ${have:-of unknown version}, deployed control plane is ${want}; run Bootstrap cluster for ${{ steps.env.outputs.cluster }}"
+            echo "::warning::control plane boards are ${have:-of unknown version}, deployed control plane is ${want}; ${fix}"
           else
             echo "control plane boards ${have} cover ${want}"
           fi
