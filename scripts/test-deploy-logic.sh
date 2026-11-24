@@ -239,6 +239,7 @@ for f in "$ROOT"/environments/*/env.yaml; do
     printf 'eduide-control-plane:\n  config:\n    workspaces:\n      storageClassName: %s\n' "$(yq -r '.spec.storageClassName' "$cf")"
     printf '    placement:\n      nodeSelector: %s\n' "$(yq -o=json -I=0 '.spec.nodeSelector // {}' "$cf")"
     if [[ -n "$pool" ]]; then printf '      nodePoolLabel: %s\n' "$pool"; fi
+    printf '  usageArchive:\n    persistence:\n      storageClassName: %s\n    nodeSelector: %s\n' "$(yq -r '.spec.storageClassName' "$cf")" "$(yq -o=json -I=0 '.spec.nodeSelector // {}' "$cf")"
   } > "$W2/cd.yaml"
   # The prepared 3.x values of an environment still on java render too.
   for vf in "$ROOT/environments/$env/values.yaml" "$ROOT/environments/$env/values-3.0.yaml"; do
@@ -268,6 +269,8 @@ for v in "$ROOT"/environments/*/values.yaml "$ROOT"/environments/*/values-3.0.ya
   bad_keys=""
   for k in '.["eduide-control-plane"].config.workspaces.storageClassName' \
            '.["eduide-control-plane"].config.placement.nodeSelector' \
+           '.["eduide-control-plane"].usageArchive.persistence.storageClassName' \
+           '.["eduide-control-plane"].usageArchive.nodeSelector' \
            '.gateway.className' '.issuer.acme.email'; do
     if [[ "$(yq -r "$k" "$v")" != "null" ]]; then bad_keys+="${k#.} "; fi
   done

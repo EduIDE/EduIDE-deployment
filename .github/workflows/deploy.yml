@@ -159,6 +159,13 @@ jobs:
             echo "    placement:"
             echo "      nodeSelector: ${NS}"
             if [[ -n "$POOL" ]]; then echo "      nodePoolLabel: ${POOL}"; fi
+            # The usage archive keeps the paper data on its own volume; same
+            # class and pool as everything else of the environment.
+            echo "  usageArchive:"
+            echo "    release: ${{ steps.env.outputs.chart_version }}"
+            echo "    persistence:"
+            echo "      storageClassName: ${SC}"
+            echo "    nodeSelector: ${NS}"
           } > cluster-defaults.yaml
           cat cluster-defaults.yaml
 
