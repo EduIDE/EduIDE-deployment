@@ -63,6 +63,19 @@ hand-written list, which went stale the moment the environments were renamed:
 it still offered `theia`, `theia-staging` and `test1`, none of which exist, so
 every panel was empty whatever you picked.
 
+## Usage data is archived
+
+Prometheus keeps 90 days on stud and aet and 365 days on parma. The usage
+metrics of the paper (`eduide:usage:*`) must outlive that, so every go
+environment runs the control plane's usage archive (`_base-go.yaml`, chart
+3.0.2 and later): a daily CronJob writes every sample of the day as one
+OpenMetrics file plus the weekly export to a volume in the environment's
+namespace, which `helm uninstall` keeps. Storage class and node pool come from
+the cluster. The alert `EduIDEUsageArchiveStale` fires after 36 hours without a
+successful run. The volume is no backup against losing the namespace or the
+cluster: copy it off now and then, as described in the control plane's
+`docs/operations/usage-export.md` ("Usage archive").
+
 ## The alerts
 
 Off by default. Switch on per cluster:

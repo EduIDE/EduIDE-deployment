@@ -162,6 +162,7 @@ jobs:
             # The usage archive keeps the paper data on its own volume; same
             # class and pool as everything else of the environment.
             echo "  usageArchive:"
+            echo "    release: ${{ steps.env.outputs.chart_version }}"
             echo "    persistence:"
             echo "      storageClassName: ${SC}"
             echo "    nodeSelector: ${NS}"
