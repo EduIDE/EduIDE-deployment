@@ -284,7 +284,7 @@ done
 
 # --- a cluster with go environments pins the CRD chart ---------------------
 echo
-echo "=== clusters with go environments pin the CRD chart and the boards ==="
+echo "=== clusters with go environments pin the CRD chart and can derive the boards ==="
 for cf in "$ROOT"/clusters/*.yaml; do
   cluster=$(yq -r '.metadata.name' "$cf")
   has_go=0
@@ -294,8 +294,20 @@ for cf in "$ROOT"/clusters/*.yaml; do
   [[ $has_go -eq 1 ]] || continue
   crd=$(yq -r '.spec.controlPlaneCRDs // ""' "$cf")
   if [[ -n "$crd" ]]; then ok "$cluster: eduide-control-plane-crds $crd"; else bad "$cluster has go environments but no spec.controlPlaneCRDs" ""; fi
-  boards=$(yq -r '.spec.controlPlaneDashboards // ""' "$cf")
-  if [[ -n "$boards" ]]; then ok "$cluster: control plane boards $boards"; else bad "$cluster has go environments but no spec.controlPlaneDashboards" ""; fi
+  # Bootstrap derives the board version from these dependencies, so each one must exist.
+  for f in "$ROOT"/environments/*/env.yaml; do
+    [[ "$(yq -r '.spec.cluster' "$f")" == "$cluster" && "$(stack_of "$f")" == "go" ]] || continue
+    env=$(basename "$(dirname "$f")")
+    cv=$(yq -r '.spec.platform.chartVersion' "$f")
+    cp_args=()
+    if [[ "$CHART_GO" == oci://* ]]; then cp_args=(--version "$cv"); fi
+    if ! meta=$(helm show chart "$CHART_GO" "${cp_args[@]}" 2>/dev/null); then
+      echo "  SKIP  $env: chart $CHART_GO $cv not reachable, board version not checked"
+      continue
+    fi
+    dep=$(yq -r '.dependencies[] | select(.name == "eduide-control-plane") | .version' <<< "$meta")
+    if [[ -n "$dep" ]]; then ok "$env: boards derive from eduide-control-plane $dep"; else bad "$env: chart $cv has no eduide-control-plane dependency" "bootstrap cannot derive the board version"; fi
+  done
 done
 
 # --- the dependency cache stays off in production --------------------------

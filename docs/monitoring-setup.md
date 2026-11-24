@@ -49,7 +49,7 @@ panel on a freshly deployed environment is expected rather than broken.
 | Session Startup Time | `bf4ha4miogutcc` | startup latency quantiles |
 
 Go environments (stack `go`) get two other boards, from the `eduide-control-plane`
-chart at `spec.controlPlaneDashboards` of the cluster. `Bootstrap cluster`
+chart whose version the cluster's go environments run (the dependency of their pinned `eduide` chart). `Bootstrap cluster`
 writes them to `cattle-dashboards`; `dry_run` shows the diff first.
 
 | Dashboard | uid | For |

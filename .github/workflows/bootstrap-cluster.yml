@@ -573,11 +573,28 @@ jobs:
           # environment sets monitoring.dashboard.enabled: false and the boards
           # come from here, once per cluster. Both boards have a namespace
           # picker, so one copy serves every go environment on the cluster.
-          V=$(yq -r '.spec.controlPlaneDashboards // ""' "clusters/${CLUSTER}.yaml")
-          if [[ -z "$V" ]]; then
-            echo "::notice::clusters/${CLUSTER}.yaml sets no spec.controlPlaneDashboards; boards skipped"
-            exit 0
-          fi
+          # The version is derived, not written down: it is the control plane
+          # the go environments on this cluster run, so the boards cannot
+          # drift from them. The highest one wins when they differ, because a
+          # board must know every metric the newest control plane exports.
+          V=""; FROM=""
+          for f in environments/*/env.yaml; do
+            if [[ "$(yq -r '.spec.cluster' "$f")" == "$CLUSTER" && "$(yq -r '.spec.platform.stack // "java"' "$f")" == "go" ]]; then
+              ENVNAME=$(basename "$(dirname "$f")")
+              CV=$(yq -r '.spec.platform.chartVersion' "$f")
+              if ! META=$(helm show chart oci://ghcr.io/eduide/charts/eduide --version "$CV"); then
+                echo "::error::helm show chart failed for eduide ${CV} (${ENVNAME})"; exit 1
+              fi
+              DEP=$(yq -r '.dependencies[] | select(.name == "eduide-control-plane") | .version' <<< "$META")
+              if [[ -z "$DEP" ]]; then
+                echo "::error::eduide chart ${CV} (${ENVNAME}) has no eduide-control-plane dependency"; exit 1
+              fi
+              if [[ -z "$V" || "$(printf '%s\n%s\n' "$V" "$DEP" | sort -V | tail -1)" != "$V" ]]; then
+                V="$DEP"; FROM="$ENVNAME"
+              fi
+            fi
+          done
+          echo "::notice::control plane boards ${V}, derived from ${FROM}"
           # The JSON is taken from the chart package rather than rendered: the
           # chart's schema needs a whole installation's values to render at all.
           helm pull oci://ghcr.io/eduide/eduide-control-plane/charts/eduide-control-plane \

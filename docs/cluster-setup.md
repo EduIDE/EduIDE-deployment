@@ -284,8 +284,11 @@ If an environment on the cluster has `stack: go`, the same workflow also
 installs the CRD chart `eduide-control-plane-crds` at `spec.controlPlaneCRDs` as
 release `eduide-crds` in `eduide-system`. It also writes the Grafana boards of the control plane
 ("EduIDE control plane" and "EduIDE usage") from the `eduide-control-plane`
-chart at `spec.controlPlaneDashboards` into `cattle-dashboards`, as ConfigMap
-`eduide-go-control-plane-dashboards`. One copy serves every go environment on
+chart into `cattle-dashboards`, as ConfigMap
+`eduide-go-control-plane-dashboards`. The chart version is not written down: it is the
+`eduide-control-plane` dependency of the pinned `eduide` chart of each go environment on the cluster (the highest
+wins), so it follows the environments. A deploy warns when the boards on its cluster are older than
+the control plane it just deployed; run `Bootstrap cluster` then. One copy serves every go environment on
 the cluster, because both boards have a namespace picker; the deploy cannot
 write them, its credentials stop at the environment namespace. The 3.x `eduide-cluster` chart is not
 used while Theia Cloud CRDs exist. A cluster with only go environments gets
