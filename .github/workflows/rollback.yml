@@ -6,6 +6,9 @@
 # Limits, worth knowing before relying on this:
 #   - Session and Workspace CRs and PVCs are untouched, so running sessions
 #     survive a rollback.
+#   - Works for both stacks: the release is called `eduide` on java and go
+#     environments alike. Going back across the 2.x/3.x line is not a rollback
+#     but a stack switch, see docs/rollout-3.0-tum-production.md.
 #   - CRDs live in the cluster release, not this one, so rolling back across a
 #     CRD schema change is NOT covered. Within a major version this is safe;
 #     across one, roll the cluster release back too.
@@ -18,7 +21,7 @@ on:
       environment:
         required: true
         type: choice
-        options: [test1.eduide.student.k8s.aet.cit.tum.de, test2.eduide.student.k8s.aet.cit.tum.de, e2e.eduide.student.k8s.aet.cit.tum.de, staging.eduide.student.k8s.aet.cit.tum.de, eduide.artemis.cit.tum.de, bonn.eduide.aet.cit.tum.de, mannheim.eduide.aet.cit.tum.de]
+        options: [test1.eduide.student.k8s.aet.cit.tum.de, test2.eduide.student.k8s.aet.cit.tum.de, test3.eduide.student.k8s.aet.cit.tum.de, e2e.eduide.student.k8s.aet.cit.tum.de, staging.eduide.student.k8s.aet.cit.tum.de, eduide.artemis.cit.tum.de, bonn.eduide.aet.cit.tum.de, mannheim.eduide.aet.cit.tum.de]
       revision:
         description: "Helm revision to roll back to (blank goes back one)"
         required: false

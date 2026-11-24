@@ -2,6 +2,15 @@
 
 This guide explains how to configure Keycloak authentication for Theia Cloud deployments.
 
+> **Go stack (EduIDE 3.x).** The gateway client (`gatewayClientID`) needs the
+> valid redirect URI `https://<instance host>/oauth2/callback`; its secret is
+> the GitHub Environment secret `OIDC_CLIENT_SECRET`. test1 to test3 and Bonn
+> use one client `eduide` for the gateway and the landing page (`clientIDs`),
+> unchanged from 2.x, and the login works on both. A separate confidential
+> gateway client is possible but not needed. Hosts: the service host serves the landing page
+> and `/api/v1`, the instance host the sessions, `webview.<instance host>` the
+> webviews.
+
 ## Overview
 
 Theia Cloud uses Keycloak (via OAuth2 Proxy) to provide authentication and authorization. Each deployment requires:

@@ -47,6 +47,14 @@
         "gatewayClassName": {
           "type": "string"
         },
+        "controlPlaneCRDs": {
+          "type": "string",
+          "description": "Version of the eduide-control-plane-crds chart. Bootstrap installs it (release eduide-crds in eduide-system) when any environment on this cluster has stack go. Required then."
+        },
+        "controlPlaneDashboards": {
+          "type": "string",
+          "description": "Version of the eduide-control-plane chart whose Grafana boards bootstrap writes to cattle-dashboards as ConfigMap eduide-go-control-plane-dashboards, when any environment on this cluster has stack go. Omit to skip the boards."
+        },
         "nodeSelector": {
           "type": "object",
           "description": "Labels a node must carry to run EduIDE: sessions, operator, service, landing page, image preloading and the conversion webhook. Omit to use every node. Sessions are pinned from chart 2.8.0 on; older charts pin only image preloading (2.6.0 and later).",

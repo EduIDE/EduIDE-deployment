@@ -9,6 +9,15 @@ spec:
   storageClassName: longhorn
   gatewayClassName: envoy
 
+  # CRDs of the EduIDE 3.x Go control plane, installed by bootstrap once an
+  # environment on this cluster has `platform.stack: go`. Safe next to the 2.x
+  # Theia Cloud CRDs; the full 3.x eduide-cluster chart is not.
+  controlPlaneCRDs: 0.2.2
+
+  # Version of the eduide-control-plane chart whose Grafana boards bootstrap
+  # writes to cattle-dashboards (one copy per cluster, with a namespace picker).
+  controlPlaneDashboards: 0.2.3
+
   # EduIDE runs on the 20 `pve` workers (16 CPU, 32 GB), not on the `ito`
   # workers of half that size. Both pools stay open to other workloads, so a
   # selector is enough; no taint.

@@ -1,131 +1,113 @@
-# Helm values for the bonn environment.
+# Helm values for the bonn environment, on the Go control plane (EduIDE 3.x).
 #
 # A plain values file. The deploy runs:
-#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
+#   helm upgrade --install eduide ... -f cluster-defaults.yaml \
+#     -f environments/_base-go.yaml -f this file
 #
-# _base.yaml carries what is identical everywhere; this file carries what is
-# not. Anything appearing here for more than one environment belongs in
-# _base.yaml instead.
-#
-# Deployment metadata - which cluster, which namespace, which chart version -
-# is in env.yaml next door, because it configures the deploy rather than the
-# chart.
-# The Gradle/Maven dependency cache is not deployed here. The operator's
-# enableBuildCaching and enableDependencyCaching are false in every
-# environment, so no session ever reached it - on a production installation
-# that is a Redis, a cache server and a 20Gi reposilite PVC serving nobody.
-# The chart declares it with `condition: eduide-shared-cache.enabled`, so the
-# one key switches off the subchart, its vendored reposilite and the PVC.
+# Storage class, node pool, Gateway class and the ACME contact come from
+# clusters/eduide.yaml. Deployment metadata is in env.yaml next door. The old
+# Java values (Theia Cloud, 2.7.3) are in git history only.
 
-app:
-  name: EduIDE Bonn
-gateway:
-  parentRefs:
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: bonn-landing
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: bonn-service
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: bonn-instances
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: bonn-webview
-landingPage:
-  # Bonn does not promise persistent workspaces, so a launch is ephemeral and
-  # the volume goes with the session. Same as the chart-wide default in
-  # _base.yaml; stated here because it is a decision, and because it is what
-  # lets this installation keep a warm pool at all - see operator.eagerStart
-  # below.
-  ephemeralStorage: true
-  # No trustedArtemisHosts until this installation's Artemis server is known,
-  # so its links still need a Launch click.
-  privacy:
-    # Anonymised usage data from this installation is evaluated for research.
-    # A processing purpose rather than a preference, so it is stated only on the
-    # production installations that have a basis for it, not on test or staging.
-    scientificUse: true
-  appDefinition: javascript
-  infoTitle: Welcome to EduIDE (Bonn)
-hosts:
-  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
-  #   bonn.eduide.aet.cit.tum.de                      landing page
-  #   service.bonn.eduide.aet.cit.tum.de              REST service
-  #   instance.bonn.eduide.aet.cit.tum.de             session ingress
-  #   *.webview.instance.bonn.eduide.aet.cit.tum.de   session webviews
-  # --- end hostnames
-  configuration:
-    baseHost: eduide.aet.cit.tum.de
-    service: service.bonn
-    landing: bonn
-    instance: instance.bonn
-  allWildcardInstances:
-  - '*.webview.'
-# Bonn keeps a warm pool, unlike Mannheim, so a student gets a session at once
-# instead of waiting for a cold multi-gigabyte pull.
-#
-# This is only available because Bonn's sessions are ephemeral. A prewarmed
-# instance belongs to no user yet, so it has no workspace and no PVC, and a
-# volume cannot be mounted into a running pod afterwards - an installation that
-# promises persistent workspaces therefore cannot keep a pool, which
-# test-deploy-logic.sh enforces. Mannheim is that case; Bonn is not.
-#
-# Going back to lazy means removing the warm pool by hand as well:
-# docs/environments.md, "Switching an environment to lazy start".
-operator:
-  eagerStart: true
-# Same server and realm as Mannheim: TUM's Keycloak with the realm for
-# non-TUM users. The trailing slash on authUrl is load-bearing - the templates
-# append `realms/<realm>` straight onto it.
-#
-# cookieSecret is not here. It comes from the GitHub Environment secret
-# THEIA_KEYCLOAK_COOKIE_SECRET, which the deploy appends as its own values
-# file. clientSecret stays at the chart's dummy because the client is public.
-keycloak:
-  enable: true
-  authUrl: https://keycloak.aet.cit.tum.de/
+x-hosts: &hosts
+  service: bonn.eduide.aet.cit.tum.de
+  instance: instance.bonn.eduide.aet.cit.tum.de
+  webview: webview.instance.bonn.eduide.aet.cit.tum.de
+
+x-gateway: &gateway
+  name: eduide
+  namespace: eduide-bonn
+  sectionName: ""
+  # Only the HTTPS listeners: sessions and pages are never served on the ACME :80 listeners.
+  port: 443
+
+x-keycloak: &keycloak
+  url: https://keycloak.aet.cit.tum.de/
   realm: external_register
   clientId: eduide
-eduide-shared-cache:
-  enabled: false
 
-# ---------------------------------------------------------------------------
-# Applications
-# ---------------------------------------------------------------------------
-# Bonn offers Javascript only. `enabled` is what limits that - leaving it empty
-# renders the whole catalog and preloads every image onto the node.
-appDefinitions:
-  enabled:
-    - javascript
-  # Overrides the chart defaults (2 CPU, 2400M, 24h) for this installation.
-  # These render from values on every deploy, unlike minInstances which is read
-  # back from the live resource.
-  defaults:
-    limitsCpu: "4"
-    limitsMemory: 3000M
-    # Minutes. 3 hours.
-    timeout: 180
-  apps:
-    # Removes the AppDefinition that the pre-2.7.0 name created, so the rename
-    # does not leave two of them side by side.
-    javascript-latest: null
-    javascript:
-      # Thirty sessions kept warm, filled because operator.eagerStart is true
-      # above. Only a bootstrap default though: the chart reads the live value
-      # back on every upgrade so the admin scaling API is not reset, so
-      # changing this alone does nothing to an AppDefinition that already
-      # exists - patch the live resource too.
-      minInstances: 30
-      # image and landingPage.label now come from appDefinitions.catalog.
-# Reap a workspace this long after its last session. Default is 14 days.
-theia-workspace-garbage-collector:
-  enabled: true
-  env:
-    WORKSPACE_TTL: "1209600s"
+# Bonn offers JavaScript only, as the standalone edition. Saved workspaces are
+# the point of this installation: the template allows only a volume, so every
+# session has one. A workspace that persists cannot start from a warm pool (a
+# volume cannot be mounted into a running pod), so there is no pool and a
+# session always starts cold.
+templates:
+  javascript-standalone:
+    persistence: {allowed: [volume], default: volume}
+    # More generous than the 2.x defaults, as before. Idle is the 3 hours Bonn
+    # had (timeout: 180 minutes); max stays at the 24h chart default.
+    timeouts: {idle: 180m, warning: 170m, max: 24h}
+    resources:
+      limits: {cpu: "4", memory: 3000M}
 
-# Scraped by the cluster's PodMonitors. On by default; stated so it is a
-# decision rather than an accident.
-monitoring:
-  enabled: true
+eduide-control-plane:
+  config:
+    deployment: bonn
+    hosts: *hosts
+    gateway: *gateway
+    # As on 2.x, where sessionsPerUser was 10.
+    sessionsPerUser: 10
+    oidc:
+      # TUM's Keycloak with the realm for non-TUM users, same as Mannheim.
+      issuerURL: https://keycloak.aet.cit.tum.de/realms/external_register
+      clientIDs: [eduide]
+      gatewayClientID: eduide
+    allowedHosts:
+    - github.com
+    - gitlab.com
+    - codeberg.org
+    workspaces:
+      # Reap a workspace 90 days after its last session (2.x: 14 days).
+      retention: 2160h
+    placement:
+      # Pulls the IDE and agent images onto the node ahead of the first start.
+      prepull: {enabled: true}
+  networkPolicy:
+    monitoringNamespace: cattle-monitoring-system
+    # parma uses public address ranges inside the cluster: its own address, pods 198.18.0.0/16
+    # and services 198.19.0.0/16. Sessions have no business reaching any of them.
+    sessionEgressExtraDeny: [131.159.88.106/32, 198.18.0.0/16, 198.19.0.0/16]
+  monitoring:
+    podMonitor: {enabled: true}
+    # The AlertmanagerConfig in eduide-system routes on this namespace (docs/monitoring-setup.md).
+    rules: {enabled: true, extraLabels: {namespace: eduide-system}}
+    # The dashboard ConfigMap would go to cattle-dashboards, outside the namespace the deploy
+    # credentials may write. Bootstrap ships the boards instead (spec.controlPlaneDashboards).
+    dashboard: {enabled: false}
+  oidc:
+    # Set, so Envoy Gateway does not discover them through the OIDC upstream.
+    authorizationEndpoint: https://keycloak.aet.cit.tum.de/realms/external_register/protocol/openid-connect/auth
+    tokenEndpoint: https://keycloak.aet.cit.tum.de/realms/external_register/protocol/openid-connect/token
+    endSessionEndpoint: https://keycloak.aet.cit.tum.de/realms/external_register/protocol/openid-connect/logout
+
+eduide-landing-page:
+  host: bonn.eduide.aet.cit.tum.de
+  gateway: *gateway
+  config:
+    title: EduIDE Bonn
+    keycloak: *keycloak
+  # Texts the chart requires. Controller and contact are the TUM ones every
+  # installation here has used since 2.x.
+  legal:
+    imprint:
+      markdown: |
+        # Imprint
+
+        Technische Universität München (TUM)
+        Boltzmannstrasse 3, 85748 Garching
+
+        Responsible: Prof. Dr. Stephan Krusche
+
+        Contact: support.aet@xcit.tum.de
+    privacy:
+      markdown: |
+        # Privacy
+
+        Controller: Technische Universität München (TUM), represented by
+        Prof. Dr. Stephan Krusche, Boltzmannstrasse 3, 85748 Garching,
+        support.aet@xcit.tum.de.
+
+        Data protection officer: datenschutz(at)tum.de.
+
+        EduIDE stores your files in a personal workspace. The workspace expires
+        90 days after your last session and is deleted one day later. Anonymised usage data from this
+        installation is evaluated for research.

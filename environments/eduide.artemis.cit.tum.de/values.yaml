@@ -1,121 +1,113 @@
-# Helm values for the tum-production environment.
+# tum-production on the Go control plane (EduIDE 3.x), switched on 2026-11-21
+# following docs/rollout-3.0-tum-production.md (option B, in place).
 #
-# A plain values file. The deploy runs:
-#   helm upgrade --install eduide ... -f environments/_base.yaml -f this file
-#
-# _base.yaml carries what is identical everywhere; this file carries what is
-# not. Anything appearing here for more than one environment belongs in
-# _base.yaml instead.
-#
-# Deployment metadata - which cluster, which namespace, which chart version -
-# is in env.yaml next door, because it configures the deploy rather than the
-# chart.
-#
-# HOSTNAME EXCEPTION. Every other production installation sits under
-# eduide.aet.cit.tum.de (bonn.eduide..., mannheim.eduide...). This one is
-# under artemis.cit.tum.de, a different parent, because it runs behind a
-# different load balancer. That is deliberate - do not "fix" it to match the
-# others, and note it has no `aet` label where the others do.
-# The Gradle/Maven dependency cache is not deployed here. The operator's
-# enableBuildCaching and enableDependencyCaching are false in every
-# environment, so no session ever reached it - on a production installation
-# that is a Redis, a cache server and a 20Gi reposilite PVC serving nobody.
-# The chart declares it with `condition: eduide-shared-cache.enabled`, so the
-# one key switches off the subchart, its vendored reposilite and the PVC.
+# Storage class (longhorn), node pool (aet.cit.tum.de/pool: pve), Gateway class
+# (envoy) and the ACME contact come from clusters/tum-production.yaml.
 
-app:
-  name: Artemis Online IDE
-gateway:
-  parentRefs:
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: prod-landing
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: prod-service
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: prod-instances
-  - name: theia-shared-gateway
-    namespace: eduide-system
-    sectionName: prod-webview
-operator:
-  replicas: 3
-landingPage:
-  # Artemis links from this host start the IDE without a Launch click.
-  trustedArtemisHosts:
-    - artemis.cit.tum.de
-    # The host Artemis actually puts in its links: artemis.cit.tum.de redirects
-    # here, and the landing page compares hosts exactly.
-    - artemis.tum.de
-  privacy:
-    # Anonymised usage data from this installation is evaluated for research.
-    # A processing purpose rather than a preference, so it is stated only on the
-    # production installations that have a basis for it, not on test or staging.
-    scientificUse: true
-  # The app names lost their -latest suffix in chart 2.7.0; _base.yaml still
-  # carries the old one for the installations not yet moved.
-  appDefinition: java-17-templates
-  infoTitle: Welcome to EduIDE Cloud
-hosts:
-  # --- hostnames served by this installation (checked by test-deploy-logic.sh)
-  #   eduide.artemis.cit.tum.de                      landing page
-  #   service.eduide.artemis.cit.tum.de              REST service
-  #   instance.eduide.artemis.cit.tum.de             session ingress
-  #   *.webview.instance.eduide.artemis.cit.tum.de   session webviews
-  # --- end hostnames
-  configuration:
-    baseHost: artemis.cit.tum.de
-    service: service.eduide
-    landing: eduide
-    instance: instance.eduide
-  allWildcardInstances:
-  - '*.webview.'
-keycloak:
-  enable: true
-  authUrl: https://keycloak.aet.cit.tum.de/
+x-hosts: &hosts
+  service: eduide.artemis.cit.tum.de
+  instance: instance.eduide.artemis.cit.tum.de
+  webview: webview.instance.eduide.artemis.cit.tum.de
+
+x-gateway: &gateway
+  name: eduide
+  namespace: eduide-tum-production
+  sectionName: ""
+  # Only the HTTPS listeners: sessions and pages are never served on the ACME :80 listeners.
+  port: 443
+
+x-keycloak: &keycloak
+  url: https://keycloak.aet.cit.tum.de/
   realm: tum
   clientId: eduide
-eduide-shared-cache:
-  enabled: false
-# ---------------------------------------------------------------------------
-# Session egress
-# ---------------------------------------------------------------------------
-# AET's pod and service CIDRs (198.18.0.0/16, 198.19.0.0/16) are outside the
-# chart's private range defaults, so they are added, as on tum-student.
-# 131.159.88.0/24 holds AET's nodes, its load balancers and the API server;
-# sessions have no business there. Artemis (131.159.89.175) stays reachable.
-# IPv6 egress is denied entirely, because the chart only allows 0.0.0.0/0.
-networkPolicies:
-  privateEgressCidrs:
-  - 10.0.0.0/8
-  - 172.16.0.0/12
-  - 192.168.0.0/16
-  - 100.64.0.0/10
-  - 198.18.0.0/15
-  - 131.159.88.0/24
-# ---------------------------------------------------------------------------
-# Applications
-# ---------------------------------------------------------------------------
-# Exactly what Artemis production launches (ls1intum/artemis-ansible#116:
-# java-17, java-25, c, javascript, python) plus the playground variants the
-# catalog has. That is the whole catalog today; listed anyway so a new catalog
-# entry does not reach production unasked.
-appDefinitions:
-  enabled:
-    - java-17
-    - java-17-templates
-    - java-25
-    - java-25-templates
-    - c
-    - c-templates
-    - javascript
-    - python
-  apps:
-    java-25:
-      # Kept warm like java-17 (the chart's catalog default is 0). Only a
-      # bootstrap default: the chart reads the live value back on every upgrade
-      # so the admin scaling API is not reset, so changing this alone does
-      # nothing to an AppDefinition that already exists - patch the live
-      # resource too.
-      minInstances: 3
+
+# Artemis sends the repository URL with the student's VCS token (Artemis#14702).
+templateDefaults:
+  gitUriAllowCredentials: true
+
+# The artemis editions are launched from Artemis and are not listed on the
+# landing page; the standalone editions are what a student picks there. The
+# apps are the ones Artemis production launches today.
+templates:
+  # Warm pools like today's minInstances (java-17 and java-25: 3). The cap is
+  # idle plus claimed instances of the pool, so it bounds a whole exam.
+  java-17:
+    pool: {minIdle: 3, maxInstances: 200}
+  java-25:
+    pool: {minIdle: 3, maxInstances: 200}
+  c: {}
+  javascript: {}
+  python: {}
+  java-17-standalone: {}
+  java-25-standalone: {}
+  c-standalone: {}
+  javascript-standalone: {}
+  python-standalone: {}
+
+eduide-control-plane:
+  service:
+    # As operator.replicas on 2.x.
+    replicas: 3
+  config:
+    deployment: tum-production
+    hosts: *hosts
+    gateway: *gateway
+    # As on 2.x, where sessionsPerUser was 10.
+    sessionsPerUser: 10
+    oidc:
+      issuerURL: https://keycloak.aet.cit.tum.de/realms/tum
+      clientIDs: [eduide]
+      gatewayClientID: eduide
+    allowedHosts:
+    - github.com
+    - gitlab.com
+    - codeberg.org
+    # The hosts Artemis puts in repository URLs and ARTEMIS_URL.
+    - artemis.cit.tum.de
+    - artemis.tum.de
+    placement:
+      prepull: {enabled: true}
+  networkPolicy:
+    monitoringNamespace: cattle-monitoring-system
+    # AET's pod and service CIDRs (198.18.0.0/16, 198.19.0.0/16) and 131.159.88.0/24 (nodes, load
+    # balancers, API server). Artemis (131.159.89.175) stays reachable.
+    sessionEgressExtraDeny: [131.159.88.0/24, 198.18.0.0/15]
+  monitoring:
+    podMonitor: {enabled: true}
+    rules: {enabled: true, extraLabels: {namespace: eduide-system}}
+    # The dashboard ConfigMap would go to cattle-dashboards, outside the namespace the deploy
+    # credentials may write. Bootstrap ships the boards instead (spec.controlPlaneDashboards).
+    dashboard: {enabled: false}
+  oidc:
+    authorizationEndpoint: https://keycloak.aet.cit.tum.de/realms/tum/protocol/openid-connect/auth
+    tokenEndpoint: https://keycloak.aet.cit.tum.de/realms/tum/protocol/openid-connect/token
+    endSessionEndpoint: https://keycloak.aet.cit.tum.de/realms/tum/protocol/openid-connect/logout
+
+eduide-landing-page:
+  host: eduide.artemis.cit.tum.de
+  gateway: *gateway
+  config:
+    title: Artemis Online IDE
+    keycloak: *keycloak
+  legal:
+    imprint:
+      markdown: |
+        # Imprint
+
+        Technische Universität München (TUM)
+        Boltzmannstrasse 3, 85748 Garching
+
+        Responsible: Prof. Dr. Stephan Krusche
+
+        Contact: support.aet@xcit.tum.de
+    privacy:
+      markdown: |
+        # Privacy
+
+        Controller: Technische Universität München (TUM), represented by
+        Prof. Dr. Stephan Krusche, Boltzmannstrasse 3, 85748 Garching,
+        support.aet@xcit.tum.de.
+
+        Data protection officer: datenschutz(at)tum.de.
+
+        Anonymised usage data from this installation is evaluated for research.

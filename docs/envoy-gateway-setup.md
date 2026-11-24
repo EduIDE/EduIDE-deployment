@@ -24,6 +24,16 @@ One Gateway per cluster rather than one per environment, because a Gateway is
 cluster-scoped in everything but name: it owns an address, a certificate set and
 a data plane.
 
+## Go environments bring their own Gateway
+
+An environment on the go stack (EduIDE 3.x) renders a Gateway in its own
+namespace with listeners for its service, instance and webview hosts, plus
+`:80` listeners for ACME. It adds nothing to the shared Gateway below, which
+serves the java environments only. Both kinds of Gateway can sit on one
+GatewayClass only if the class merges them, so `clusters/eduide.yaml` sets
+`mergeGateways: true` in its EnvoyProxy. Applying that restarts Envoy, which
+every installation on the cluster sits behind: do it in a maintenance window.
+
 ## Listeners are derived, not written
 
 Four listeners per environment, named after the `sectionName`s that environment
@@ -45,7 +55,7 @@ cannot disagree with the route that attaches to it, and adding an environment
 never means editing a second file.
 
 The prefix is not the landing host. Production's landing host is `eduide` and
-its sections are `prod-*`; the `e2e.` one's are `e2e-*`. CI rejects two environments
+its sections were `prod-*` on the Java stack. CI rejects two environments
 on one cluster sharing a prefix.
 
 `create: false` matters. With `create: true` the tenant chart renders a Gateway

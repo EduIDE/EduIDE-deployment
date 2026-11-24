@@ -134,13 +134,21 @@ spec:
   cluster: eduide            # must match a file in clusters/
   namespace: eduide-bonn     # every namespace carries the eduide- prefix
   platform:
+    stack: java              # java (default, chart 2.x) | go (chart 3.x)
     chartVersion: <chart version>
     channel: release         # release | main
 ```
 
-`channel: main` makes the deploy resolve an immutable `latest-<sha>` tag and
-restart the deployments afterwards. `release` pins whatever the values file
-says. Production is always `release`.
+`stack: go` runs the Go control plane: values go on top of `_base-go.yaml`, the
+cluster must pin `spec.controlPlaneCRDs`, the Gateway is rendered by the
+release itself (no `parentRefs`, no shared listeners), and the GitHub
+Environment needs `OIDC_CLIENT_SECRET` instead of `THEIA_KEYCLOAK_COOKIE_SECRET`.
+Copy `test3.eduide.student.k8s.aet.cit.tum.de` as the starting point.
+
+`channel: main` marks an environment that follows a floating image tag: on the
+java stack the deploy restarts operator, service and landing page afterwards to
+force a pull. `release` installs the images the chart pins. Production is
+always `release`.
 
 ### 2. `environments/<name>/values.yaml`
 
@@ -386,7 +394,7 @@ the ConfigMap first if the rename is genuinely intended.
 ## Things that are not what they look like
 
 **The Gateway section prefix is not the landing host.** Production's landing
-host is `eduide` but its Gateway sections are `prod-*`; the `e2e.` one's are `e2e-*`.
+host is `eduide` but its Gateway sections were `prod-*` on the Java stack.
 Getting this wrong attaches routes to sections that do not exist, and nothing
 fails until traffic does.
 
@@ -417,7 +425,7 @@ The end-to-end suite lives in
 The environment name and the landing page host are the same string, so the
 name is all the suite needs. The test account must exist in that
 environment's Keycloak realm, and the environment should offer the apps the
-suite launches (e2e offers the whole catalog for that reason).
+suite launches. Since 2026-11-22 e2e runs on the Go stack (3.x), so the suite must speak the 3.x API there.
 
 ## Switching an environment to lazy start
 

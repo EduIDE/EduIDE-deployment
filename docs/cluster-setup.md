@@ -29,7 +29,8 @@ that reports itself healthy and serves nothing.
 | The cluster identity ConfigMap | `Bootstrap cluster` |
 | The operator, service, landing page, routes, apps | `Deploy` |
 
-`Bootstrap cluster` installs the `eduide-cluster` chart and nothing else. It
+`Bootstrap cluster` installs the `eduide-cluster` chart (on a cluster with go
+environments also the control plane CRDs and boards) and nothing else. It
 does not install a Gateway controller, cert-manager or a CNI, and it assumes the
 platform underneath already works. It does create the ACME `ClusterIssuer` the
 certificates it derives point at - see step 3.
@@ -276,6 +277,20 @@ bootstrap a cluster that already carries a different name in
 `KUBECONFIG` on the GitHub Environment points somewhere unexpected.
 
 Then run it again with `dry_run: false`.
+
+### go environments on this cluster
+
+If an environment on the cluster has `stack: go`, the same workflow also
+installs the CRD chart `eduide-control-plane-crds` at `spec.controlPlaneCRDs` as
+release `eduide-crds` in `eduide-system`. It also writes the Grafana boards of the control plane
+("EduIDE control plane" and "EduIDE usage") from the `eduide-control-plane`
+chart at `spec.controlPlaneDashboards` into `cattle-dashboards`, as ConfigMap
+`eduide-go-control-plane-dashboards`. One copy serves every go environment on
+the cluster, because both boards have a namespace picker; the deploy cannot
+write them, its credentials stop at the environment namespace. The 3.x `eduide-cluster` chart is not
+used while Theia Cloud CRDs exist. A cluster with only go environments gets
+just the CRD chart, the control plane boards and the identity stamp; cluster alerting and the
+GatewayClass then have to be provided another way.
 
 ## Step 7: verify
 

@@ -9,7 +9,8 @@ chart templates live here** - the charts are in
 clusters/<name>.yaml             a cluster: storage, gateway class, runner
 environments/<name>/env.yaml     how an installation is deployed
 environments/<name>/values.yaml  how the chart is configured
-environments/_base.yaml          chart settings identical everywhere
+environments/_base.yaml          chart settings identical on the java stack (2.x)
+environments/_base-go.yaml       chart settings identical on the go stack (3.x)
 schemas/                         JSON schemas the manifests are validated against
 renovate.json                    who may bump the chart version, and when
 ```
@@ -18,9 +19,20 @@ An environment is one namespace on one cluster.
 
 | Cluster | Environments |
 |---|---|
-| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`e2e.…`<br>`staging.…` |
+| `tum-student` | `test1.eduide.student.k8s.aet.cit.tum.de`<br>`test2.…`<br>`test3.…`<br>`e2e.…`<br>`staging.…` |
 | `tum-production` | `eduide.artemis.cit.tum.de` |
 | `eduide` | `bonn.eduide.aet.cit.tum.de`<br>`mannheim.eduide.aet.cit.tum.de` |
+
+**Two stacks run side by side**, chosen per environment by
+`spec.platform.stack` in `env.yaml` (`java` when omitted):
+
+| Stack | Chart | Environments |
+|---|---|---|
+| `java` | `eduide` 2.x (Theia Cloud), values on `_base.yaml` | `mannheim` |
+| `go` | `eduide` 3.x (EduIDE 3.0, Go control plane), values on `_base-go.yaml` | `bonn`, `test1`, `test2`, `test3`, `e2e`, `staging`, `eduide.artemis.cit.tum.de` |
+
+`eduide.artemis.cit.tum.de` moved to `go` on 2026-11-21 by
+[its rollout plan](docs/rollout-3.0-tum-production.md) (option B, in place).
 
 **An environment is named after the hostname it serves.** The directory under
 `environments/`, the GitHub Environment and the landing host are the same
@@ -41,7 +53,10 @@ states it.
 New cluster? Start at [Preparing a cluster](docs/cluster-setup.md) - it covers
 what the workflows do and what has to be set up by hand first.
 
-Two charts, always at the same version. The cluster one first.
+Two charts, always at the same version. The cluster one first. (On the `go`
+stack the cluster half is only the CRD chart `eduide-control-plane-crds`,
+which `Bootstrap cluster` installs as release `eduide-crds`; a `go`
+environment renders its own Gateway.)
 
 ```bash
 # once per cluster - CRDs, conversion webhook, ClusterRoles, issuers,
@@ -109,10 +124,14 @@ environment and they hold different secrets:
 
 | | Named | Holds |
 |---|---|---|
-| Per environment, for `Deploy` | the directory under `environments/` | `KUBECONFIG`, `THEIA_KEYCLOAK_COOKIE_SECRET` |
+| Per environment, for `Deploy` | the directory under `environments/` | `KUBECONFIG`; `THEIA_KEYCLOAK_COOKIE_SECRET` (java) or `OIDC_CLIENT_SECRET` (go) |
 | Per cluster, for `Bootstrap cluster` | `spec.bootstrapEnvironment`, by convention `cluster-<name>` | `KUBECONFIG`, `THEIA_WILDCARD_CERTIFICATE_CERT`, `THEIA_WILDCARD_CERTIFICATE_KEY` |
 
-`THEIA_ADMIN_API_TOKEN` is a repository secret today, so every environment
+`OIDC_CLIENT_SECRET` is the client secret of the confidential gateway client in
+Keycloak. The deploy writes it into the Secret `eduide-oidc` (key
+`client-secret`) in the namespace before `helm` runs.
+
+`THEIA_ADMIN_API_TOKEN` (java only) is a repository secret today, so every environment
 shares one token. The token alone does not enable the admin scaling endpoints:
 from Cloud 3.0.x (chart 3.0.0) they also need `service.adminApiEnabled: true`,
 which is off by default.
@@ -131,6 +150,11 @@ how to produce it, and what each environment holds today.
 helm template eduide oci://ghcr.io/eduide/charts/eduide --version <chart version> \
   -f environments/_base.yaml -f environments/test1/values.yaml
 ```
+
+`go` environments render in the same script once their chart is published
+(the 3.0.0 release candidates are not yet; the script then prints SKIP). To
+render them now, build the chart's dependencies in a local EduIDE-Helm checkout
+and point `EDUIDE_CHART_GO` at it.
 
 To test against a chart that is not published yet:
 
@@ -151,6 +175,7 @@ renders every environment.
 | [Environments](docs/environments.md) | the model, adding one, what is derived |
 | [Keycloak](docs/keycloak-setup.md) | clients, scopes, redirect URIs |
 | [Envoy Gateway](docs/envoy-gateway-setup.md) | the Gateway API layer |
+| [Rollout of 3.0 on tum-production](docs/rollout-3.0-tum-production.md) | prerequisites, parallel run, rollback, checklist |
 | [Monitoring](docs/monitoring-setup.md) | PodMonitors and dashboards |
 | [TUM certificates](docs/tum-certificates.md) | the wildcard certificate |
 | [AGENTS.md](AGENTS.md) | conventions, and the traps worth knowing |
