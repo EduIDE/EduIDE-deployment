@@ -31,9 +31,11 @@ string, so there is nothing to map and nothing to keep in sync.
 
 **Two stacks, chosen per environment** by `spec.platform.stack` (`java` when
 omitted). `java` is chart `eduide` 2.x on Theia Cloud with `_base.yaml`; `go` is
-chart `eduide` 3.x, the Go control plane, with `_base-go.yaml`. Today `bonn`,
-`test3` and `eduide.artemis.cit.tum.de` are `go` (production since 2026-11-21,
-`docs/rollout-3.0-tum-production.md`), everything else is `java`. `deploy.yml`, `bootstrap-cluster.yml`,
+chart `eduide` 3.x, the Go control plane, with `_base-go.yaml`. Today every
+environment except `mannheim` is `go`: `test1`, `test2`, `test3`, `e2e`,
+`staging`, `bonn` and `eduide.artemis.cit.tum.de` (production since 2026-11-21,
+`docs/rollout-3.0-tum-production.md`). Only `mannheim` has no `stack` in its
+`env.yaml` and is `java`. `deploy.yml`, `bootstrap-cluster.yml`,
 `live-summary.sh` and `test-deploy-logic.sh` branch on it; java behaviour is
 unchanged. Never put a 3.x chart version on a java environment or the reverse.
 
