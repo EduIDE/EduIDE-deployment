@@ -217,6 +217,15 @@ vendored reposilite chart with its own key), so the deploy sets both;
 `test-deploy-logic.sh` renders every environment against a sentinel and fails if
 any storage key escapes the cluster default.
 
+**The usage archive volume deadlocks a first deploy on parma.** Every go
+environment has a PersistentVolumeClaim for the usage archive (`_base-go.yaml`).
+parma's only class, `local-path`, binds a volume only when a pod mounts it
+(`WaitForFirstConsumer`), the archive CronJob runs at night, and `helm --wait`
+waits for the claim to be Bound: the first deploy of a go environment there
+times out and `--atomic` rolls it back, while the claim stays Pending. Bonn hit
+it on 2026-11-24. Bind it once with a short pod that mounts the claim, then
+deploy again; stud and aet bind immediately and are not affected.
+
 **The node pool is a cluster property too.** `spec.nodeSelector` in
 `clusters/<name>.yaml` is rendered by the deploy into `global.nodeSelector`,
 and `preloading.nodeSelector`, and by
