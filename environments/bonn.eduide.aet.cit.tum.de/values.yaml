@@ -51,6 +51,10 @@ eduide-control-plane:
       issuerURL: https://keycloak.aet.cit.tum.de/realms/external_register
       clientIDs: [eduide]
       gatewayClientID: eduide
+      # Admin panel: client role eduide-admin on client eduide in realm external_register.
+      admin: {rolePath: resource_access.eduide.roles, role: eduide-admin}
+    admin:
+      prometheusURL: http://rancher-monitoring-prometheus.cattle-monitoring-system:9090
     allowedHosts:
     - github.com
     - gitlab.com
