@@ -29,6 +29,8 @@ x-keycloak: &keycloak
 # The Artemis editions get the repository URL with the VCS token (Artemis#14702).
 templateDefaults:
   gitUriAllowCredentials: true
+  # Preview deploys reuse the tag pr-<N> for new IDE image builds (needs an eduide chart with this value).
+  imagePullPolicy: Always
 
 templates:
   # The landing page offers the standalone editions; Artemis links start the unlisted artemis editions below.
