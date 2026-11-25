@@ -14,7 +14,7 @@ Facts:
 
 ### RET-01 Retention configuration
 Safety: prod-safe
-Steps: `k get cm $P-config -o jsonpath='{.data.config\.yaml}' | yq .workspaces`; `k get idetemplates -o json | jq -r '.items[] | .metadata.name + " " + (.spec.retention // "-")'`; `k get deploy | grep -c -i garbage`; `k get role $P-operator -o json | jq -c '.rules[] | select(.resources | index("ideworkspaces"))'`.
+Steps: `k get cm $P-config -o jsonpath='{.data.config\.yaml}' | yq -o json | jq .workspaces` (jq, not `yq '{a, b}'`, which mikefarah yq 4.x rejects); `k get idetemplates -o json | jq -r '.items[] | .metadata.name + " " + (.spec.retention // "-")'`; `k get deploy | grep -c -i garbage`; `k get role $P-operator -o json | jq -c '.rules[] | select(.resources | index("ideworkspaces"))'`.
 Expect: `workspaces` holds the `storageClassName` of the cluster and the limits (defaults 14 days retention, 24 h grace, 20 per user unless the values override them; record the source); templates carry no retention unless the values set one; no garbage collector Deployment exists; the operator Role can `delete` `ideworkspaces`. Production and Bonn: record the retention that the privacy page states and compare it with the config (it must be the same).
 
 ### RET-02 Deleting a workspace removes its volume
@@ -24,7 +24,7 @@ Steps:
 2. `ft_workspace ft-ret-ws <TPL_STD>`, wait for `Ready` and the PVC (`k get pvc ft-ret-ws`).
 3. `ft_session ft-ret-s <TPL_STD> ft-ret-ws`, `ft_wait ft-ret-s`.
 4. `k delete ideworkspace ft-ret-ws` and wait two minutes.
-Expect: the PVC `ft-ret-ws` exists with the workspace's name and the cluster's storage class; the session on the workspace is owned by it, so deleting the workspace removes the session (and with it the pod) and the PVC and its volume; the operator restart count is unchanged and its log has no error for the delete. The API route `DELETE /workspaces/<name>` does the same after stopping the session (API-06).
+Expect: the PVC `ft-ret-ws` exists with the workspace's name and the cluster's storage class; the session on the workspace is owned by it, so deleting the workspace removes the session (the service sets this owner reference in `launch.go`; `ft_session` sets it too when a workspace is given: without it the session keeps running and the PVC waits in `Terminating`) (and with it the pod) and the PVC and its volume; the operator restart count is unchanged and its log has no error for the delete. The API route `DELETE /workspaces/<name>` does the same after stopping the session (API-06).
 Cleanup: `ft_cleanup`.
 
 ### RET-03 Workspaces carry expiry data
@@ -66,7 +66,6 @@ Cleanup: `ft_cleanup`.
 
 - RET-04 and RET-06: the reconcile happens at `expiresAt + 1 s` (`RequeueAfter`); allow 30 seconds. Whether `kubectl annotate ... retain=true` on an `Expired` workspace clears `expiredAt` at once.
 - RET-08: that `kubectl delete pvc` completes while no pod mounts the volume (the PVC protection finalizer) and that the operator's cache sees the deletion within a minute.
-- RET-02: that deleting the IDEWorkspace removes a running session on it through the owner reference (the session has the workspace as non-controller owner, data-model "Ownership").
 - The deletion stage after the grace period has no live test.
 - Bonn's and production's retention statement on the privacy page versus `workspaces.retention` (needs a login-free read of the page).
 

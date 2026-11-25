@@ -16,7 +16,7 @@ Facts:
 
 ### OPR-01 Operator configuration
 Safety: prod-safe
-Steps: `k get deploy $P-operator -o jsonpath='{.spec.template.spec.containers[0].args}{"\n"}{.spec.template.spec.containers[0].env}{"\n"}'`; `k get cm $P-config -o jsonpath='{.data.config\.yaml}' | yq '{sessionsPerUser, workspaces, capacity, placement, agent, telemetry}'`; `k get lease eduide-operator -o jsonpath='{.spec.holderIdentity} {.spec.renewTime}{"\n"}'`.
+Steps: `k get deploy $P-operator -o jsonpath='{.spec.template.spec.containers[0].args}{"\n"}{.spec.template.spec.containers[0].env}{"\n"}'`; `k get cm $P-config -o jsonpath='{.data.config\.yaml}' | yq -o json | jq '{sessionsPerUser, workspaces, capacity, placement, agent, telemetry}'` (not `yq '{a, b}'`: mikefarah yq 4.x rejects it); `k get lease eduide-operator -o jsonpath='{.spec.holderIdentity} {.spec.renewTime}{"\n"}'`.
 Expect: the operator runs one replica with `--config /etc/eduide/config.yaml`; the config names the agent image (same tag as the operator), the placement (node selector and node pool label of the cluster), `telemetry.userSaltFile`; the Lease is held by the operator pod and renewed within the last minute. Record the values (they hold no secrets).
 
 ### OPR-02 Cold session with a workspace: lifecycle and cleanup

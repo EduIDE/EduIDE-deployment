@@ -25,7 +25,7 @@ The plan describes the Go stack: the CRDs `IDETemplate`, `IDEPool`, `IDESession`
 
 Module 01 always runs first: it pins the versions every other result refers to.
 Module 12 needs a login on the Artemis test server and is skipped until one is available; record its tests as `skipped`.
-Number 13 is reserved for a module that another branch adds.
+Number 13 is reserved for a module that another branch adds (Git accounts, PR 199).
 
 Modules 06 and 07 replace the data bridge and the workspace garbage collector of the Java stack. Their old test IDs (`DB-*`, `GC-*`) are retired; each module lists them with the successor.
 
@@ -159,13 +159,17 @@ EOF
 ft_session() { # $1 name, $2 template, [$3 workspace, empty = no persistence], [$4 owner]
   # Fake launch data goes in FT_DATA as a JSON object, e.g. FT_DATA='{"TEMPLATE":"maven"}'. The session spec is
   # immutable, so dataSecretRef is set at creation; the Secret follows, owned by the session, like the service does it.
-  local o=${4:-$FT_USER} h; h=$(ft_hash "$o")
-  k apply -f - <<EOF
+  # kubectl create, not apply: apply copies the plain Secret value into the last-applied-configuration annotation (AGT-08).
+  # With a workspace the session is owned by it, like the service does it (RET-02).
+  local o=${4:-$FT_USER} h wo=""; h=$(ft_hash "$o")
+  if [ -n "${3:-}" ]; then wo=$(k get ideworkspace "$3" -o jsonpath='{.metadata.uid}'); fi
+  k create -f - <<EOF
 apiVersion: eduide.github.io/v1alpha1
 kind: IDESession
 metadata:
   name: $1
-  labels: {app.kubernetes.io/managed-by: eduide, eduide.github.io/owner-hash: "$h", eduide.dev/functional-test: "$RUN_ID"}
+  labels: {app.kubernetes.io/managed-by: eduide, eduide.github.io/owner-hash: "$h", eduide.dev/functional-test: "$RUN_ID"}${wo:+
+  ownerReferences: [{apiVersion: eduide.github.io/v1alpha1, kind: IDEWorkspace, name: $3, uid: "$wo"}]}
 spec: {owner: $o, templateRef: $2${3:+, workspaceRef: $3}${FT_DATA:+, dataSecretRef: $1-data}}
 EOF
   if [ -n "${FT_DATA:-}" ]; then
@@ -173,7 +177,7 @@ EOF
       {apiVersion: "v1", kind: "Secret",
        metadata: {name: $n, labels: {"app.kubernetes.io/managed-by": "eduide", "eduide.github.io/owner-hash": $h, "eduide.github.io/session": $s, "eduide.dev/functional-test": $r},
                   ownerReferences: [{apiVersion: "eduide.github.io/v1alpha1", kind: "IDESession", name: $s, uid: $u}]},
-       stringData: $d}' | k apply -f -
+       stringData: $d}' | k create -f -
   fi
 }
 
@@ -258,13 +262,18 @@ Most API endpoints need an OIDC access token of the realm. The landing page keep
 
 The claim `preferred_username` of that token is the owner of the user's sessions. Tests that need fixtures owned by that user read it in the page (`JSON.parse(atob(tok.split('.')[1])).preferred_username`), pass it to the shell as `ME`, and never write it into the report.
 
+### What needs a login, and namespaces
+
+In the first run (2026-11-24, [report](reports/2026-11-24-test2.eduide.student.k8s.aet.cit.tum.de-1.md)) 29 tests were `blocked` because nobody was logged in: LAND-02 to LAND-05, LAND-08, LAND-10, LAND-11, LAND-13, LAND-15, LAND-16, LAND-18 to LAND-20, API-03 to API-09, API-16, API-19 to API-22, SEC-10 (launch part), SEC-13 and GIT-02, GIT-03. Everything that needs a user token or the landing page UI is in this group. To unblock a run: the user logs in on `$LANDING` in the browser pane (the agent never types a password and never obtains a token on production), then the agent installs the token hook below and works from the landing page context.
+
+Some tests read other namespaces: the setup block and PLAT-01 read `eduide-system` (cluster identity, release `eduide-crds`), MON reads `cattle-monitoring-system` and `cattle-dashboards`. A run restricted to one namespace cannot do them: record them as `blocked`.
+
 ### Unverified, check in the first run
 
-These setup items come from the sources and from a read-only look at test2, not from a run:
+These setup items come from the sources and from a read-only look at test2, not from a run (confirmed items are removed; the 2026-11-24 run confirmed the port-forward to 3000, 8081 and 8082 and `ft_template`):
 
-- The `window.fetch` hook sees the token (step 3 above). If the API client keeps its own reference to `fetch`, only the event streams call the hook; if the streams do too, record the procedure as `blocked` and describe what happened.
-- `kubectl port-forward` to port 3000 reaches the loopback-only IDE listener of a session pod, and to 8081 and 8082 the agent listeners.
-- The fixture helpers apply cleanly: `ft_template` (the cloned spec passes the CRD validation), `ft_session` with `FT_DATA` (the Secret and the owner reference are accepted, the operator picks the data up).
+- The `window.fetch` hook sees the token (step 3 above): not run on 2026-11-24 (no login). If the API client keeps its own reference to `fetch`, only the event streams call the hook; if the streams do too, record the procedure as `blocked` and describe what happened.
+- `ft_session` with a workspace sets the owner reference now (changed after the first run); re-check that the CRD accepts it with `kubectl create`.
 - `kubectl auth can-i <verb> pods/exec --as=system:serviceaccount:...` answered `yes` for the operator on test2 although its Role lists only `pods`, not `pods/exec` (checked 2026-11-24). Use the Role rules (SEC-07), not `can-i`, until this is understood.
 
 This procedure is not covered by an automated test. If it fails, mark the dependent tests `blocked` and describe what happened.
@@ -327,3 +336,4 @@ The plan changes through pull requests to this directory, never silently during 
 | 2026-11-17 | First full run on test2 ([report](reports/2026-11-17-test2-1.md)) applied: new tests SEC-10, SEC-11, MON-08, OPR-11 to OPR-14, POOL-11 to POOL-13, DB-11 to DB-13, GC-07, LAND-13, API-16 to API-18, UPG-05; corrected PLAT-04, PLAT-05, MON-02, MON-03 to MON-06 (alerting precondition), OPR-04, OPR-05, POOL-01, POOL-07, API-09, API-14, API-15, LAND-05, LAND-08, IDE-02, GC-06, DB-05, SEC-02, SEC-07, UPG-01, UPG-03; README: one `FT_USER` per agent, `sessionSecret` in `ft_session`, `ft_wait` exit on a missing Session, eager and sidecar pods, token Secrets by owner, port-forward browser step, token lifetime, `APPID` first match. |
 | 2026-11-17 | Re-test of F1 to F5, F12, F19 on chart 3.0.0-rc.4 / Cloud 3.0.2 ([report](reports/2026-11-17-test2-2.md)): POOL-11 to POOL-13, OPR-13, DB-12, UPG-05, MON-08 expect the fixed behaviour; sidecar object names, dead-instance recipe, workflow restart noted. |
 | 2026-11-24 | Rewrite for the Go control plane (EduIDE 3.x, control plane chart 0.2.3, chart `eduide` 3.0.x). Setup and fixtures create `IDETemplate`, `IDEPool`, `IDEWorkspace` and `IDESession` (group `eduide.github.io`); the API is `/api/v1` on the landing host and the token hook watches `fetch`. Modules 06 and 07 are renamed "Agent and launch data" (AGT) and "Workspace retention" (RET). Kept and rewritten: PLAT-01 to PLAT-07, LAND-02 to LAND-05, LAND-08 to LAND-13, API-01 to API-09, API-11, API-13 to API-16, API-18, OPR-01 to OPR-08, OPR-10 to OPR-14, POOL-01 to POOL-10, POOL-13, IDE-01 to IDE-09 (edited), SEC-02 to SEC-11, MON-01 to MON-08, UPG-01 to UPG-05, ART-01 to ART-05. Retired: LAND-01, LAND-06, LAND-07, API-10, API-12, API-17, OPR-09, POOL-11, POOL-12, SEC-01, DB-01 to DB-13, GC-01 to GC-07 (reasons in each module). New: PLAT-08 to PLAT-10, LAND-14 to LAND-20, API-19 to API-22, OPR-15, OPR-16, POOL-14 to POOL-17, AGT-01 to AGT-06, AGT-08 to AGT-10, AGT-12 (AGT-07 and AGT-11 are unused), RET-01 to RET-08, SEC-12 to SEC-15, MON-09 to MON-12, UPG-06, ART-06, ART-07. Every module has an "Unverified, check in the first run" list. Mannheim stays on Java and has its own section; reports of 2026-11-17 are history. Number 13 stays free. |
+| 2026-11-24 | First run of the Go plan on test2 ([report](reports/2026-11-24-test2.eduide.student.k8s.aet.cit.tum.de-1.md): 63 pass, 0 fail, 29 blocked for lack of a login, 54 skipped) applied 9 plan corrections: PLAT-10, OPR-01 and RET-01 use `yq -o json \| jq`; SEC-06 forbids token values, not the names `AGENT_TOKEN_FILE` and `AGENT_ID_TOKEN_COOKIE`; `ft_session` uses `kubectl create` (AGT-08) and sets the workspace owner reference (RET-02); AGT-10 waits more than 2 minutes; MON-01 and MON-03 compare with the rendered chart; API-14 `/api/metrics` is a JSON 404; SEC-07 uses `curl` in the IDE container; API-01 `logoUrl` only where configured. Login-blocked tests and cross-namespace reads documented. |

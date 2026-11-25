@@ -15,7 +15,7 @@ Facts:
 ### MON-01 Monitoring objects of the release
 Safety: prod-safe
 Steps: `k get podmonitor,prometheusrule -o wide`; `k get podmonitor $P -o jsonpath='{.spec}'`; `k get prometheusrule $P -o json | jq -r '.spec.groups[] | .name + ": " + ([.rules[] | (.alert // .record)] | length|tostring)'`; `yq '.eduide-control-plane.monitoring' environments/$ENV/values.yaml`.
-Expect: a PodMonitor `$P` selecting pods with `app.kubernetes.io/name=eduide-control-plane` and `app.kubernetes.io/instance=eduide`, port `metrics`, path `/metrics`; a PrometheusRule `$P` with the groups `eduide-control-plane` (10 alerts), `eduide-usage-1m`, `eduide-usage-5m` and, with `rules.certificates`, `eduide-control-plane-certificates` (2 alerts); the values enable them (or the environment opts out with a stated reason: record it).
+Expect: a PodMonitor `$P` selecting pods with `app.kubernetes.io/name=eduide-control-plane` and `app.kubernetes.io/instance=eduide`, port `metrics`, path `/metrics`; a PrometheusRule `$P` with the groups `eduide-control-plane` (the alerts of the rendered chart: compare with `helm get manifest`, see MON-03; 11 on chart `pr-33` incl. `EduIDEUsageArchiveStale`, which needs `usageArchive.enabled`), `eduide-usage-1m`, `eduide-usage-5m` and, with `rules.certificates`, `eduide-control-plane-certificates` (2 alerts); the values enable them (or the environment opts out with a stated reason: record it).
 
 ### MON-02 Targets are up
 Safety: prod-safe
@@ -32,9 +32,11 @@ Safety: prod-safe
 Steps:
 ```bash
 k get prometheusrule $P -o json | jq -r '.spec.groups[].rules[] | select(.alert) | .alert' | sort
+helm --kube-context "$CTX" -n "$NS" get manifest eduide | yq -o json 'select(.kind=="PrometheusRule")' | jq -r '.spec.groups[].rules[] | select(.alert) | .alert' | sort > "$TMPDIR/alerts-chart.txt"
+k get prometheusrule $P -o json | jq -r '.spec.groups[].rules[] | select(.alert) | .alert' | sort | diff - "$TMPDIR/alerts-chart.txt" && echo same
 curl -s http://127.0.0.1:19090/api/v1/rules | jq -r --arg ns "$NS" '.data.groups[] | select(.file|test($ns)) | .rules[] | .name + " " + .health'
 ```
-Expect: the alert names listed in the Facts (10, or 12 with certificates); every rule `ok` in Prometheus (no evaluation error); each alert has `severity` and `eduide_namespace` labels (`k get prometheusrule $P -o json | jq '[.spec.groups[].rules[] | select(.alert) | .labels | has("eduide_namespace")] | all'` is true).
+Expect: the live alert names equal the alerts of the rendered chart (`diff` prints nothing; the count changes with every chart version, so never hard-code it; the Facts list is only an example); every rule `ok` in Prometheus (no evaluation error); each alert has `severity` and `eduide_namespace` labels (`k get prometheusrule $P -o json | jq '[.spec.groups[].rules[] | select(.alert) | .labels | has("eduide_namespace")] | all'` is true).
 
 ### MON-04 Alert expressions match something real
 Safety: prod-safe
@@ -92,8 +94,7 @@ Cleanup: `ft_cleanup`.
 
 ## Unverified, check in the first run
 
-- None of the Prometheus queries was run against `rancher-monitoring-prometheus` for this rewrite (only the PrometheusRule objects of test2 were read: the 10 alerts, the usage groups and the certificate group exist, labels `eduide_namespace` and `namespace: eduide-system`).
-- MON-01 PodMonitor name `$P` and selector (`eduide-eduide-control-plane` exists on test2; selector from the chart template).
+- None of the Prometheus queries was run against `rancher-monitoring-prometheus` for this rewrite (only the PrometheusRule objects of test2 were read: the alerts, the usage groups and the certificate group exist (confirmed in the first run on 2026-11-24: 11 alerts on `pr-33`, 13 names with the two certificate alerts), labels `eduide_namespace` and `namespace: eduide-system`).
 - MON-06: the name and namespace of the AlertmanagerConfig on `tum-student` and `bonn` (the Java chart called it `eduide-alerts`).
 - MON-07: that the ConfigMap `eduide-go-control-plane-dashboards` is in `cattle-dashboards` (from `bootstrap-cluster.yml`) and the board uids.
 - MON-09: the exact label allowlist.

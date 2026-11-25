@@ -92,7 +92,7 @@ Expect: Certificates `eduide-service-tls`, `eduide-instance-tls`, `eduide-webvie
 
 ### PLAT-10 Deployment config matches the values
 Safety: prod-safe
-Steps: `k get cm $P-config -o jsonpath='{.data.config\.yaml}' | yq '{deployment, hosts, sessionsPerUser, workspaces, oidc: {issuerURL: .oidc.issuerURL, clientIDs: .oidc.clientIDs, gatewayClientID: .oidc.gatewayClientID, userClaim: .oidc.userClaim, admin: .oidc.admin}, allowedHosts}'` and compare with `environments/$ENV/values.yaml` (`eduide-control-plane.config`). Never print the whole ConfigMap of another object, and never read Secrets.
+Steps: `k get cm $P-config -o jsonpath='{.data.config\.yaml}' | yq -o json | jq '{deployment, hosts, sessionsPerUser, workspaces, oidc: {issuerURL: .oidc.issuerURL, clientIDs: .oidc.clientIDs, gatewayClientID: .oidc.gatewayClientID, userClaim: .oidc.userClaim, admin: .oidc.admin}, allowedHosts}'` (mikefarah yq 4.x rejects the `{a, b}` shorthand: convert to JSON and select with jq) and compare with `environments/$ENV/values.yaml` (`eduide-control-plane.config`). Never print the whole ConfigMap of another object, and never read Secrets.
 Expect: the values equal the file (defaults where the file is silent: `sessionsPerUser` 3, `workspaces.perUser` 20, retention 14 days, grace 24 h, `userClaim` `preferred_username`, `idTokenCookie` `eduide-id`). `hosts` follow the pattern of the Setup section. `oidc.admin` is set only where the admin panel is meant to work. Record the limits for the other modules.
 
 ## Unverified, check in the first run

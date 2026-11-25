@@ -16,7 +16,7 @@ Facts the tests rely on:
 ### API-01 Public status
 Safety: prod-safe
 Steps: `curl -s -D - $LANDING/api/v1/status | head -40`, twice within 15 s.
-Expect: 200, `application/json`, `Cache-Control: public, max-age=15`. Body fields only `overall` (`ok`, `slow` or `down`), `updatedAt`, `parts` (`signIn`, `starting`, `workspaces`) and `templates` (each `name`, `displayName`, `logoUrl`, `startEstimate`, `warm`). No user, hash, session, workspace, host, node, pool target or error text anywhere (`jq -r 'paths|map(tostring)|join(".")'` lists only these paths). `warm` is true exactly for templates whose pool has `idleReady > 0` (`k get idepools`). The second request inside 15 s returns the same `updatedAt`. `overall` is the worst of the three parts.
+Expect: 200, `application/json`, `Cache-Control: public, max-age=15`. Body fields only `overall` (`ok`, `slow` or `down`), `updatedAt`, `parts` (`signIn`, `starting`, `workspaces`) and `templates` (each `name`, `displayName`, `logoUrl` where a logo is configured (absent otherwise), `startEstimate`, `warm`). No user, hash, session, workspace, host, node, pool target or error text anywhere (`jq -r 'paths|map(tostring)|join(".")'` lists only these paths). `warm` is true exactly for templates whose pool has `idleReady > 0` (`k get idepools`). The second request inside 15 s returns the same `updatedAt`. `overall` is the worst of the three parts.
 
 ### API-02 Protected endpoints refuse anonymous callers
 Safety: prod-safe
@@ -121,7 +121,7 @@ curl -s -o /dev/null -w '%{http_code} metrics\n' http://127.0.0.1:19090/metrics
 curl -s http://127.0.0.1:19090/metrics | grep -c '^eduide_api_requests_total'
 kill $PF
 ```
-Expect: the public paths return the landing page (HTML or the landing server's own `ok`), never Prometheus text (`# HELP`); the API host routes only `/api/` to the service. Through the port-forward `/metrics` is 200 and contains `eduide_api_requests_total` once a request was served (names in `docs/contracts/metrics.md`). The port-forward is the only way in; the NetworkPolicy `$P-service` admits port 8080 from Envoy only and 9090 from the monitoring namespace.
+Expect: `/metrics` and `/readyz` return the landing page, `/healthz` the landing server's own `ok`, and `/api/metrics` and `/api/v1/../metrics` the API's JSON 404 problem (`not-found`); never Prometheus text (`# HELP`); the API host routes only `/api/` to the service. Through the port-forward `/metrics` is 200 and contains `eduide_api_requests_total` once a request was served (names in `docs/contracts/metrics.md`). The port-forward is the only way in; the NetworkPolicy `$P-service` admits port 8080 from Envoy only and 9090 from the monitoring namespace.
 
 ### API-15 Service configuration
 Safety: prod-safe

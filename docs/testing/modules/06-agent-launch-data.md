@@ -68,7 +68,7 @@ Steps (counts only):
 ```bash
 for src in "k logs deploy/$P-operator --since=30m" "k logs deploy/$P-service --since=30m" "k logs $POD -c agent" "k get events -o json" "k get idesessions,ideworkspaces,pods,httproutes -o json"; do
   echo "$($src | grep -c "ft-$M") $src"; done
-k get secret ft-agt-s1-data -o json | grep -c "ft-$M"      # expected 0: stored base64-encoded
+k get secret ft-agt-s1-data -o json | grep -c "ft-$M"      # expected 0: stored base64-encoded, and the fixture helper uses `kubectl create`, so no last-applied-configuration annotation holds the plain value
 k get idesession ft-agt-s1 -o json | jq '.spec, .status | keys'
 ```
 Expect: 0 occurrences of the marker in the logs, events, CR specs, status and pod specs; the Secret holds it only as base64 `data` (a plain `grep` finds nothing; compare by decoding in a variable, never print); the session spec has `dataSecretRef` and `display`, no value. The traces and metrics are covered by the same rule (module 10: no label carries a user name or token).
@@ -82,8 +82,8 @@ Cleanup: `ft_cleanup`.
 
 ### AGT-10 Launch data Secret follows the session
 Safety: test-only
-Steps: `FT_DATA='{"GIT_URI":"https://github.com/ft-x/y.git"}' ft_session ft-agt-own <TPL_POOL>`; `ft_wait`; `k get secret ft-agt-own-data -o jsonpath='{.metadata.ownerReferences[0].kind} {.metadata.labels}{"\n"}'`; `k delete idesession ft-agt-own`; after a minute `k get secret | grep -c ft-agt-own`. Then a session whose Secret does not carry the managed-by label: create the Secret by hand without the label and watch the session for 30 s.
-Expect: the Secret is owned by the session and labelled `managed-by=eduide`; it is gone a minute after the session. A Secret without the label is invisible to the operator: the session stays `Starting` and does not become `Ready` (status message says the Secret is "missing or not labelled"). The warm pod used by the first session is discarded, not reused (POOL-04).
+Steps: `FT_DATA='{"GIT_URI":"https://github.com/ft-x/y.git"}' ft_session ft-agt-own <TPL_POOL>`; `ft_wait`; `k get secret ft-agt-own-data -o jsonpath='{.metadata.ownerReferences[0].kind} {.metadata.labels}{"\n"}'`; `k delete idesession ft-agt-own`; after a minute `k get secret | grep -c ft-agt-own`. Then a session whose Secret does not carry the managed-by label: create the Secret by hand without the label and watch the session for more than 2 minutes.
+Expect: the Secret is owned by the session and labelled `managed-by=eduide`; it is gone a minute after the session. A Secret without the label is invisible to the operator: the session stays `Starting` with no message for 2 minutes (`agentWaitLimit`), then fails with `start-failed` and the message "launch data Secret ... missing or not labelled app.kubernetes.io/managed-by=eduide" (confirmed 2026-11-24). The warm pod used by the first session is discarded, not reused (POOL-04).
 Cleanup: `ft_cleanup`.
 
 ### AGT-12 The template is applied in the IDE
@@ -95,14 +95,7 @@ Cleanup: `ft_cleanup`.
 
 ## Unverified, check in the first run
 
-- The port-forward to loopback-only ports 3000, 8081 (bound on all addresses, so fine) and 8082 works (README list).
-- AGT-03 `jq` field names (`version`, `claimed`, `data`, `notices`) come from `api/agent/v1.yaml`; the `after` and `timeout` parameters too.
-- AGT-04: the 400 for a milestone name outside the allowlist; milestone names reported by the extension.
-- AGT-05: the 400 for a claim without `session` (from `DecodeClaim`).
-- AGT-06: the 403 for repeated header values (`headerTokenOK` requires exactly one) and the exact status when no IDE answers (502).
-- AGT-09: the operator's log message wording ("launch data does not match the template allowlist"); a 2049-character value must be built in the shell.
-- AGT-10: the status message when the Secret is not labelled (the wait text in `session.go` mentions the label).
-- AGT-12: which commands or view show the applied template in the IDE; scorpio's behaviour with `SCORPIO_THEIA_ENV_STRATEGY=data-bridge` and the new extension (EduIDE Session 0.1.0 in the image metadata of test2).
+- AGT-06: the exact status when no IDE answers (502). The 403 for a repeated header was confirmed on 2026-11-24.
 - A claim with the right token to a pod whose agent was not yet claimed would claim it for a fixture session: do not run AGT-05 against idle pool pods.
 
 ## Retired
