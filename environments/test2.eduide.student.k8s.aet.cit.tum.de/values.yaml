@@ -39,6 +39,9 @@ templates:
   java-25: {}
 
 eduide-control-plane:
+  # Preview deploys reuse the tag pr-<N> for new builds, so a cached image would be stale.
+  image:
+    pullPolicy: Always
   config:
     deployment: test2
     hosts: *hosts
@@ -75,6 +78,9 @@ eduide-control-plane:
     endSessionEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/logout
 
 eduide-landing-page:
+  # Preview deploys reuse the tag pr-<N> for new builds, so a cached image would be stale.
+  image:
+    pullPolicy: Always
   # Placeholders for test2 (the chart requires both).
   legal:
     imprint:
