@@ -31,9 +31,9 @@ string, so there is nothing to map and nothing to keep in sync.
 
 **Two stacks, chosen per environment** by `spec.platform.stack` (`java` when
 omitted). `java` is chart `eduide` 2.x on Theia Cloud with `_base.yaml`; `go` is
-chart `eduide` 3.x, the Go control plane, with `_base-go.yaml`. Today `bonn`,
-`test3` and `eduide.artemis.cit.tum.de` are `go` (production since 2026-11-21,
-`docs/rollout-3.0-tum-production.md`), everything else is `java`. `deploy.yml`, `bootstrap-cluster.yml`,
+chart `eduide` 3.x, the Go control plane, with `_base-go.yaml`. Today only
+`mannheim` is `java`; every other environment is `go` (TUM production since
+2026-11-21, `docs/rollout-3.0-tum-production.md`). `deploy.yml`, `bootstrap-cluster.yml`,
 `live-summary.sh` and `test-deploy-logic.sh` branch on it; java behaviour is
 unchanged. Never put a 3.x chart version on a java environment or the reverse.
 
@@ -118,7 +118,7 @@ both, with no clue why. An installation with no identity provider yet sets
 **Monitoring is on by default and opted out per environment** with
 `monitoring.enabled: false`. The PodMonitor itself is in the cluster
 chart - it must be created in Rancher's namespace to be discovered, and one
-per tenant would collide on names - so the flag decides whether the
+per installation would collide on names - so the flag decides whether the
 environment's namespace is in the list it watches. Do not confuse it with
 `monitor.enable`, the operator's session activity tracker.
 
@@ -268,10 +268,10 @@ roll back.
 **Secrets go in a values file, never `--set`.** `--set` puts them in the process
 list and in Actions debug logs.
 
-**Nothing cluster-scoped is installed by a tenant deploy.** CRDs, the conversion
+**Nothing cluster-scoped is installed by an installation deploy.** CRDs, the conversion
 webhook, the shared Gateway and the PodMonitors are all in `eduide-cluster`,
 installed once per cluster by `bootstrap-cluster.yml`. Reinstalling them from
-every tenant deploy is what the old six-attempt retry loop was working around.
+every installation deploy is what the old six-attempt retry loop was working around.
 
 **Three things are derived from the environments on a cluster, not written
 down.** Gateway listeners come from each environment's `gateway.parentRefs`
@@ -353,6 +353,13 @@ the workflow does not supply: a GatewayClass whose load balancer address matches
 DNS, a `ClusterIssuer` that can solve ACME over Gateway API, and the webview
 wildcard certificate. `docs/github-environments.md` covers every secret and
 which of the two kinds of GitHub Environment holds it.
+
+## Terminology
+
+Use the terms of the [EduIDE glossary](https://eduide.github.io/Docs/glossary) in code, UI texts, docs, values and comments, in exactly the meaning it gives.
+Do not introduce synonyms (environment, instance, workspace, launch, lecturer, start page) for a term the glossary defines, and never write "frontend" or "backend".
+When a new term is needed or a term changes, update the glossary in `EduIDE/Docs` first.
+Here an installation is one `environments/<host>` directory; "environment" is only for that directory and for GitHub Environments.
 
 ## Conventions
 

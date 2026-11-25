@@ -34,12 +34,14 @@ about sessions is observed from outside them:
 | the REST service, at `/q/metrics` | session startup latency, JVM health |
 | cert-manager | certificate expiry and readiness |
 
-Only one custom metric exists: `application_application_theiacloud_session_startup_seconds_*`.
+Stack: java (mannheim): only one custom metric exists: `application_application_theiacloud_session_startup_seconds_*`.
 It is **registered lazily**, on the first session the service serves. After a
 restart it does not exist until somebody starts a session, so an empty startup
 panel on a freshly deployed environment is expected rather than broken.
 
 ## The dashboards
+
+The table below is **stack: java (mannheim)**; go installations get the two boards listed after it.
 
 | Dashboard | uid | For |
 |---|---|---|
@@ -77,6 +79,8 @@ cluster: copy it off now and then, as described in the control plane's
 `docs/operations/usage-export.md` ("Usage archive").
 
 ## The alerts
+
+This section describes the java stack, whose rules and channels come from the `eduide-cluster` chart. On go the `eduide-control-plane` chart ships its own rules (`files/alerts.yaml` there, for example `EduIDEOperatorDown`, `EduIDEPoolEmpty`, `EduIDEUsageArchiveStale`).
 
 Off by default. Switch on per cluster:
 
@@ -121,8 +125,8 @@ matched on `eduide_namespace`. First match wins.
 
 **Anything no scoped channel claims goes to every channel.** That is deliberate
 and it is the part worth remembering: a certificate expiring or the conversion
-webhook failing is cluster-scoped, belongs to no tenant namespace, and would
-otherwise be dropped for failing to match a tenant route. Those are the alerts
+webhook failing is cluster-scoped, belongs to no installation namespace, and would
+otherwise be dropped for failing to match an installation route. Those are the alerts
 you least want to lose, so they go to everyone.
 
 A scoped channel pointing at a namespace no environment on that cluster uses

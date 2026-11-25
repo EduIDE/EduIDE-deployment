@@ -50,7 +50,7 @@ jobs:
             echo 'json={}' >> "$GITHUB_OUTPUT"; exit 0
           fi
           case "$COMPONENT" in
-            EduIDE-Cloud)        key=controlPlane ;;
+            EduIDE-control-plane|EduIDE-Cloud) key=controlPlane ;;
             EduIDE)              key=ide ;;
             EduIDE-Landing-Page) key=landingPage ;;
             *)

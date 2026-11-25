@@ -19,7 +19,7 @@ on:
         description: Pin one component, or "none" to use the chart defaults
         required: false
         type: choice
-        options: [none, EduIDE-Cloud, EduIDE, EduIDE-Landing-Page]
+        options: [none, EduIDE-control-plane, EduIDE, EduIDE-Landing-Page]
         default: none
       component_tag:
         description: "Tag for that component, e.g. latest-abc1234 or pr-451"
@@ -63,7 +63,7 @@ jobs:
             exit 1
           fi
           case "$COMPONENT" in
-            EduIDE-Cloud)        key=controlPlane ;;
+            EduIDE-control-plane|EduIDE-Cloud) key=controlPlane ;;
             EduIDE)              key=ide ;;
             EduIDE-Landing-Page) key=landingPage ;;
             *) echo "::error::unknown component: ${COMPONENT}"; exit 1 ;;

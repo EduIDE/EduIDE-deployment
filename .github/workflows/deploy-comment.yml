@@ -60,7 +60,7 @@ jobs:
           fi
 
           case "$COMPONENT" in
-            EduIDE-Cloud)        key=controlPlane ;;
+            EduIDE-control-plane|EduIDE-Cloud) key=controlPlane ;;
             EduIDE)              key=ide ;;
             EduIDE-Landing-Page) key=landingPage ;;
             *) echo "::error::unknown component: ${COMPONENT}"; exit 1 ;;
