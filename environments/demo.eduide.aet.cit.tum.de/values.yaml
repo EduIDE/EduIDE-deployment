@@ -1,0 +1,120 @@
+# Helm values for the demo environment, on the Go control plane (EduIDE 3.x).
+#
+# A plain values file. The deploy runs:
+#   helm upgrade --install eduide ... -f cluster-defaults.yaml \
+#     -f environments/_base-go.yaml -f this file
+#
+# Storage class, node pool, Gateway class and the ACME contact come from
+# clusters/eduide.yaml. Deployment metadata is in env.yaml next door.
+
+x-hosts: &hosts
+  service: demo.eduide.aet.cit.tum.de
+  instance: instance.demo.eduide.aet.cit.tum.de
+  webview: webview.instance.demo.eduide.aet.cit.tum.de
+
+x-gateway: &gateway
+  name: eduide
+  namespace: eduide-demo
+  sectionName: ""
+  # Only the HTTPS listeners: sessions and pages are never served on the ACME :80 listeners.
+  port: 443
+
+x-keycloak: &keycloak
+  url: https://keycloak.aet.cit.tum.de/
+  realm: external_register
+  clientId: eduide
+
+# Nothing is kept here. A demo session is thrown away with its pod, so the
+# template may not even offer a volume - the chart default allows `volume` as
+# an option, which would let a visitor create a workspace this installation
+# does not intend to keep. Dropping `volume` also means a warm pool is possible
+# later, which a persistent workspace rules out.
+templateDefaults:
+  persistence: {allowed: [none], default: none}
+
+# Every standalone edition the catalog offers. The artemis editions are left
+# out: they exist for Artemis links and are unlisted, so they would not appear
+# on the landing page anyway.
+templates:
+  java-17-standalone: {}
+  java-25-standalone: {}
+  python-standalone: {}
+  javascript-standalone: {}
+  c-standalone: {}
+  rust-standalone: {}
+  go-standalone: {}
+
+eduide-control-plane:
+  config:
+    deployment: demo
+    hosts: *hosts
+    gateway: *gateway
+    oidc:
+      # TUM's Keycloak with the realm for non-TUM users, same client as Bonn
+      # and Mannheim.
+      issuerURL: https://keycloak.aet.cit.tum.de/realms/external_register
+      clientIDs: [eduide]
+      gatewayClientID: eduide
+      # Admin panel: client role eduide-admin on client eduide in the realm.
+      admin: {rolePath: resource_access.eduide.roles, role: eduide-admin}
+    admin:
+      prometheusURL: http://rancher-monitoring-prometheus.cattle-monitoring-system:9090
+    allowedHosts:
+    - github.com
+    - gitlab.com
+    - codeberg.org
+    placement:
+      # Pulls the IDE and agent images onto the node ahead of the first start.
+      prepull: {enabled: true}
+  networkPolicy:
+    monitoringNamespace: cattle-monitoring-system
+    # parma uses public address ranges inside the cluster: its own address, pods 198.18.0.0/16
+    # and services 198.19.0.0/16. Sessions have no business reaching any of them.
+    sessionEgressExtraDeny: [131.159.88.106/32, 198.18.0.0/16, 198.19.0.0/16]
+  monitoring:
+    podMonitor: {enabled: true}
+    # The AlertmanagerConfig in eduide-system routes on this namespace (docs/monitoring-setup.md).
+    rules: {enabled: true, extraLabels: {namespace: eduide-system}}
+    # The dashboard ConfigMap would go to cattle-dashboards, outside the namespace the deploy
+    # credentials may write. Bootstrap ships the boards instead (version derived from the environments' charts).
+    dashboard: {enabled: false}
+  oidc:
+    # Set, so Envoy Gateway does not discover them through the OIDC upstream.
+    authorizationEndpoint: https://keycloak.aet.cit.tum.de/realms/external_register/protocol/openid-connect/auth
+    tokenEndpoint: https://keycloak.aet.cit.tum.de/realms/external_register/protocol/openid-connect/token
+    endSessionEndpoint: https://keycloak.aet.cit.tum.de/realms/external_register/protocol/openid-connect/logout
+
+eduide-landing-page:
+  host: demo.eduide.aet.cit.tum.de
+  gateway: *gateway
+  config:
+    title: EduIDE Demo
+    keycloak: *keycloak
+  # Texts the chart requires. Controller and contact are the TUM ones every
+  # installation here has used since 2.x. The workspace paragraph Bonn carries
+  # is left out on purpose: this installation keeps no files.
+  legal:
+    imprint:
+      markdown: |
+        # Imprint
+
+        Technische Universität München (TUM)
+        Boltzmannstrasse 3, 85748 Garching
+
+        Responsible: Prof. Dr. Stephan Krusche
+
+        Contact: support.aet@xcit.tum.de
+    privacy:
+      markdown: |
+        # Privacy
+
+        Controller: Technische Universität München (TUM), represented by
+        Prof. Dr. Stephan Krusche, Boltzmannstrasse 3, 85748 Garching,
+        support.aet@xcit.tum.de.
+
+        Data protection officer: datenschutz(at)tum.de.
+
+        This is a demonstration installation. Sessions are temporary: your
+        files live only as long as the session and are deleted with it, and
+        nothing is kept afterwards. Anonymised usage data from this
+        installation is evaluated for research.
