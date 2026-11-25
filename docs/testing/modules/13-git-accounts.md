@@ -65,8 +65,8 @@ Expect: exit code 1 and no output for the first command, 0 for the second, no `A
 ### GIT-10 Objects of the feature
 Safety: prod-safe
 Automated: go `feature is on`
-Steps: with one provider configured: `k get deploy,svc,pdb,networkpolicy -l app.kubernetes.io/component=git-proxy`; `k get networkpolicy` (names); `k get secret -l eduide.github.io/component=git-account` (names and count only); `k get secret <release>-git-accounts-key` (existence only, never the data); `k get svc $P-service -o jsonpath='{.spec.ports[*].name}'`; `k get role $P-service -o json | jq '[.rules[] | select(.resources | index("secrets")) | .verbs]'`.
-Expect: `git-proxy` Deployment with 2 ready replicas and a PodDisruptionBudget (`maxUnavailable 1`); a ClusterIP Service; no HTTPRoute or Ingress for it; NetworkPolicies `session-to-git-proxy`, `git-proxy` and `service-internal` exist; the key Secret exists; the service has the internal port (8083); the service Role has `list`, `update` and `patch` on Secrets; the `git-proxy` pod spec has `automountServiceAccountToken: false` and no Secret volume.
+Steps: with one provider configured: `k get deploy,svc,pdb,networkpolicy -l app.kubernetes.io/component=git-proxy`; `k get networkpolicy` (names); `k get secret -l eduide.github.io/component=git-account` (names and count only); `k get secret <key secret>` (existence only, never the data; the name is `<release>-git-accounts-key` unless `gitAccounts.encryptionKey.secretName` overrides it); `k get svc $P-service -o jsonpath='{.spec.ports[*].name}'`; `k get role $P-service -o json | jq '[.rules[] | select(.resources | index("secrets")) | .verbs]'`.
+Expect: `git-proxy` Deployment with 2 ready replicas and a PodDisruptionBudget (`maxUnavailable 1`); a ClusterIP Service; no HTTPRoute or Ingress for it; NetworkPolicies `session-to-git-proxy`, `git-proxy` and `service-internal` exist; the key Secret (default or configured name) exists; the service has the internal port (8083); the service Role has `list`, `update` and `patch` on Secrets; the `git-proxy` pod spec has `automountServiceAccountToken: false` and no Secret volume.
 
 ### GIT-11 Proxy is not reachable from outside or from foreign pods
 Safety: test-only
@@ -161,7 +161,7 @@ Expect: the clone is refused (the credential is not used for another repository,
 ### GIT-32 Push to the session repository
 Safety: test-only
 Automated: go `clone, commit and push the session repository` (fake IDE)
-Steps: in the session of GIT-30 commit a file and `git push`; also push with the Git view of the IDE.
+Steps: in the session of GIT-30 commit a file and `git push`; then commit a second file and push it with the Git view of the IDE.
 Expect: both succeed; the commit shows on the provider under the student's account; the `git-proxy` log has one push line (salted user, session, provider, repository, result `ok`) and no token.
 
 ### GIT-33 Push to another repository is refused
@@ -231,7 +231,7 @@ Expect: the page says "Repeat the Git command in your IDE."; the clone works wit
 ### GIT-72 Approve write, then push
 Safety: test-only
 Automated: go `approve read, then write`
-Steps: open the write link of GIT-71, click "Allow", `git push` in the clone of `ft-other`.
+Steps: open the write link of GIT-71, click "Allow", commit a file in the clone of `ft-other`, `git push`.
 Expect: the push works within 5 seconds, the commit shows on the provider, one push line in the git-proxy log. The approval is raised, not duplicated (approving again is idempotent).
 
 ### GIT-73 Remove an approval
@@ -249,7 +249,7 @@ Expect: mode `read`: the clone message has a link (`access=read`), `PUT` with `a
 ### GIT-75 Limit per session
 Safety: test-only
 Automated: unit
-Steps: set `maxPerSession` to 2 on a test installation (or approve 20 distinct public repositories in a loop with `PUT` from the page context, 20 is the default limit). Approve one more.
+Steps: note the current `maxPerSession`, set it to 2 on a test installation and wait for the service rollout. Approve two distinct repositories, then a third (or approve 20 distinct public repositories in a loop with `PUT` from the page context, 20 is the default limit, then one more). Restore the previous value.
 Expect: the extra `PUT` answers `git-approval-limit`. Approving an existing repository again still works.
 
 ### GIT-76 Another user's session
@@ -355,7 +355,7 @@ Expect: the first finishes; the second is cancelled with "The transfer stalled a
 ### GIT-49 Repository path rules
 Safety: test-only
 Automated: unit (`CanonicalRepo`)
-Steps: in the IDE container `curl -s -m 5 -o /dev/null -w '%{http_code}'` the loopback agent path for `info/refs?service=git-upload-pack` of: `<owner>/ft-private.git` (reference), `<owner>/.git/ft-private.git`, `<owner>/../ft-other.git`, `<owner>/ft-private.git.git`, a path with 11 segments, a path with a space or `%2e`.
+Steps: in the IDE container `curl --path-as-is -s -m 5 -o /dev/null -w '%{http_code}'` the loopback agent path for `info/refs?service=git-upload-pack` of: `<owner>/ft-private.git` (reference), `<owner>/.git/ft-private.git`, `<owner>/../ft-other.git`, `<owner>/ft-private.git.git`, a path with 11 segments, a path with a space or `%2e`.
 Expect: the reference gives a Git answer (the credential is used for the session repository). The others give 404 or a Git `ERR` message and never a response with the credential. The git-proxy log has no `ok` line for them.
 
 ## Security
