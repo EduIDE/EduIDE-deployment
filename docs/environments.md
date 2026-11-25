@@ -189,8 +189,11 @@ Actions -> Bootstrap cluster -> cluster: eduide, dry_run: true
 ```
 
 The shared Gateway's listeners are derived from every environment that claims
-the cluster, so a new environment needs no second file edited. Run it with
+the cluster, so bootstrap needs no second file edited. Run it with
 `dry_run: false` once the diff looks right.
+
+One list is not derived: add the environment to the `choice` options of
+`deploy-dispatch.yml` and `rollback.yml`, or neither workflow will offer it.
 
 ### 5. DNS, certificates and Keycloak
 
