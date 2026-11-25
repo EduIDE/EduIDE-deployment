@@ -7,7 +7,7 @@ Variables: `FROM` = the chart version currently deployed (PLAT-01), `TO` = the v
 Facts:
 - The deploy runs `helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide --wait --atomic --timeout 15m` with `_base-go.yaml`, the environment's `values.yaml` and the overrides; the release is always `eduide`. The OIDC client Secret is applied from the GitHub Environment secret before helm runs. The health check is `GET $LANDING/api/v1/status` (200 within two minutes, a warning otherwise, the deploy still passes).
 - The step "Force a pull when the tag is floating" (`rollout restart`) runs for the Java stack only. A Go deploy restarts a component only when its pod template changes.
-- Session pods are bare pods and are not part of the release: a deploy never touches running sessions. Idle pool pods are replaced when their spec hash changes (template spec, agent image, placement), claimed ones never.
+- Session pods are bare pods and are not part of the release: a deploy never touches running sessions. Idle pool pods are replaced only when their spec hash changes (template spec, agent image string, placement, the Git settings when providers are set, the agent pull policy when set; POOL facts), claimed ones never. A deploy that leaves the hash alone keeps every idle pod, even when a mutable tag such as `pr-N` now points to newer images: check that with PLAT-11 after every deploy.
 - CRDs are not in this release: `eduide-crds` is installed by Bootstrap cluster; rolling back across a CRD schema change needs that release rolled back too.
 
 ### UPG-01 Dry run shows the expected change
@@ -25,7 +25,7 @@ Steps:
 1. Before: a saved fixture session with a file in its workspace (`ft-upg-ws`, `ft-upg-s1`, opened through a port-forward so the file can be written), a warm claimed fixture session (`<TPL_POOL>`), and the logged-in user's own session from a tile. Record pod UIDs of sessions and control plane pods and the spec hashes of idle pool pods; run PLAT-01.
 2. `gh workflow run deploy-dispatch.yml -R EduIDE/EduIDE-deployment -f environment=$ENV -f chart_version=$TO` and watch it.
 3. After: PLAT-01, PLAT-02, PLAT-04, PLAT-05, API-01 and a fresh launch from the landing page; compare UIDs.
-Expect: the deploy is green (`--wait --atomic`) and ends with `/api/v1/status` 200; new component versions as expected; running session pods keep their UIDs and URLs (a deploy does not touch them; the operator picks them up again without re-claiming them, OPR-10); the saved workspace and its file survive; idle pool pods with a changed spec hash are replaced one by one while the pool keeps its ready count (POOL-06); a new launch works afterwards (warm where a pool exists, after the new pods are ready). Anything that restarts the landing page or the service for a moment is recorded with the time the student could not launch.
+Expect: the deploy is green (`--wait --atomic`) and ends with `/api/v1/status` 200; new component versions as expected; running session pods keep their UIDs and URLs (a deploy does not touch them; the operator picks them up again without re-claiming them, OPR-10); the saved workspace and its file survive; idle pool pods with a changed spec hash are replaced one by one while the pool keeps its ready count (POOL-06), idle pods with an unchanged hash stay (same UIDs, even if the deploy changed an image behind a mutable tag: then PLAT-11 fails, which is a finding about the tag, not about the pool); a new launch works afterwards (warm where a pool exists, after the new pods are ready). Anything that restarts the landing page or the service for a moment is recorded with the time the student could not launch.
 
 ### UPG-03 Rollback
 Safety: test-only, disruptive
@@ -40,7 +40,7 @@ Expect: green; the environment ends on the version it should be on. Record the f
 ### UPG-05 Redeploy without changes restarts nothing
 Safety: test-only, disruptive
 Steps: record the pod UIDs of operator, service, authz, landing page, OIDC bridge and the idle pool pods; run the deploy dispatch with the versions already deployed (blank overrides); compare UIDs; `helm --kube-context "$CTX" -n "$NS" get manifest eduide --revision <before>` against `<after>`.
-Expect: the manifests of the two revisions are identical apart from the revision number, no `helm.sh/revision` or timestamp in pod templates, every pod keeps its UID (no `rollout restart` runs for Go environments; a floating tag would not restart them either, so a `channel: main` environment on a mutable tag must be pinned to the chart `appVersion` to be tested). A restart of the operator, service or authz here is a finding.
+Expect: the manifests of the two revisions are identical apart from the revision number, no `helm.sh/revision` or timestamp in pod templates, every pod keeps its UID, the idle pool pods included (their spec hash does not change when nothing that feeds it changed; no `rollout restart` runs for Go environments; a floating tag would not restart them either, so a `channel: main` environment on a mutable tag must be pinned to the chart `appVersion` to be tested). A restart of the operator, service or authz here is a finding.
 
 ### UPG-06 Bootstrap preview for the CRD release
 Safety: test-only (applies nothing with `dry_run=true`)

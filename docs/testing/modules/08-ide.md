@@ -76,7 +76,7 @@ Expect: no prompt; prewarm starts by itself (`GRADLE_PREWARM_AUTO_CONFIRM=true` 
 ### IDE-09 Help and extensions
 Safety: test-only
 Steps: Help > Report Issue; Extensions view.
-Expect: Report Issue opens `https://github.com/eduide/eduide/issues`; standalone images have scorpio and the `EduIDE Session` extension (no data bridge extension and no monitor extension any more), no Artemis extension; Artemis images also have the Artemis extension (test2: `Artemis - TUM`, `EduIDE Session`, `Scorpio` in `status.image.includes` of `java-17`).
+Expect: Report Issue opens `https://github.com/eduide/eduide/issues`; standalone images have scorpio and the `EduIDE Session` extension (no data bridge extension and no monitor extension any more), no Artemis extension; Artemis images also have the Artemis extension (test2: `Artemis - TUM`, `EduIDE Session`, `Scorpio` in `status.image.includes` of `java-17`). The plugin folders in the image are `/home/theia/plugins/<id>/extension/package.json` (not `/home/theia/plugins/<id>/package.json`): `k exec <pod> -c ide -- sh -c 'for f in /home/theia/plugins/*/extension/package.json; do echo "$f"; grep -m2 -E "^  \"(name|version)\"" "$f"; done'` (top-level keys, two-space indent). Folder `scorpio` holds the package named `artemis-scorpio`; `eduide-session` is the session extension. Record both versions in the report.
 
 ## Unverified, check in the first run
 
