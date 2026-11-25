@@ -9,7 +9,7 @@ Related tests in other modules: API-02 (anonymous API calls), API-07 and API-16 
 Facts:
 - One SecurityPolicy `$P-session` selects every HTTPRoute labelled `eduide.github.io/route=session` and sets the `oidc` filter (gateway client `oidc.gatewayClientID`, ID token cookie `eduide-id`, cookie domain `instance.$ENV`, refresh token, `denyRedirect` for requests with `Sec-Fetch-Mode` `cors|no-cors|same-origin|websocket`, plain token cookies) and `extAuth` to the authz service on gRPC with `failOpen: false`. The chart adds a catch-all route (`$P-session-fallback`) on the instance and webview host so unknown paths also pass the policy, and a route for `/oauth2/`.
 - authz decides per request: no auth cookie at all: allow (the OIDC filter that follows forces the login); an ID token cookie that is invalid or expired: 302 to the same URL with the auth cookies expired; a valid token: allow only when the first path segment is the `status.instance` of an `IDESession` in phase `Ready`, not being deleted, whose `spec.owner` equals the token claim `preferred_username`; everything else (unknown, free pool, foreign, released instance, internal error) 403. It verifies the ID token cookie itself (issuer, audience = gateway client) and keeps its own signed cookie `eduide-authz` so a refreshed login survives the short token cookie.
-- Release removes access first: the session leaves `Ready`, authz denies at once, then the operator deletes the pod.
+- Release and access: authz denies a request once the session is no longer `Ready` or the pod is gone. The order cannot be seen with kubectl: the pod starts terminating about 0.7 s before the route is deleted and the session object still shows `Ready` at that moment (measured 2026-11-25). Only a request of the owner, with a login, shows it (SEC-13 step 3, POOL-18); POOL-04 proves only that the objects are gone.
 - Session pods have `automountServiceAccountToken: false`. The NetworkPolicies: default deny ingress, 8080 only from Envoy, 8081 only from the operator, no session-to-session path, egress to DNS and the public internet minus private, link-local and the cluster's own ranges.
 - The service creates no pods; its Role can create and delete sessions, workspaces and Secrets and read objects; the operator owns pods, services, routes, token Secrets and PVCs; authz can only list and watch sessions.
 
@@ -41,11 +41,11 @@ Safety: prod-safe
 Steps: count only, never print matching lines:
 ```bash
 for c in operator service authz; do
-  echo "$c bearer/jwt: $(k logs deploy/$P-$c --since=24h | grep -c -E 'Bearer |eyJ[A-Za-z0-9_-]{10,}')"
-  echo "$c cookie/token words: $(k logs deploy/$P-$c --since=24h | grep -c -i -E 'cookie:|set-cookie|ARTEMIS_TOKEN|client-secret|password')"; done
+  echo "$c bearer/jwt: $(ft_logs $c --since=24h | grep -c -E 'Bearer |eyJ[A-Za-z0-9_-]{10,}')"
+  echo "$c cookie/token words: $(ft_logs $c --since=24h | grep -c -i -E 'cookie:|set-cookie|ARTEMIS_TOKEN|client-secret|password')"; done
 k logs deploy/eduide-landing-page --since=24h | grep -c -E 'eyJ[A-Za-z0-9_-]{10,}'
 POD=$(k get pods -l eduide.github.io/component=session -o name | head -1); k logs $POD -c agent | grep -c -E 'Bearer |eyJ[A-Za-z0-9_-]{10,}'
-k logs deploy/$P-service --since=24h | jq -r '.level' 2>/dev/null | sort | uniq -c
+ft_logs service --since=24h | jq -r '.level' 2>/dev/null | sort | uniq -c
 ```
 Expect: 0 everywhere. Authz and agent log decisions and key names, never cookie or token values (`docs/operations/logging.md`); users appear only as a 16 character hash (`user`). Record the log levels (`LOG_LEVEL`, default `info`); `debug` lines may name launch rules but never values. The same counts on a test environment after a run with fake launch data are AGT-08.
 

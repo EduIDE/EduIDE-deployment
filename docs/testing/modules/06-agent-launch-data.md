@@ -66,7 +66,7 @@ Safety: test-only
 Needs: AGT-02 with its marker `$M` still known; the sessions running.
 Steps (counts only):
 ```bash
-for src in "k logs deploy/$P-operator --since=30m" "k logs deploy/$P-service --since=30m" "k logs $POD -c agent" "k get events -o json" "k get idesessions,ideworkspaces,pods,httproutes -o json"; do
+for src in "k logs deploy/$P-operator --since=30m" "ft_logs service --since=30m" "k logs $POD -c agent" "k get events -o json" "k get idesessions,ideworkspaces,pods,httproutes -o json"; do
   echo "$($src | grep -c "ft-$M") $src"; done
 k get secret ft-agt-s1-data -o json | grep -c "ft-$M"      # expected 0: stored base64-encoded, and the fixture helper uses `kubectl create`, so no last-applied-configuration annotation holds the plain value
 k get idesession ft-agt-s1 -o json | jq '.spec, .status | keys'
@@ -91,6 +91,13 @@ Safety: test-only
 Needs: browser; the IDE tab visible (README); a template with variants.
 Steps: `FT_DATA='{"TEMPLATE":"<variant id>"}' ft_session ft-agt-ide <TPL_STD>` and `ft_wait`; open the IDE through a port-forward of port 3000; wait for the Explorer and look at it and the status bar.
 Expect: within a minute of the IDE opening the project template's files are in the workspace (scorpio reads `TEMPLATE` through the extension's `dataBridge.getEnv`, and `GIT_USER` and `GIT_MAIL` from the token keys when present). The agent status shows the milestones `data-delivered` and `plugin-host-started` (AGT-04). The same works for a warm (`<TPL_POOL>`) and a cold start. Keep the tab in the foreground; a hidden pane delays the data.
+Cleanup: `ft_cleanup`.
+
+### AGT-13 Git endpoints of the agent are empty with the feature off
+Safety: test-only
+Needs: an environment without Git accounts (`gitAccounts` absent from the config, GIT-01 in module 13); `curl` in the `ide` container (SEC-07 uses it too).
+Steps: with `ft-agt-s1` (AGT-02), `POD` as in the README: `k exec $POD -c ide -- curl -s -w ' %{http_code}\n' http://127.0.0.1:8082/v1/git/hosts`; `k exec $POD -c ide -- curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8082/git/github.com/ft/x.git/info/refs`.
+Expect: the first answers 200 with `{"hosts":[]}`, the second 404. Both come from the agent's local handler (`internal/agent/agent.go`, `LocalHandler`), which is reachable only from inside the pod.
 Cleanup: `ft_cleanup`.
 
 ## Unverified, check in the first run

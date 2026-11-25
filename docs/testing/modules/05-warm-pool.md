@@ -31,12 +31,12 @@ Expect: `idleReady` is at least `max(minIdle, targetIdle)` minus claimed ones, o
 ### POOL-03 Claim
 Safety: test-only
 Steps: with POOL-01's pool: `ft_session ft-pool-s1 ft-pool`, `ft_wait ft-pool-s1`, then `k get idesession ft-pool-s1 -o jsonpath='{.status.startStrategy} {.status.instance} {.status.podName} {.status.timestamps}{"\n"}'`, `pool`, `k get events --field-selector involvedObject.name=ft-pool-s1`.
-Expect: `Ready` within seconds (no image pull, no new pod for the session); `startStrategy: warm-ready`; the pod named in the status was an idle pod before (same name as in the earlier `pool` output) and now has `state=claimed` and the session label; its Service, route and token Secret are unchanged; the Event `Claimed` exists; the pool starts a replacement (`idleStarting`, then `idleReady` 2 again). Record the time to `Ready` (the target is under 2 s). `eduide_claim_total{result="claimed"}` rises.
+Expect: `Ready` within seconds (no image pull, no new pod for the session); `startStrategy: warm-ready`; the pod named in the status was an idle pod before (same name as in the earlier `pool` output) and now has `state=claimed` and the session label; its Service, route and token Secret are unchanged; the Event `Claimed` exists; the pool starts a replacement (`idleStarting`, then `idleReady` 2 again). Record the time to `Ready` with `ft_startup ft-pool-s1` (it prints the `Ready` Event: "ready after 2.2s (warm-ready)"; the target is under 2 s). The elapsed time of `ft_wait` is not a measurement: it polls every 5 s and reports about 6 s for a 2.2 s start. `eduide_claim_total{result="claimed"}` rises.
 
-### POOL-04 Release
+### POOL-04 Release removes the objects
 Safety: test-only
-Steps: note the claimed pod's name and UID, `k delete idesession ft-pool-s1`, wait one minute, `pool`.
-Expect: the claimed pod is deleted and never reused (its name is gone; a claim always gets a fresh pod, so nothing of the first session can be seen by the next one: ADR 0006); its Service, route and token Secret are gone; the pool holds `minIdle` idle pods again. Access is removed first: right after the delete the old URL gives the owner 403 (SEC-13).
+Steps: note the claimed pod's name and UID, `k delete idesession ft-pool-s1`, poll every second for 30 seconds until the pod, Service, route, token Secret and data Secret are gone (`k get pod,svc,httproute,secret -o name | grep "${POD#ide-}"`), then `pool` after one minute.
+Expect: the claimed pod is deleted and never reused (its name is gone; a claim always gets a fresh pod, so nothing of the first session can be seen by the next one: ADR 0006); its Service, route, token Secret and data Secret are gone within 30 seconds (9 s measured on test2); the pool holds `minIdle` idle pods again. This test proves the removal only and shows no order: the pod starts terminating about 0.7 s before the route is deleted, and the session object still shows `Ready` then. The access part is POOL-18.
 
 ### POOL-05 Exhaustion falls back or waits
 Safety: test-only
@@ -102,6 +102,13 @@ Needs: the scaler (test3).
 Steps: record the scaler's replicas and the `targetIdle` of all pools; `k scale deploy/$P-pool-scaler --replicas=0`; wait the scaler interval; launch two sessions on a real pool template (warm claims); scale back.
 Expect: while the scaler is down nothing changes `targetIdle` (the operator keeps `max(minIdle, targetIdle)`, so the pool still refills after claims); the admin status shows the warning `scaler-silent` after twice the interval (needs Prometheus); after the scale-up the scaler decides again and writes an Event only if the target changes.
 Cleanup: replicas restored; sessions deleted.
+
+### POOL-18 Release removes access first
+Safety: test-only
+Needs: a login (the user logged in in the browser pane, SEC-13); without one the result is `blocked (needs login)`.
+Steps: start a session of the logged-in user from a tile and note its URL; `k delete idesession <name>`; at once request the URL again as the logged-in user in the browser, then again after the pod is gone.
+Expect: both requests answer 403 (authz denies as soon as the session leaves `Ready` or the pod is gone; the first request does not reach the IDE). The same check is SEC-13 step 3: record one result for both. An anonymous request answers the Keycloak redirect before and after and proves nothing.
+Cleanup: the logged-in user's session.
 
 ## Unverified, check in the first run
 

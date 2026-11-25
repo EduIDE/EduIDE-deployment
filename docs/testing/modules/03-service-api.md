@@ -148,7 +148,7 @@ Needs: browser token; a template that lists `GIT_URI` (all chart templates do).
 Steps:
 1. `POST /sessions` with `{template:'<TPL_STD>',data:{GIT_URI:'https://github.com/<small public repo>.git'}}` (an `allowedHosts` host; record the repository).
 2. `k get secret <session>-data -o json | jq -r '.data | keys[]'`; `k get idesession <session> -o json | jq '.spec'`.
-3. `k logs deploy/$P-service --since=2m | grep -c '<the repository path>'`.
+3. `ft_logs service --since=2m | grep -c '<the repository path>'`.
 Expect: 201. The Secret holds the request keys plus the keys from the token (`GIT_USER`, `GIT_MAIL` where the token has name and email), names only; the Secret is owned by the session and labelled `managed-by=eduide`. The session spec holds `display.source` (the URL without user info) but no data value. No log line of the service or operator contains a data value or the token (counts only). A `GIT_URI` with user info is accepted only for templates with `allowCredentials: true` (test2 sets it for all templates, `gitUriAllowCredentials`), and then `display.source` has no user info.
 Cleanup: API-05.
 
@@ -192,6 +192,6 @@ Expect: the overview lists the running session (`kind: session`, `running: true`
 - Launch with `display.title` and `display.source` at the length limits (200, 2048), with markup, with a query or fragment in `source` (refused).
 - `POST /workspaces` and `DELETE /workspaces/<name>` while the workspace has a session in `Starting`.
 - Delete a session while it is still starting (`Pending`, `Starting`).
-- Grep the service log for the Authorization header or JWT fragments (count only): `k logs deploy/$P-service --since=1h | grep -c -i -E 'bearer|eyJ'`.
+- Grep the service log for the Authorization header or JWT fragments (count only): `ft_logs service --since=1h | grep -c -i -E 'bearer|eyJ'`.
 - The `traceparent` header on `POST /sessions` (55 characters at most): is the launch trace linked?
 - An access token with the right signature but another `azp`; an ID token instead of the access token.

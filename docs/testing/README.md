@@ -90,6 +90,10 @@ export LANDING=https://$ENV INSTANCE=https://instance.$ENV WEBVIEW=https://webvi
 # Every environment installs the release `eduide`, so the control plane objects are named like this:
 export P=eduide-eduide-control-plane          # deployments: $P-operator, $P-service, $P-authz, $P-pool-scaler (test3)
 k() { kubectl --context "$CTX" -n "$NS" "$@"; }
+# `k logs deploy/<name>` reads ONE pod of a Deployment. Service and authz run two replicas: use this for them.
+ft_logs() { # $1 component (service, authz, operator), rest: flags for kubectl logs; reads every pod
+  local p; for p in $(k get pods -l app.kubernetes.io/component="$1" -o name); do k logs "$p" "${@:2}"; done
+}
 
 # Sanity: the context reaches the right cluster (bootstrap writes this ConfigMap).
 test "$(kubectl --context "$CTX" -n eduide-system get cm eduide-cluster-identity -o jsonpath='{.data.clusterName}')" = "$CLUSTER" && echo "cluster ok"
@@ -186,11 +190,21 @@ EOF
 }
 
 ft_wait() { # $1 session: waits for phase Ready (prints the URL) or Failed (prints code and message)
+  # It polls every 5 s, so it only tells that the session is Ready, never how fast: use ft_startup for the time.
   for _ in $(seq 1 90); do
     s=$(k get idesession "$1" -o jsonpath='{.status.phase}|{.status.url}|{.status.errorCode}|{.status.message}' 2>/dev/null) || { echo "no session $1"; return 1; }
     case "$s" in Ready\|*) echo "$s"; return 0;; Failed\|*) echo "$s"; return 1;; esac
     sleep 5
   done; echo "timeout: $s"; return 1
+}
+
+ft_startup() { # $1 session: start time as the operator measured it, e.g. "ready after 2.2s (warm-ready)"
+  # Source: the Ready Event (1 hour retention); without it, status.timestamps.ready minus creation, to the second.
+  local m; m=$(k get events --field-selector involvedObject.name="$1",reason=Ready -o jsonpath='{.items[-1:].message}' 2>/dev/null)
+  if [ -n "$m" ]; then echo "$m"; return 0; fi
+  k get idesession "$1" -o json | jq -r '
+    def t: sub("\\.[0-9]+Z$"; "Z") | fromdateiso8601;
+    if .status.timestamps.ready then "ready after \((.status.timestamps.ready | t) - (.metadata.creationTimestamp | t)) s (" + (.status.startStrategy // "?") + ", from timestamps)" else "not ready" end'
 }
 
 ft_cleanup() {
@@ -201,6 +215,8 @@ ft_cleanup() {
   k delete idetemplates -l eduide.dev/functional-test=$RUN_ID --wait=true
 }
 ```
+
+Start times: read them with `ft_startup <session>`, never from the elapsed time of `ft_wait` (it polls every 5 s and reports a warm start of 2.2 s as about 6 s).
 
 Instance objects. A session pod is named `ide-<instance>`; the Service, HTTPRoute and token Secret carry the same name (`ide-<instance>-token`). A session with an instance names it in its status. Pool instances (idle) have no session label; claimed ones carry `eduide.github.io/session=<session>`.
 
@@ -341,3 +357,4 @@ The plan changes through pull requests to this directory, never silently during 
 | 2026-11-24 | Rewrite for the Go control plane (EduIDE 3.x, control plane chart 0.2.3, chart `eduide` 3.0.x). Setup and fixtures create `IDETemplate`, `IDEPool`, `IDEWorkspace` and `IDESession` (group `eduide.github.io`); the API is `/api/v1` on the landing host and the token hook watches `fetch`. Modules 06 and 07 are renamed "Agent and launch data" (AGT) and "Workspace retention" (RET). Kept and rewritten: PLAT-01 to PLAT-07, LAND-02 to LAND-05, LAND-08 to LAND-13, API-01 to API-09, API-11, API-13 to API-16, API-18, OPR-01 to OPR-08, OPR-10 to OPR-14, POOL-01 to POOL-10, POOL-13, IDE-01 to IDE-09 (edited), SEC-02 to SEC-11, MON-01 to MON-08, UPG-01 to UPG-05, ART-01 to ART-05. Retired: LAND-01, LAND-06, LAND-07, API-10, API-12, API-17, OPR-09, POOL-11, POOL-12, SEC-01, DB-01 to DB-13, GC-01 to GC-07 (reasons in each module). New: PLAT-08 to PLAT-10, LAND-14 to LAND-20, API-19 to API-22, OPR-15, OPR-16, POOL-14 to POOL-17, AGT-01 to AGT-06, AGT-08 to AGT-10, AGT-12 (AGT-07 and AGT-11 are unused), RET-01 to RET-08, SEC-12 to SEC-15, MON-09 to MON-12, UPG-06, ART-06, ART-07. Every module has an "Unverified, check in the first run" list. Mannheim stays on Java and has its own section; reports of 2026-11-17 are history. Number 13 stays free. |
 | 2026-11-24 | First run of the Go plan on test2 ([report](reports/2026-11-24-test2.eduide.student.k8s.aet.cit.tum.de-1.md): 63 pass, 0 fail, 29 blocked for lack of a login, 54 skipped) applied 9 plan corrections: PLAT-10, OPR-01 and RET-01 use `yq -o json \| jq`; SEC-06 forbids token values, not the names `AGENT_TOKEN_FILE` and `AGENT_ID_TOKEN_COOKIE`; `ft_session` uses `kubectl create` (AGT-08) and sets the workspace owner reference (RET-02); AGT-10 waits more than 2 minutes; MON-01 and MON-03 compare with the rendered chart; API-14 `/api/metrics` is a JSON 404; SEC-07 uses `curl` in the IDE container; API-01 `logoUrl` only where configured. Login-blocked tests and cross-namespace reads documented. |
 | 2026-11-25 | Second run on test2 ([report](reports/2026-11-25-test2.eduide.student.k8s.aet.cit.tum.de-2.md): 57 pass, 2 fail that are not regressions (stale agent image, one OIDC client for gateway and landing page), 29 blocked for lack of a login, 60 skipped) applied 6 plan corrections: `ft_session` computes the owner reference in a variable (bash broke on the first `}` inside `${wo:+ ...}`); a deploy replaces idle pool pods only when the spec hash changes, with the inputs listed in POOL facts and UPG facts; new PLAT-11 (pod images equal the registry digests, agent of a new session pod included); SEC-07 gets a positive control against the landing page pod; plugin `package.json` files are under `plugins/<id>/extension/` and Scorpio's package is `artemis-scorpio` (IDE-09); AGT-01 checks the agent `imageID`. |
+| 2026-11-25 | Agent re-run on the final build ([report](reports/2026-11-25-test2.eduide.student.k8s.aet.cit.tum.de-2.md), section "Agent re-run on the final build": 19 pass, 2 partial, 3 blocked for lack of a login, 1 skipped, 0 fail) applied 5 plan corrections: new helpers `ft_startup` (start time from the `Ready` Event or `status.timestamps`; `ft_wait` polls every 5 s and over-reports) and `ft_logs` (`k logs deploy/<x>` reads one pod only; service and authz have two); POOL-03 and OPR-02 state their time budgets with `ft_startup`; POOL-04 covers the objects, the new POOL-18 the access part (needs a login), SEC Facts reworded; new AGT-13 checks the agent's Git endpoints with the feature off; PLAT-11 drops the "Unverified" line and states that a deploy does not restart a pod whose spec is unchanged. |
