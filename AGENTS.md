@@ -278,8 +278,15 @@ down.** Gateway listeners come from each environment's `gateway.parentRefs`
 plus its hosts; the PodMonitors' watched namespaces come from
 `spec.namespace`. Both used to be hand-written lists in a second file, and both
 had gone stale - the monitoring one still named `theia` and `theia-staging`,
-so some environments were scraped and others silently were not. Adding an
-environment is one directory; do not add a second edit anywhere.
+so some environments were scraped and others silently were not. Do not
+reintroduce a derived list.
+
+**The exception is the dispatch inputs, and it is not optional.** `Deploy
+(dispatch)` and `Rollback` take the environment as a `type: choice`, which
+GitHub cannot populate dynamically, so `.github/workflows/deploy-dispatch.yml`
+and `rollback.yml` carry the list by hand. A new environment that is not in
+both can be neither deployed nor rolled back from the Actions UI - `demo` was
+merged without it and stalled there.
 
 **The shared Gateway is in `eduide-system`, not `gateway-system`.** All the
 cluster-scoped EduIDE resources sit in one namespace. `envoy-gateway-system` is
@@ -315,9 +322,11 @@ list too**, or the render diff becomes noise and stops being read.
 
 ## Adding an environment
 
-Set `spec.platform.stack` (omit for java). One directory under `environments/`, then the GitHub Environment holding its
-`KUBECONFIG`. The shared Gateway listeners are derived from the manifests, so
-there is no second file to edit. See `docs/environments.md`.
+Set `spec.platform.stack` (omit for java). One directory under `environments/`,
+then the GitHub Environment holding its `KUBECONFIG`, then the environment's
+name in the `choice` lists of `deploy-dispatch.yml` and `rollback.yml`. The
+shared Gateway listeners and the watched namespaces are derived from the
+manifests; the dispatch lists are not. See `docs/environments.md`.
 
 ## Dependency updates
 
