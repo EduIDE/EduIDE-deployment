@@ -22,13 +22,15 @@ Sources (EduIDE-control-plane, state of branch `git-accounts`, commit `b8f306b`)
 - Repository path rule (`gitapi.CanonicalRepo`): 2 to 10 segments of letters, digits and `._~-`; no segment starts with a dot (so no `.git` directory, no `..`); `.git` only as the suffix of the last segment; no name that still ends in `.git` after one suffix is cut. The upstream path is built from the authorised repository, never from the request path.
 - The git-proxy serves `info/refs`, `git-upload-pack` and `git-receive-pack` only. Git LFS paths answer 501 with "Git LFS is not supported through EduIDE.". Everything else is 404. It follows no redirect and talks only to provider hosts over HTTPS.
 - Network (NetworkPolicies of the release): `session-to-git-proxy` (session pods to `git-proxy` :8080, a pod selector rule of its own), `git-proxy` (ingress from session pods and the metrics scrape; egress DNS, the service :8083, HTTPS to the internet without private ranges), `service-internal` (the service port 8083 accepts only `git-proxy`). The `git-proxy` pod has no service account token and mounts no Secret. The service Role gets `list`, `update`, `patch` on Secrets only with providers.
-- The idle warm instances are replaced after a change of the Git settings: they are part of the pod hash. Without providers the hash is unchanged, so an upgrade replaces nothing.
+- The idle warm instances are replaced after a change of the Git settings: the agent env (`AGENT_GIT_PROXY_URL`, `AGENT_GIT_HOSTS`, `AGENT_GIT_LANDING_URL`) is part of the spec hash, but only when there is at least one provider and a proxy URL (`internal/controller/build.go`: `gitEnv`, `specHash`; unit tests `TestSpecHashCoversGitSettings`, `TestSpecHashWithoutGitIsUnchanged`). Providers without a proxy URL change nothing. Without providers the hash equals the formula from before the feature, so an upgrade that changes nothing else replaces no idle instance (GIT-13). Claimed pods are never replaced and keep the hosts they started with.
 - Two Keycloak clients (install guide): the landing page client is public with PKCE S256 and has redirect URIs on the service host only. The gateway client is confidential with exact redirect URIs for the instance and webview host. `oidc.gatewayClientID` is never in `oidc.clientIDs`.
 - Scorpio (the IDE's Git integration) shows the remote message of a refused Git command with an "Open" button, offers "Retry" after connecting, and a restarted session reuses the workspace from Scorpio 3.5.0 (EduIDE/scorpio PR 239).
 
 Each test has one more field than the README names: **Automated** says whether the control plane e2e suite (`make e2e`, `E2E_RUN=TestGitAccounts`) covers it. `go` names the subtest of `TestGitAccounts` in `test/e2e/git_test.go`, `pw` the Playwright spec `test/e2e/browser/git-accounts.spec.ts`, `unit` that only unit tests cover it, `none` that nothing automated does. The e2e suite runs against a fake provider, a fake IDE and a kind cluster. A run on a real installation should spend its time on what only a real environment shows: real GitHub and GitLab, the real IDE with Scorpio, NetworkPolicy enforcement by the cluster's CNI, the real Keycloak clients and the real landing page host. Tests marked `go` or `pw` are still worth a smoke run (GIT-20, GIT-30, GIT-32) and are otherwise skipped when time is short.
 
 Preconditions for the "real provider" tests: OAuth apps registered for this installation, a test account on each provider with one private repository `ft-private`, one public repository `ft-public`, and a second private repository `ft-other`. The user logs in to the provider in the browser pane; the agent never types a password. Every object a test creates is named `ft-`. The user logs in on the landing page in the browser pane, and the agent never types a password there either.
+
+Precondition for every real-provider test below (from "Connect and disconnect" on): the build passes PLAT-11, that is every image of the installation, the agent of a session pod created after the deploy included, equals the registry digest of its tag. A stale agent runs old Git routing: the results would describe a build that is not the one under test. If PLAT-11 fails, record these tests as `blocked` with the digests, fix the environment (agent pull policy `Always`, or a digest reference), deploy again and repeat PLAT-11 first.
 
 Never print or record a token, a code, the `state`, a cookie, or the decrypted content of a `git-account-` Secret. Evidence is status codes, key names, counts and hashes. Do not record the callback URL or an approval link with a real session name.
 
@@ -77,6 +79,20 @@ Safety: test-only, disruptive
 Automated: unit (config validation)
 Steps: `helm template` (dry run, no install) with a duplicate provider name, a duplicate host, an unknown `type`, and a host with a path.
 Expect: schema or config validation fails with a message that names the field. Nothing is installed.
+
+### GIT-13 Idle warm instances follow the Git settings
+Safety: test-only, disruptive
+Automated: unit (`TestSpecHashCoversGitSettings`, `TestSpecHashWithoutGitIsUnchanged`); the replacement of real pods: none
+Needs: a real pool (`<TPL_POOL>`, `minIdle` at least 1), permission to change the environment's Git settings and deploy (README, module 11), a test environment that is announced. Never on production.
+Steps:
+1. Note the idle instances: `k get pods -l eduide.github.io/pool=<pool>,eduide.github.io/state=idle -o custom-columns=NAME:.metadata.name,HASH:'.metadata.annotations.eduide\.github\.io/spec-hash',CREATED:.metadata.creationTimestamp` and the agent env names of one of them (`k get pod <pod> -o json | jq -r '.spec.containers[] | select(.name=="agent") | .env[].name' | grep -c AGENT_GIT`). Note also one claimed session pod (`state=claimed`), if there is one.
+2. Change a Git setting in `environments/$ENV/values.yaml` (`eduide-control-plane.config.gitAccounts`): add a provider, or remove all providers (feature off). Deploy it (module 11 procedure).
+3. Poll the same listing every 20 seconds for three minutes.
+4. Start a new session on `<TPL_POOL>` (warm) and ask its agent for the hosts: `k port-forward <pod> 38082:8082 >/dev/null 2>&1 & PF=$!; sleep 3; curl -s http://127.0.0.1:38082/v1/git/hosts | jq 'keys'; kill $PF` (the claimed pod answers).
+5. Control: a second deploy that changes nothing about Git (the same values again), with providers set. Compare names and hashes of the idle instances before and after.
+6. Control for an installation without providers (feature off from the start): a deploy that changes nothing else (UPG-05).
+Expect: after step 2 the idle instances get a new `spec-hash` and are replaced one by one (a new pod before an old ready one goes, `idleReady` does not drop, POOL-06); every new idle instance has the agent env `AGENT_GIT_HOSTS` with the new provider hosts (or no `AGENT_GIT_*` env when the feature is off); the session from step 4 reports the new hosts on `GET /v1/git/hosts` (an empty list when off); the claimed pod keeps its old hash, UID and hosts. Step 5: the same pod names and hashes, nothing replaced. Step 6: the same pod names and hashes, nothing replaced (`TestSpecHashWithoutGitIsUnchanged`). An idle instance that keeps its old hash after step 2 would hand out sessions without the Git route: a finding.
+Cleanup: restore the previous Git settings and deploy again (the idle instances roll once more); `ft_cleanup`.
 
 ## Connect and disconnect
 
@@ -402,7 +418,9 @@ Expect: `document.cookie` lists none of `eduide-id` (or the configured `oidc.idT
 Safety: prod-safe
 Automated: none
 Steps: `k get cm $P-config -o json | jq -r '.data["config.yaml"]' | yq -o json | jq '. as $c | {clientIDs: $c.oidc.clientIDs, gateway: $c.oidc.gatewayClientID, overlap: (($c.oidc.clientIDs // []) | index($c.oidc.gatewayClientID) != null)}'`; `k get cm eduide-landing-page -o json | jq -r '.data["config.json"]' | jq '.keycloak'` (client id only); `k get securitypolicy $P-session -o json | jq '.spec.oidc.clientID'`. Ask the realm owner (the agent has no Keycloak admin access) to check the Keycloak settings of the install guide: gateway client confidential, standard flow only, exact redirect URIs for the instance and webview callback with no wildcard; landing page client public with PKCE `S256` required and redirect URIs on the service host only; no direct access grants, implicit flow or service accounts; web origins limited to each client's own hosts.
-Expect: `overlap` is `false`, the gateway client id differs from the landing page client id and from every entry of `clientIDs`, the SecurityPolicy names the gateway client. Record each Keycloak setting as confirmed by the realm owner or `blocked`. An installation with one client for both is a finding: script in the IDE origin can then obtain an API token.
+Expect: `overlap` is `false`, the gateway client id differs from the landing page client id and from every entry of `clientIDs`, the SecurityPolicy names the gateway client. Record each Keycloak setting as confirmed by the realm owner or `blocked`. This is a configuration check only (the agent cannot test the Keycloak side). Its weight depends on the installation:
+- Feature off (no providers): an overlap is a recorded finding, not a blocker. Test2 uses one client (`eduide`) for the gateway and the API (run of 2026-11-25), so the test reports a finding there.
+- Before repository approval or Git accounts are enabled on a production installation: an overlap is a failing precondition. With one client, script in the IDE origin can obtain an API token that approves repositories and uses accounts. Split the clients first; the install guide of the control plane describes both (`docs/operations/install.md` in EduIDE/EduIDE-control-plane PR 33): create a confidential gateway client, set `oidc.gatewayClientID` to it, keep it out of `oidc.clientIDs`.
 
 ## Browser extension
 
@@ -421,6 +439,8 @@ Expect: disconnected: the landing page asks to connect, then starts the session 
 ## Scorpio in a real IDE
 
 These tests need an IDE image with Scorpio 3.5.0 or later and the `eduide-session` extension that writes the `insteadOf` entries (check `status.image.version` of the template and the extension version in the IDE). The e2e suite uses a fake IDE and covers none of them. If the IDE is older, record `blocked` with the version.
+
+Where the plugins are: `/home/theia/plugins/<id>/extension/package.json` (not `/home/theia/plugins/<id>/package.json`). Read name and version with `k exec <pod> -c ide -- sh -c 'for f in /home/theia/plugins/*/extension/package.json; do echo "$f"; grep -m2 -E "^  \"(name|version)\"" "$f"; done'`. The Scorpio folder is `scorpio` and its package name is `artemis-scorpio`; the session extension is `eduide-session`. Expected on the IDE images `pr-251` (run of 2026-11-25): `eduide-session` 0.2.0, `artemis-scorpio` 3.5.0-rc.1. Record the versions found.
 
 ### GIT-90 Insteadof entries come from the extension
 Safety: test-only
