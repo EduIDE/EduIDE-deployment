@@ -6,8 +6,11 @@ This guide explains how to configure Keycloak authentication for Theia Cloud dep
 > valid redirect URI `https://<instance host>/oauth2/callback`; its secret is
 > the GitHub Environment secret `OIDC_CLIENT_SECRET`. test1 to test3 and Bonn
 > use one client `eduide` for the gateway and the landing page (`clientIDs`),
-> unchanged from 2.x, and the login works on both. A separate confidential
-> gateway client is possible but not needed. Hosts: the service host serves the landing page
+> unchanged from 2.x, and the login works on both. That client stays public
+> (Client authentication OFF): the landing page logs in without a secret, so
+> switching it to confidential breaks every landing page login with
+> `unauthorized_client` (Bonn and tum-production on 2026-11-25). A separate
+> confidential gateway client is possible but not needed. Hosts: the service host serves the landing page
 > and `/api/v1`, the instance host the sessions, `webview.<instance host>` the
 > webviews.
 

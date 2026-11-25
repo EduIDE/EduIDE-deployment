@@ -63,8 +63,14 @@ installation and nothing else.
 
 ### `OIDC_CLIENT_SECRET` - per go environment
 
-The client secret of the confidential gateway client
-(`eduide-control-plane.config.oidc.gatewayClientID`) in Keycloak. `Deploy`
+The client secret the gateway sends for its client
+(`eduide-control-plane.config.oidc.gatewayClientID`). Every installation here
+uses one client `eduide` for the gateway and the landing page; that client is
+public (Client authentication OFF), Keycloak ignores the secret, and any
+non-empty value works. Only a separate, confidential gateway client needs its
+real secret here. Never switch the shared client to confidential: the landing
+page has no secret, and its login fails with `unauthorized_client`
+(Bonn and tum-production, 2026-11-25). `Deploy`
 writes it to the Secret `eduide-oidc` (key `client-secret`) in the
 environment's namespace with `kubectl apply`, never printing it, and fails if it
 is empty. Java environments do not use it. Its redirect URI is

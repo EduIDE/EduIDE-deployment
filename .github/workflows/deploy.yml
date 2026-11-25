@@ -375,7 +375,10 @@ jobs:
           # stays out of the log and the process list.
           if [[ -z "${OIDC_CLIENT_SECRET:-}" ]]; then
             echo "::error::OIDC_CLIENT_SECRET is not set on the '${{ inputs.environment }}' GitHub Environment."
-            echo "::error::It is the client secret of the confidential gateway client (gatewayClientID) in Keycloak."
+            echo "::error::It is the client secret the gateway sends for its client (gatewayClientID). When that client is"
+            echo "::error::also the landing page client (one client 'eduide', as on every installation here), it must stay"
+            echo "::error::public (Client authentication OFF) and any non-empty value works; never switch it to confidential,"
+            echo "::error::or the landing page login breaks. See docs/keycloak-setup.md."
             exit 1
           fi
           NS="${{ steps.env.outputs.namespace }}"
