@@ -29,6 +29,8 @@ x-keycloak: &keycloak
 # The Artemis editions get the repository URL with the VCS token (Artemis#14702).
 templateDefaults:
   gitUriAllowCredentials: true
+  # Preview deploys reuse the tag pr-<N> for new IDE image builds (needs an eduide chart with this value).
+  imagePullPolicy: Always
 
 templates:
   # The landing page offers the standalone editions; Artemis links start the unlisted artemis editions below.
@@ -39,6 +41,9 @@ templates:
   java-25: {}
 
 eduide-control-plane:
+  # Preview deploys reuse the tag pr-<N> for new builds, so a cached image would be stale.
+  image:
+    pullPolicy: Always
   config:
     deployment: test2
     hosts: *hosts
@@ -75,6 +80,9 @@ eduide-control-plane:
     endSessionEndpoint: https://keycloak-test.aet.cit.tum.de/realms/tum/protocol/openid-connect/logout
 
 eduide-landing-page:
+  # Preview deploys reuse the tag pr-<N> for new builds, so a cached image would be stale.
+  image:
+    pullPolicy: Always
   # Placeholders for test2 (the chart requires both).
   legal:
     imprint:
