@@ -58,7 +58,7 @@ The prefix is not the landing host. Production's landing host is `eduide` and
 its sections were `prod-*` on the Java stack. CI rejects two environments
 on one cluster sharing a prefix.
 
-`create: false` matters. With `create: true` the tenant chart renders a Gateway
+`create: false` matters. With `create: true` the installation chart renders a Gateway
 of its own and you get two.
 
 ## The load balancer address
@@ -242,7 +242,7 @@ Never `curl -k` here. It hides precisely this.
 **The Gateway has no address.** No load balancer implementation, or MetalLB
 annotations that do not match a pool.
 
-**Two Gateways.** A tenant left `gateway.create: true`.
+**Two Gateways.** An installation left `gateway.create: true`.
 
 **Certificates never issue.** The `ClusterIssuer` the derived certificates
 reference cannot solve over Gateway API. See step 3 of

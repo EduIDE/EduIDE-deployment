@@ -520,7 +520,7 @@ for cf in "$ROOT"/clusters/*.yaml; do
 
   # A channel scoped to an environment that does not exist on this cluster
   # matches nothing, so that channel silently receives only the cluster-scoped
-  # alerts and nobody notices the tenant's own alerts are going elsewhere.
+  # alerts and nobody notices the installation's own alerts are going elsewhere.
   # Typos here are invisible at render time: the matcher is just a regex.
   while IFS=$'\t' read -r cname cenv; do
     [[ -n "$cenv" ]] || continue

@@ -12,7 +12,7 @@ There are **two kinds**, and they are not interchangeable.
 | Per cluster | `spec.bootstrapEnvironment` in `clusters/<name>.yaml`, by convention `cluster-<name>` | `Bootstrap cluster` | `KUBECONFIG`, `THEIA_WILDCARD_CERTIFICATE_CERT`, `THEIA_WILDCARD_CERTIFICATE_KEY` |
 
 A deploy never installs anything cluster-scoped, and a bootstrap never installs
-a tenant. So the wildcard certificate belongs on the **cluster** environment,
+an installation. So the wildcard certificate belongs on the **cluster** environment,
 even though it used to live on the per-environment ones.
 
 ## The secrets
