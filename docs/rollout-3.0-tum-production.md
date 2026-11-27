@@ -16,7 +16,7 @@ Do all of these before the first deploy.
    - `instance.eduide.artemis.cit.tum.de` (already exists)
    - `webview.instance.eduide.artemis.cit.tum.de` (new; java used `*.webview.instance...`)
 3. **Keycloak.** In realm `tum`, the gateway client (`gatewayClientID`) has the valid redirect URI `https://instance.eduide.artemis.cit.tum.de/oauth2/callback` (the instance host, not the landing host). test1 to test3 and Bonn use one client `eduide` for the gateway and the landing page; see [keycloak-setup.md](keycloak-setup.md).
-4. **GitHub Environment secret** `OIDC_CLIENT_SECRET` on the environment `eduide.artemis.cit.tum.de`: the client secret of that confidential client.
+4. **GitHub Environment secret** `OIDC_CLIENT_SECRET` on the environment `eduide.artemis.cit.tum.de`: any non-empty value while the gateway uses the public client `eduide`, the real secret only for a separate confidential gateway client; see [github-environments.md](github-environments.md).
 5. **CRDs.** Done by `Bootstrap cluster` for `tum-production` once the environment has `stack: go` (`spec.controlPlaneCRDs` in `clusters/tum-production.yaml`). The CRD chart sits next to the Theia Cloud CRDs. Do not install the 3.x `eduide-cluster` chart here: it refuses while Theia Cloud CRDs exist.
 6. **Artemis** runs a version with ls1intum/Artemis#14702 (it sends the token in the URL fragment and the repository URL with credentials), and its EduIDE link configuration points at `https://eduide.artemis.cit.tum.de/`.
 7. **Egress and monitoring** values in the go values (AET CIDRs, `cattle-monitoring-system`, `cattle-dashboards`) match the cluster. Check against the live cluster before the first deploy.

@@ -7,7 +7,8 @@ own hostnames, branding and Keycloak client.
 clusters/<name>.yaml             where things run, and what is true of the whole cluster
 environments/<name>/env.yaml     how this installation is DEPLOYED
 environments/<name>/values.yaml  how the CHART is configured - a plain Helm values file
-environments/_base.yaml          chart settings identical in every environment
+environments/_base.yaml          chart settings identical in every java environment
+environments/_base-go.yaml       chart settings identical in every go environment
 schemas/                         JSON schemas env.yaml and clusters/*.yaml are validated against
 ```
 
@@ -15,7 +16,8 @@ The split is the whole point. `env.yaml` is read by the deploy workflow and
 never by Helm; `values.yaml` is read by Helm and never by the workflow. If you
 are looking for a chart setting it is in `values.yaml`, always.
 
-The deploy runs, in this order:
+The deploy runs, in this order (stack: java; on go the base is
+`_base-go.yaml` and the same order holds):
 
 ```bash
 helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide --version <chart version> \
@@ -25,7 +27,8 @@ helm upgrade --install eduide oci://ghcr.io/eduide/charts/eduide --version <char
   -f secrets.yaml                                # from the GitHub Environment
 ```
 
-Since 2.0.0 that is **one chart**, not an umbrella over five subcharts, so
+Since 2.0.0 that is **one chart** (stack: java; the go chart 3.x uses
+`eduide-control-plane:` and `templates:` keys, see `_base-go.yaml`), not an umbrella over five subcharts, so
 values files are keyed at the top level: `hosts:`, `keycloak:`, `operator:`,
 not `theia-cloud.hosts:`.
 
@@ -189,8 +192,11 @@ Actions -> Bootstrap cluster -> cluster: eduide, dry_run: true
 ```
 
 The shared Gateway's listeners are derived from every environment that claims
-the cluster, so a new environment needs no second file edited. Run it with
+the cluster, so bootstrap needs no second file edited. Run it with
 `dry_run: false` once the diff looks right.
+
+One list is not derived: add the environment to the `choice` options of
+`deploy-dispatch.yml` and `rollback.yml`, or neither workflow will offer it.
 
 ### 5. DNS, certificates and Keycloak
 
@@ -205,6 +211,9 @@ See [cluster-setup.md](cluster-setup.md), [tum-certificates.md](tum-certificates
 and [keycloak-setup.md](keycloak-setup.md).
 
 ## Versions
+
+Stack: java (mannheim). On go the knobs are `images.tag` (IDE images),
+`eduide-control-plane.image.tag` and `eduide-landing-page.image.tag`.
 
 One number per source repository, and one chart version over the lot:
 
@@ -227,6 +236,10 @@ Actions -> Deploy environment -> control_plane_tag: pr-451 (ide_tag and landing_
 ```
 
 ## Applications and preloading
+
+Stack: java (mannheim). On go the chart's `catalog` defines the images, an
+installation selects and tunes them under `templates` (IDETemplates), and
+`pool` (`minIdle`, `maxInstances`) keeps idle instances ready.
 
 The chart's `appDefinitions.catalog` defines the IDE images EduIDE officially
 releases. An environment names the apps it offers in `appDefinitions.enabled`,
@@ -257,8 +270,8 @@ monitoring:
   enabled: false
 ```
 
-The PodMonitor objects are in `eduide-cluster`, not the tenant chart: they have
-to be created in Rancher's own namespace to be discovered, and one per tenant
+The PodMonitor objects are in `eduide-cluster`, not the installation chart: they have
+to be created in Rancher's own namespace to be discovered, and one per installation
 writing into a shared namespace would collide on names. So the cluster chart
 owns them and this flag decides whether the environment's namespace appears in
 the list they watch - `Bootstrap cluster` reads it when deriving that list. A
@@ -398,7 +411,7 @@ host is `eduide` but its Gateway sections were `prod-*` on the Java stack.
 Getting this wrong attaches routes to sections that do not exist, and nothing
 fails until traffic does.
 
-**A Workspace resource does not mean the files persist.** With
+**A Workspace resource does not mean the files persist (stack: java).** With
 `operator.eagerStart`, a session runs on a prewarmed instance pod, and that pod
 never mounts the workspace PVC - the PVC stays `Pending` for good. The files
 live in the pod and are lost whenever the pod is recycled: after the
@@ -428,6 +441,9 @@ environment's Keycloak realm, and the environment should offer the apps the
 suite launches. Since 2026-11-22 e2e runs on the Go stack (3.x), so the suite must speak the 3.x API there.
 
 ## Switching an environment to lazy start
+
+Stack: java (mannheim) only. On go, a template's `pool` and
+`persistence` settings decide this.
 
 The deploy only changes the operator's arguments. The lazy operator never
 touches the warm pool, and the pool's `instance-*` Deployments, Services and
@@ -461,6 +477,7 @@ Files already lost stay lost: the prewarmed pods never had a volume.
 ## Checking a change
 
 ```bash
+# stack: java; on go use _base-go.yaml with a go environment
 helm template eduide oci://ghcr.io/eduide/charts/eduide --version <chart version> \
   -f environments/_base.yaml -f environments/test1/values.yaml
 ./scripts/test-deploy-logic.sh            # overrides, tags, listeners, storage, cache

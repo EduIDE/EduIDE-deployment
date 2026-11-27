@@ -85,7 +85,7 @@ eduide-control-plane:
     # stud routes EduIDE alerts through the AlertmanagerConfig in eduide-system (namespace matcher).
     rules: {enabled: true, extraLabels: {namespace: eduide-system}}
     # The dashboard ConfigMap would go to cattle-dashboards, outside the namespace the deploy
-    # credentials may write. Bootstrap ships the boards instead (spec.controlPlaneDashboards).
+    # credentials may write. Bootstrap ships the boards instead (version derived from the environments' charts).
     dashboard: {enabled: false}
   oidc:
     # Set, so Envoy Gateway does not discover them through the OIDC upstream.

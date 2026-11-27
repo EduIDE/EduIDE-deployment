@@ -59,12 +59,12 @@ which `Bootstrap cluster` installs as release `eduide-crds`; a `go`
 environment renders its own Gateway.)
 
 ```bash
-# once per cluster - CRDs, conversion webhook, ClusterRoles, issuers,
-# the shared Gateway, PodMonitors and dashboards
+# stack: java (mannheim). Once per cluster - CRDs, conversion webhook,
+# ClusterRoles, issuers, the shared Gateway, PodMonitors and dashboards
 helm install eduide-cluster oci://ghcr.io/eduide/charts/eduide-cluster \
   --version <chart version> -n eduide-system --create-namespace -f cluster-values.yaml
 
-# once per environment
+# once per installation (go: -f environments/_base-go.yaml instead)
 helm install eduide oci://ghcr.io/eduide/charts/eduide \
   --version <chart version> -n eduide-test1 \
   -f environments/_base.yaml -f environments/test1/values.yaml
@@ -101,18 +101,22 @@ back from the cluster rather than echoed from its inputs.
 ## What an environment does and does not configure
 
 An environment file carries **hosts, gateway routing, Keycloak and branding**.
-That is all. Everything else is derived or shared:
+That is all. Everything else is derived or shared. The table is for
+**stack: java (mannheim)**; on `go` the equivalents are `images.tag` and
+`eduide-control-plane.image.tag` for image tags, the chart's `catalog` plus
+`templates` (with an optional `pool`) for templates, and `_base-go.yaml` for
+the shared part.
 
-| | Where it comes from |
+| | Where it comes from (stack: java) |
 |---|---|
 | Image tags | `versions.ide` / `versions.cloud` / `versions.landingPage` in the chart |
-| App definitions | `appDefinitions.catalog` in the chart; the environment picks with `appDefinitions.enabled` |
+| App definitions (templates on `go`) | `appDefinitions.catalog` in the chart; the environment picks with `appDefinitions.enabled` |
 | Images to preload | derived from the enabled apps |
 | The landing page's app list | derived from the enabled apps |
 | Storage class, node pool | `clusters/<name>.yaml` |
 | Gateway listeners | derived from each environment's `parentRefs` |
 | Monitored namespaces | derived from the environments on the cluster |
-| Everything identical everywhere | `environments/_base.yaml` |
+| Everything identical everywhere | `environments/_base.yaml` (`_base-go.yaml` on go) |
 
 Adding a language is one entry in the chart, not three edits across two
 repositories.
@@ -147,8 +151,9 @@ how to produce it, and what each environment holds today.
 ```bash
 ./scripts/test-deploy-logic.sh            # overrides, tags, listeners, storage, cache
 
+# stack: java; on go use environments/_base-go.yaml and a go environment
 helm template eduide oci://ghcr.io/eduide/charts/eduide --version <chart version> \
-  -f environments/_base.yaml -f environments/test1/values.yaml
+  -f environments/_base.yaml -f environments/mannheim.eduide.aet.cit.tum.de/values.yaml
 ```
 
 `go` environments render in the same script once their chart is published
@@ -184,6 +189,6 @@ renders every environment.
 
 - [EduIDE-Helm](https://github.com/EduIDE/EduIDE-Helm) - the charts
 - [EduIDE](https://github.com/EduIDE/EduIDE) - the IDE and its images
-- [EduIDE-Cloud](https://github.com/EduIDE/EduIDE-Cloud) - operator and REST service
-- [EduIDE-Landing-Page](https://github.com/EduIDE/EduIDE-Landing-Page)
+- [EduIDE-control-plane](https://github.com/EduIDE/EduIDE-control-plane) - operator, service and landing page (go)
+- [EduIDE-Cloud](https://github.com/EduIDE/EduIDE-Cloud) and [EduIDE-Landing-Page](https://github.com/EduIDE/EduIDE-Landing-Page) - the java stack (mannheim)
 - [theia-scale-tests](https://github.com/EduIDE/theia-scale-tests) - the test suite

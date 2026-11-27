@@ -1,19 +1,22 @@
 # Keycloak Setup
 
-This guide explains how to configure Keycloak authentication for Theia Cloud deployments.
+This guide explains how to configure Keycloak authentication for EduIDE installations. Everything below the go note is **stack: java (mannheim)**: it describes Theia Cloud with OAuth2 Proxy. On the go stack the gateway and the landing page use the OIDC settings of `_base-go.yaml` and the installation's values (`eduide-control-plane.config.oidc`) instead.
 
 > **Go stack (EduIDE 3.x).** The gateway client (`gatewayClientID`) needs the
 > valid redirect URI `https://<instance host>/oauth2/callback`; its secret is
 > the GitHub Environment secret `OIDC_CLIENT_SECRET`. test1 to test3 and Bonn
 > use one client `eduide` for the gateway and the landing page (`clientIDs`),
-> unchanged from 2.x, and the login works on both. A separate confidential
-> gateway client is possible but not needed. Hosts: the service host serves the landing page
+> unchanged from 2.x, and the login works on both. That client stays public
+> (Client authentication OFF): the landing page logs in without a secret, so
+> switching it to confidential breaks every landing page login with
+> `unauthorized_client` (Bonn and tum-production on 2026-11-25). A separate
+> confidential gateway client is possible but not needed. Hosts: the service host serves the landing page
 > and `/api/v1`, the instance host the sessions, `webview.<instance host>` the
 > webviews.
 
 ## Overview
 
-Theia Cloud uses Keycloak (via OAuth2 Proxy) to provide authentication and authorization. Each deployment requires:
+Stack: java. Theia Cloud uses Keycloak (via OAuth2 Proxy) to provide authentication and authorization. Each installation requires:
 
 1. A Keycloak realm
 2. A Keycloak client configured for the specific environment
@@ -226,6 +229,8 @@ Add to userinfo: ON
 Click **Save**
 
 ### 2.5 Configure Admin API Token for Scaling Operations
+
+Stack: java only. On go the admin panel uses an OIDC role (`admin.rolePath`/`role` in the installation's values).
 
 Theia Cloud scaling endpoints are no longer protected through the Keycloak admin group.
 They are protected by a dedicated admin API token configured in the service as:

@@ -34,12 +34,14 @@ about sessions is observed from outside them:
 | the REST service, at `/q/metrics` | session startup latency, JVM health |
 | cert-manager | certificate expiry and readiness |
 
-Only one custom metric exists: `application_application_theiacloud_session_startup_seconds_*`.
+Stack: java (mannheim): only one custom metric exists: `application_application_theiacloud_session_startup_seconds_*`.
 It is **registered lazily**, on the first session the service serves. After a
 restart it does not exist until somebody starts a session, so an empty startup
 panel on a freshly deployed environment is expected rather than broken.
 
 ## The dashboards
+
+The table below is **stack: java (mannheim)**; go installations get the two boards listed after it.
 
 | Dashboard | uid | For |
 |---|---|---|
@@ -49,7 +51,7 @@ panel on a freshly deployed environment is expected rather than broken.
 | Session Startup Time | `bf4ha4miogutcc` | startup latency quantiles |
 
 Go environments (stack `go`) get two other boards, from the `eduide-control-plane`
-chart at `spec.controlPlaneDashboards` of the cluster. `Bootstrap cluster`
+chart whose version the cluster's go environments run (the dependency of their pinned `eduide` chart). `Bootstrap cluster`
 writes them to `cattle-dashboards`; `dry_run` shows the diff first.
 
 | Dashboard | uid | For |
@@ -63,7 +65,22 @@ hand-written list, which went stale the moment the environments were renamed:
 it still offered `theia`, `theia-staging` and `test1`, none of which exist, so
 every panel was empty whatever you picked.
 
+## Usage data is archived
+
+Prometheus keeps 90 days on stud and aet and 365 days on parma. The usage
+metrics of the paper (`eduide:usage:*`) must outlive that, so every go
+environment runs the control plane's usage archive (`_base-go.yaml`, chart
+3.0.2 and later): a daily CronJob writes every sample of the day as one
+OpenMetrics file plus the weekly export to a volume in the environment's
+namespace, which `helm uninstall` keeps. Storage class and node pool come from
+the cluster. The alert `EduIDEUsageArchiveStale` fires after 36 hours without a
+successful run. The volume is no backup against losing the namespace or the
+cluster: copy it off now and then, as described in the control plane's
+`docs/operations/usage-export.md` ("Usage archive").
+
 ## The alerts
+
+This section describes the java stack, whose rules and channels come from the `eduide-cluster` chart. On go the `eduide-control-plane` chart ships its own rules (`files/alerts.yaml` there, for example `EduIDEOperatorDown`, `EduIDEPoolEmpty`, `EduIDEUsageArchiveStale`).
 
 Off by default. Switch on per cluster:
 
@@ -108,8 +125,8 @@ matched on `eduide_namespace`. First match wins.
 
 **Anything no scoped channel claims goes to every channel.** That is deliberate
 and it is the part worth remembering: a certificate expiring or the conversion
-webhook failing is cluster-scoped, belongs to no tenant namespace, and would
-otherwise be dropped for failing to match a tenant route. Those are the alerts
+webhook failing is cluster-scoped, belongs to no installation namespace, and would
+otherwise be dropped for failing to match an installation route. Those are the alerts
 you least want to lose, so they go to everyone.
 
 A scoped channel pointing at a namespace no environment on that cluster uses

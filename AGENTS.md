@@ -31,11 +31,9 @@ string, so there is nothing to map and nothing to keep in sync.
 
 **Two stacks, chosen per environment** by `spec.platform.stack` (`java` when
 omitted). `java` is chart `eduide` 2.x on Theia Cloud with `_base.yaml`; `go` is
-chart `eduide` 3.x, the Go control plane, with `_base-go.yaml`. Today every
-environment except `mannheim` is `go`: `test1`, `test2`, `test3`, `e2e`,
-`staging`, `bonn` and `eduide.artemis.cit.tum.de` (production since 2026-11-21,
-`docs/rollout-3.0-tum-production.md`). Only `mannheim` has no `stack` in its
-`env.yaml` and is `java`. `deploy.yml`, `bootstrap-cluster.yml`,
+chart `eduide` 3.x, the Go control plane, with `_base-go.yaml`. Today only
+`mannheim` is `java`; every other environment is `go` (TUM production since
+2026-11-21, `docs/rollout-3.0-tum-production.md`). `deploy.yml`, `bootstrap-cluster.yml`,
 `live-summary.sh` and `test-deploy-logic.sh` branch on it; java behaviour is
 unchanged. Never put a 3.x chart version on a java environment or the reverse.
 
@@ -50,7 +48,8 @@ Go environments differ in ways that bite:
 - The deploy creates the OIDC client Secret from the GitHub Environment secret
   `OIDC_CLIENT_SECRET`. Never put it in a values file.
 - The cluster half is only the CRD chart (`spec.controlPlaneCRDs`) and the
-  Grafana boards in `cattle-dashboards` (`spec.controlPlaneDashboards`). The 3.x
+  Grafana boards in `cattle-dashboards`, whose version bootstrap derives from the
+  `eduide-control-plane` dependency of the go environments' charts. The 3.x
   `eduide-cluster` chart is never installed on a cluster that still has Theia
   Cloud CRDs: it refuses, because removing them deletes every session.
 - The health check is the public `/api/v1/status` of the service host.
@@ -119,7 +118,7 @@ both, with no clue why. An installation with no identity provider yet sets
 **Monitoring is on by default and opted out per environment** with
 `monitoring.enabled: false`. The PodMonitor itself is in the cluster
 chart - it must be created in Rancher's namespace to be discovered, and one
-per tenant would collide on names - so the flag decides whether the
+per installation would collide on names - so the flag decides whether the
 environment's namespace is in the list it watches. Do not confuse it with
 `monitor.enable`, the operator's session activity tracker.
 
@@ -218,6 +217,18 @@ vendored reposilite chart with its own key), so the deploy sets both;
 `test-deploy-logic.sh` renders every environment against a sentinel and fails if
 any storage key escapes the cluster default.
 
+**The usage archive volume deadlocks a first deploy on parma.** Every go
+environment on chart 3.0.2 or later has a PersistentVolumeClaim for the usage
+archive (`_base-go.yaml`).
+parma's only class, `local-path`, binds a volume only when a pod mounts it
+(`WaitForFirstConsumer`), the archive CronJob runs at night, and `helm --wait`
+waits for the claim to be Bound: the first deploy of a go environment there
+times out and `--atomic` rolls it back, while the claim stays Pending. Bonn hit
+it on 2026-11-24. Bind it once with a short pod that mounts the claim, then
+deploy again; stud and aet bind immediately and are not affected. The archive
+volumes of test3, Bonn and tum-production were set to reclaim policy `Retain`
+by hand, so deleting a namespace keeps the data.
+
 **The node pool is a cluster property too.** `spec.nodeSelector` in
 `clusters/<name>.yaml` is rendered by the deploy into `global.nodeSelector`,
 and `preloading.nodeSelector`, and by
@@ -257,18 +268,25 @@ roll back.
 **Secrets go in a values file, never `--set`.** `--set` puts them in the process
 list and in Actions debug logs.
 
-**Nothing cluster-scoped is installed by a tenant deploy.** CRDs, the conversion
+**Nothing cluster-scoped is installed by an installation deploy.** CRDs, the conversion
 webhook, the shared Gateway and the PodMonitors are all in `eduide-cluster`,
 installed once per cluster by `bootstrap-cluster.yml`. Reinstalling them from
-every tenant deploy is what the old six-attempt retry loop was working around.
+every installation deploy is what the old six-attempt retry loop was working around.
 
 **Three things are derived from the environments on a cluster, not written
 down.** Gateway listeners come from each environment's `gateway.parentRefs`
 plus its hosts; the PodMonitors' watched namespaces come from
 `spec.namespace`. Both used to be hand-written lists in a second file, and both
 had gone stale - the monitoring one still named `theia` and `theia-staging`,
-so some environments were scraped and others silently were not. Adding an
-environment is one directory; do not add a second edit anywhere.
+so some environments were scraped and others silently were not. Do not
+reintroduce a derived list.
+
+**The exception is the dispatch inputs, and it is not optional.** `Deploy
+(dispatch)` and `Rollback` take the environment as a `type: choice`, which
+GitHub cannot populate dynamically, so `.github/workflows/deploy-dispatch.yml`
+and `rollback.yml` carry the list by hand. A new environment that is not in
+both can be neither deployed nor rolled back from the Actions UI - `demo` was
+merged without it and stalled there.
 
 **The shared Gateway is in `eduide-system`, not `gateway-system`.** All the
 cluster-scoped EduIDE resources sit in one namespace. `envoy-gateway-system` is
@@ -304,9 +322,11 @@ list too**, or the render diff becomes noise and stops being read.
 
 ## Adding an environment
 
-Set `spec.platform.stack` (omit for java). One directory under `environments/`, then the GitHub Environment holding its
-`KUBECONFIG`. The shared Gateway listeners are derived from the manifests, so
-there is no second file to edit. See `docs/environments.md`.
+Set `spec.platform.stack` (omit for java). One directory under `environments/`,
+then the GitHub Environment holding its `KUBECONFIG`, then the environment's
+name in the `choice` lists of `deploy-dispatch.yml` and `rollback.yml`. The
+shared Gateway listeners and the watched namespaces are derived from the
+manifests; the dispatch lists are not. See `docs/environments.md`.
 
 ## Dependency updates
 
@@ -333,6 +353,13 @@ the workflow does not supply: a GatewayClass whose load balancer address matches
 DNS, a `ClusterIssuer` that can solve ACME over Gateway API, and the webview
 wildcard certificate. `docs/github-environments.md` covers every secret and
 which of the two kinds of GitHub Environment holds it.
+
+## Terminology
+
+Use the terms of the [EduIDE glossary](https://eduide.github.io/Docs/glossary) in code, UI texts, docs, values and comments, in exactly the meaning it gives.
+Do not introduce synonyms (environment, instance, workspace, launch, lecturer, start page) for a term the glossary defines, and never write "frontend" or "backend".
+When a new term is needed or a term changes, update the glossary in `EduIDE/Docs` first.
+Here an installation is one `environments/<host>` directory; "environment" is only for that directory and for GitHub Environments.
 
 ## Conventions
 
