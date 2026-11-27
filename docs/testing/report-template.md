@@ -12,12 +12,12 @@ Copy to `docs/testing/reports/<YYYY-MM-DD>-<environment>-<n>.md`. No tokens, coo
 | Mode | `prod-safe` or `full` |
 | Modules | `all` or `01,03,...` |
 | Plan version | commit of `docs/testing/` used |
-| Chart `eduide` / `eduide-cluster` | `<x.y.z>` / `<x.y.z>` (pinned in env.yaml: `<x.y.z>`) |
-| Operator / service image | `<tag>` |
+| Chart `eduide` / CRD chart `eduide-crds` | `<x.y.z>` / `<x.y.z>` (pinned in env.yaml: `<x.y.z>`, `spec.controlPlaneCRDs`: `<x.y.z>`) |
+| Operator / service / authz / agent image | `<tag>` |
 | Landing page image | `<tag>` |
-| IDE images | `<tag>` (scorpio `<v>`, data bridge `<v>`, monitor `<v>`) |
-| Garbage collector image | `<tag>` |
-| Apps used | `APP_POOL=<name>`, `APP_STD=<name>` |
+| IDE images | `<tag>` (scorpio `<v>`, eduide-session extension `<v>`) |
+| Pool scaler image | `<tag>` or none |
+| Templates used | `TPL_POOL=<name>`, `TPL_STD=<name>` |
 | Fixtures left behind | none / list |
 
 ## Summary
