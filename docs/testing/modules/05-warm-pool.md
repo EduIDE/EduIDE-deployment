@@ -46,14 +46,14 @@ Cleanup: delete the sessions.
 
 ### POOL-06 Outdated instances are recreated
 Safety: test-only
-Steps: with one session claimed and two idle pods: `k patch idetemplate ft-pool --type merge -p '{"spec":{"resources":{"requests":{"cpu":"201m"}}}}'`; watch `pool` every 20 s for three minutes and record `idleReady` each time.
+Steps: with one session claimed, two idle pods and `maxInstances` at least 4 (the replacement needs one free instance; a pool without headroom keeps a stale idle pod): `k patch idetemplate ft-pool --type merge -p '{"spec":{"resources":{"requests":{"cpu":"201m"}}}}'`; watch `pool` every 20 s for three minutes and record `idleReady` each time.
 Expect: the idle pods get a new `spec-hash` (annotation), replaced one by one: a new pod appears before an old ready one is deleted, so `idleReady` never drops below the target; the claimed pod keeps its old hash and keeps running until its session ends.
 Cleanup: `ft_cleanup`.
 
 ### POOL-07 Pool size change
 Safety: test-only
 Steps: `k patch idepool ft-pool --type merge -p '{"spec":{"minIdle":3,"maxInstances":3}}'`, wait, `pool`; then `k scale idepool ft-pool --replicas=1`; then `minIdle` 1 and `kubectl scale ... --replicas=0`; then `maxInstances` 2 with `minIdle` 3.
-Expect: three idle instances after the first patch; `scale` writes `spec.targetIdle` (`k get idepool ft-pool -o jsonpath='{.spec.targetIdle}'`); the effective idle count is `clamp(max(minIdle, targetIdle), 0, maxInstances - claimed)`: surplus idle pods are deleted when the target falls, never claimed ones; a `minIdle` above `maxInstances` is capped at `maxInstances`.
+Expect: three idle instances after the first patch; `scale` writes `spec.targetIdle` (`k get idepool ft-pool -o jsonpath='{.spec.targetIdle}'`); the effective idle count is `clamp(max(minIdle, targetIdle), 0, maxInstances - claimed)`: surplus idle pods are deleted when the target falls, never claimed ones; a `minIdle` above `maxInstances` is refused by the API ("minIdle must not exceed maxInstances").
 
 ### POOL-08 Claimed pod without a live session
 Safety: test-only
